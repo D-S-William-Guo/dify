@@ -25,6 +25,7 @@ export const userProfilePlaceholder = {
   email: '',
   avatar: '',
   avatar_url: '',
+  is_platform_admin: false,
   is_password_set: false,
 }
 

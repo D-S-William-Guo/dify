@@ -26,6 +26,8 @@ import type {
   Member,
   ModerateResponse,
   OauthResponse,
+  PlatformAdminWorkspaceCreateResponse,
+  PlatformAdminWorkspaceListResponse,
   PluginProvider,
   Provider,
   ProviderAnthropicToken,
@@ -111,6 +113,18 @@ export const fetchAccountIntegrates = ({ url, params }: { url: string, params: R
 
 export const inviteMember = ({ url, body }: { url: string, body: Record<string, any> }): Promise<InvitationResponse> => {
   return post<InvitationResponse>(url, { body })
+}
+
+export const fetchPlatformAdminWorkspaces = ({ url, params }: { url: string, params: Record<string, any> }): Promise<PlatformAdminWorkspaceListResponse> => {
+  return get<PlatformAdminWorkspaceListResponse>(url, { params })
+}
+
+export const createPlatformAdminWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<PlatformAdminWorkspaceCreateResponse> => {
+  return post<PlatformAdminWorkspaceCreateResponse>(url, { body })
+}
+
+export const patchPlatformAdminWorkspace = ({ url, body }: { url: string, body: Record<string, any> }) => {
+  return patch(url, { body })
 }
 
 export const updateMemberRole = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse> => {

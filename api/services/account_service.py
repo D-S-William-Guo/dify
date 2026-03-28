@@ -20,6 +20,7 @@ from extensions.ext_redis import redis_client, redis_fallback
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
+from libs.platform_admin import apply_platform_admin_flag
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
 from libs.token import generate_csrf_token
@@ -162,6 +163,7 @@ class AccountService:
         if naive_utc_now() - account.last_active_at > timedelta(minutes=10):
             account.last_active_at = naive_utc_now()
             db.session.commit()
+        apply_platform_admin_flag(account)
         # NOTE: make sure account is accessible outside of a db session
         # This ensures that it will work correctly after upgrading to Flask version 3.1.2
         db.session.refresh(account)
