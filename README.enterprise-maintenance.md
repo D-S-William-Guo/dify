@@ -34,9 +34,9 @@
 - 不要在 `main` 上直接开发企业功能
 - 不要把 `origin` 再改回官方仓库
 - 企业管理功能在企业分支维护
-- 离线部署使用 [docker/docker-compose.enterprise.yaml](/D:/CodexWorkspace/dify-advance/dify/docker/docker-compose.enterprise.yaml)
-- 离线构建使用 [scripts/build-enterprise-offline.ps1](/D:/CodexWorkspace/dify-advance/dify/scripts/build-enterprise-offline.ps1)
-- Docker 相关补充说明见 [docker/README.enterprise.md](/D:/CodexWorkspace/dify-advance/dify/docker/README.enterprise.md)
+- 离线部署使用 [docker/docker-compose.enterprise.yaml](/D:/CodexSpace/dify/docker/docker-compose.enterprise.yaml)
+- 离线构建使用 [scripts/build-enterprise-offline.ps1](/D:/CodexSpace/dify/scripts/build-enterprise-offline.ps1)
+- Docker 相关补充说明见 [docker/README.enterprise.md](/D:/CodexSpace/dify/docker/README.enterprise.md)
 
 ## 第一部分：首次规整当前仓库
 
@@ -193,7 +193,7 @@ git commit
 - 企业管理页面能打开
 - 平台管理员身份识别正常
 - 工作区创建、成员邀请、角色修改、成员删除正常
-- [docker/docker-compose.enterprise.yaml](/D:/CodexWorkspace/dify-advance/dify/docker/docker-compose.enterprise.yaml) 仍然符合当前部署方式
+- [docker/docker-compose.enterprise.yaml](/D:/CodexSpace/dify/docker/docker-compose.enterprise.yaml) 仍然符合当前部署方式
 
 #### 7. 推送企业分支
 
@@ -260,7 +260,7 @@ git branch -vv
 - 离线镜像构建和导出使用：
   - `scripts/build-enterprise-offline.ps1`
 - Docker 部署层补充说明见：
-  - [docker/README.enterprise.md](/D:/CodexWorkspace/dify-advance/dify/docker/README.enterprise.md)
+  - [docker/README.enterprise.md](/D:/CodexSpace/dify/docker/README.enterprise.md)
 
 典型发布流程：
 

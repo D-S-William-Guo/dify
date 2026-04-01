@@ -8,8 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
 import { Avatar } from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
-import CustomDialog from '@/app/components/base/dialog'
 import Input from '@/app/components/base/input'
+import { Dialog, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
 import SearchInput from '@/app/components/base/search-input'
 import { toast } from '@/app/components/base/ui/toast'
 import { emailRegex } from '@/config'
@@ -37,6 +37,49 @@ const roleLabels = {
   dataset_operator: 'members.datasetOperator',
   normal: 'members.normal',
 } as const
+
+type PlatformAdminDialogProps = {
+  show: boolean
+  title: string
+  className?: string
+  onClose: () => void
+  footer?: React.ReactNode
+  children: React.ReactNode
+}
+
+const PlatformAdminDialog = ({
+  show,
+  title,
+  className,
+  onClose,
+  footer,
+  children,
+}: PlatformAdminDialogProps) => {
+  return (
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open)
+          onClose()
+      }}
+    >
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className={cn('max-w-[800px] p-6', className)}
+      >
+        <DialogTitle className="pb-3 pr-8 text-text-primary title-2xl-semi-bold">
+          {title}
+        </DialogTitle>
+        {children}
+        {footer && (
+          <div className="flex items-center justify-end gap-2 px-6 pb-6 pt-3">
+            {footer}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 type CreateWorkspaceDialogProps = {
   show: boolean
@@ -79,7 +122,7 @@ const CreateWorkspaceDialog = ({
   }
 
   return (
-    <CustomDialog
+    <PlatformAdminDialog
       show={show}
       onClose={onClose}
       title={t('platformAdmin.createWorkspace', { ns: 'common' })}
@@ -116,7 +159,7 @@ const CreateWorkspaceDialog = ({
         </div>
         <div className="text-xs text-text-tertiary">{t('platformAdmin.createWorkspaceTip', { ns: 'common' })}</div>
       </div>
-    </CustomDialog>
+    </PlatformAdminDialog>
   )
 }
 
@@ -144,7 +187,7 @@ const RenameWorkspaceDialog = ({
   }, [name, show])
 
   return (
-    <CustomDialog
+    <PlatformAdminDialog
       show={show}
       onClose={onClose}
       title={t('platformAdmin.renameWorkspace', { ns: 'common' })}
@@ -162,7 +205,7 @@ const RenameWorkspaceDialog = ({
         <div className="mb-2 text-sm text-text-secondary">{t('platformAdmin.workspaceName', { ns: 'common' })}</div>
         <Input value={nextName} onChange={e => setNextName(e.target.value)} maxLength={255} />
       </div>
-    </CustomDialog>
+    </PlatformAdminDialog>
   )
 }
 
@@ -206,7 +249,7 @@ const InviteMembersDialog = ({
   }
 
   return (
-    <CustomDialog
+    <PlatformAdminDialog
       show={show}
       onClose={onClose}
       title={t('platformAdmin.inviteMembers', { ns: 'common' })}
@@ -246,7 +289,7 @@ const InviteMembersDialog = ({
         </div>
         <RoleSelector value={role} onChange={setRole} />
       </div>
-    </CustomDialog>
+    </PlatformAdminDialog>
   )
 }
 
