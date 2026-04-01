@@ -38,6 +38,7 @@ import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import { useSubmitEnterpriseMarketplaceAsset } from '@/service/use-enterprise-marketplace'
 import { fetchInstalledAppList } from '@/service/explore'
 import { useDeleteAppMutation } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -47,6 +48,7 @@ import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
+import SubmitEnterpriseMarketplaceModal from './submit-enterprise-marketplace-modal'
 
 const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
   ssr: false,
@@ -84,8 +86,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
+  const [showSubmitMarketplaceModal, setShowSubmitMarketplaceModal] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
+  const submitMarketplaceMutation = useSubmitEnterpriseMarketplaceAsset(app.id)
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -256,6 +260,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       setShowConfirmDelete(true)
     }
+    const onClickSubmitMarketplace = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowSubmitMarketplaceModal(true)
+    }
     const onClickAccessControl = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
@@ -294,6 +304,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         </button>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExport}>
           <span className="text-text-secondary system-sm-regular">{t('export', { ns: 'app' })}</span>
+        </button>
+        <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickSubmitMarketplace}>
+          <span className="text-text-secondary system-sm-regular">{t('enterpriseMarketplace.submitAction', { ns: 'common' })}</span>
         </button>
         {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
           <>
@@ -561,6 +574,34 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       )}
       {showAccessControl && (
         <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
+      )}
+      {showSubmitMarketplaceModal && (
+        <SubmitEnterpriseMarketplaceModal
+          open={showSubmitMarketplaceModal}
+          loading={submitMarketplaceMutation.isPending}
+          defaultTitle={app.name}
+          defaultDescription={app.description}
+          onClose={() => setShowSubmitMarketplaceModal(false)}
+          onSubmit={(payload) => {
+            submitMarketplaceMutation.mutate(payload, {
+              onSuccess: () => {
+                setShowSubmitMarketplaceModal(false)
+                notify({
+                  type: 'success',
+                  message: t('enterpriseMarketplace.submitSuccess', { ns: 'common' }),
+                })
+              },
+              onError: (error) => {
+                notify({
+                  type: 'error',
+                  message: error instanceof Error
+                    ? error.message
+                    : t('enterpriseMarketplace.submitFailed', { ns: 'common' }),
+                })
+              },
+            })
+          }}
+        />
       )}
     </>
   )

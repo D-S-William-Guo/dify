@@ -28,6 +28,7 @@ import {
 import { cn } from '@/utils/classnames'
 import InvitedModal from '../members-page/invited-modal'
 import RoleSelector from '../members-page/invite-modal/role-selector'
+import EnterpriseMarketplaceAdmin from './enterprise-marketplace-admin'
 import 'react-multi-email/dist/style.css'
 
 const roleLabels = {
@@ -418,142 +419,145 @@ const PlatformAdminPage = () => {
 
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <div className="text-text-primary title-lg-semi-bold">{t('platformAdmin.workspaceList', { ns: 'common' })}</div>
-              <div className="mt-1 text-text-tertiary system-xs-regular">{t('platformAdmin.workspaceCount', { ns: 'common', count: workspaces.length })}</div>
+      <div className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-text-primary title-lg-semi-bold">{t('platformAdmin.workspaceList', { ns: 'common' })}</div>
+                <div className="mt-1 text-text-tertiary system-xs-regular">{t('platformAdmin.workspaceCount', { ns: 'common', count: workspaces.length })}</div>
+              </div>
+              <Button variant="primary" size="small" onClick={() => setShowCreateDialog(true)}>
+                {t('operation.create', { ns: 'common' })}
+              </Button>
             </div>
-            <Button variant="primary" size="small" onClick={() => setShowCreateDialog(true)}>
-              {t('operation.create', { ns: 'common' })}
-            </Button>
+            <SearchInput className="mb-4" value={keyword} onChange={setKeyword} />
+            <div className="space-y-2">
+              {workspaces.map(workspace => (
+                <button
+                  key={workspace.id}
+                  type="button"
+                  className={cn(
+                    'w-full rounded-xl border p-3 text-left transition-colors',
+                    workspace.id === selectedWorkspaceId
+                      ? 'border-components-button-primary-border bg-state-base-hover'
+                      : 'border-divider-subtle bg-background-body hover:bg-state-base-hover',
+                  )}
+                  onClick={() => setSelectedWorkspaceId(workspace.id)}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="truncate text-text-primary system-sm-semibold">{workspace.name}</div>
+                    <div className="rounded-md bg-background-default px-2 py-1 text-text-tertiary system-2xs-medium-uppercase">
+                      {workspace.member_count}
+                    </div>
+                  </div>
+                  <div className="mt-2 truncate text-text-tertiary system-xs-regular">
+                    {workspace.owner?.email || t('platformAdmin.ownerless', { ns: 'common' })}
+                  </div>
+                </button>
+              ))}
+              {!workspaceQuery.isLoading && !workspaces.length && (
+                <div className="rounded-xl border border-dashed border-divider-subtle px-4 py-10 text-center text-text-tertiary system-sm-regular">
+                  {t('platformAdmin.noWorkspaces', { ns: 'common' })}
+                </div>
+              )}
+            </div>
           </div>
-          <SearchInput className="mb-4" value={keyword} onChange={setKeyword} />
-          <div className="space-y-2">
-            {workspaces.map(workspace => (
-              <button
-                key={workspace.id}
-                type="button"
-                className={cn(
-                  'w-full rounded-xl border p-3 text-left transition-colors',
-                  workspace.id === selectedWorkspaceId
-                    ? 'border-components-button-primary-border bg-state-base-hover'
-                    : 'border-divider-subtle bg-background-body hover:bg-state-base-hover',
-                )}
-                onClick={() => setSelectedWorkspaceId(workspace.id)}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="truncate text-text-primary system-sm-semibold">{workspace.name}</div>
-                  <div className="rounded-md bg-background-default px-2 py-1 text-text-tertiary system-2xs-medium-uppercase">
-                    {workspace.member_count}
+
+          <div className="rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
+            {!selectedWorkspace && (
+              <div className="flex h-full min-h-[420px] items-center justify-center text-text-tertiary system-sm-regular">
+                {t('platformAdmin.selectWorkspace', { ns: 'common' })}
+              </div>
+            )}
+
+            {selectedWorkspace && (
+              <>
+                <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-divider-subtle bg-background-body p-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-text-primary title-xl-semi-bold">{selectedWorkspace.name}</div>
+                      <button
+                        type="button"
+                        className="rounded-md p-1 text-text-tertiary hover:bg-state-base-hover"
+                        onClick={() => setShowRenameDialog(true)}
+                      >
+                        <span className="i-ri-pencil-line h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-4 text-text-tertiary system-sm-regular">
+                      <span>{t('platformAdmin.memberCount', { ns: 'common', count: selectedWorkspace.member_count })}</span>
+                      <span>{selectedWorkspace.owner?.email || t('platformAdmin.ownerless', { ns: 'common' })}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" onClick={() => void membersQuery.refetch()}>{t('platformAdmin.refreshMembers', { ns: 'common' })}</Button>
+                    <Button variant="primary" onClick={() => setShowInviteDialog(true)}>
+                      {t('platformAdmin.inviteMembers', { ns: 'common' })}
+                    </Button>
                   </div>
                 </div>
-                <div className="mt-2 truncate text-text-tertiary system-xs-regular">
-                  {workspace.owner?.email || t('platformAdmin.ownerless', { ns: 'common' })}
+
+                <div className="overflow-hidden rounded-2xl border border-divider-subtle">
+                  <div className="grid grid-cols-[minmax(0,1.4fr)_140px_120px] border-b border-divider-subtle bg-background-body px-4 py-3 text-text-tertiary system-xs-medium-uppercase">
+                    <div>{t('members.name', { ns: 'common' })}</div>
+                    <div>{t('members.role', { ns: 'common' })}</div>
+                    <div>{t('operation.delete', { ns: 'common' })}</div>
+                  </div>
+                  {members.map(member => (
+                    <div key={member.id} className="grid grid-cols-[minmax(0,1.4fr)_140px_120px] items-center border-b border-divider-subtle px-4 py-3 last:border-b-0">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar avatar={member.avatar_url} size="sm" className="shrink-0" name={member.name} />
+                        <div className="min-w-0">
+                          <div className="truncate text-text-primary system-sm-semibold">
+                            {member.name}
+                            {member.status === 'pending' && <span className="ml-2 text-text-warning system-xs-medium">{t('members.pending', { ns: 'common' })}</span>}
+                          </div>
+                          <div className="truncate text-text-tertiary system-xs-regular">{member.email}</div>
+                        </div>
+                      </div>
+                      <div>
+                        {member.role === 'owner'
+                          ? (
+                              <div className="text-text-secondary system-sm-medium">{t(roleLabels[member.role], { ns: 'common' })}</div>
+                            )
+                          : (
+                              <select
+                                className="h-9 w-full rounded-lg border border-divider-subtle bg-components-input-bg-normal px-3 text-sm text-text-secondary outline-none hover:bg-state-base-hover"
+                                value={member.role}
+                                onChange={e => updateRoleMutation.mutate({ memberId: member.id, role: e.target.value as RoleKey })}
+                                disabled={updateRoleMutation.isPending}
+                              >
+                                {roleOptions.map(role => (
+                                  <option key={role} value={role}>{t(roleLabels[role], { ns: 'common' })}</option>
+                                ))}
+                              </select>
+                            )}
+                      </div>
+                      <div>
+                        <Button
+                          size="small"
+                          variant="tertiary"
+                          destructive
+                          loading={removeMemberMutation.isPending}
+                          onClick={() => removeMemberMutation.mutate(member.id)}
+                        >
+                          {t('operation.delete', { ns: 'common' })}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {!membersQuery.isLoading && !members.length && (
+                    <div className="px-4 py-12 text-center text-text-tertiary system-sm-regular">
+                      {t('platformAdmin.noMembers', { ns: 'common' })}
+                    </div>
+                  )}
                 </div>
-              </button>
-            ))}
-            {!workspaceQuery.isLoading && !workspaces.length && (
-              <div className="rounded-xl border border-dashed border-divider-subtle px-4 py-10 text-center text-text-tertiary system-sm-regular">
-                {t('platformAdmin.noWorkspaces', { ns: 'common' })}
-              </div>
+              </>
             )}
           </div>
         </div>
-
-        <div className="rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
-          {!selectedWorkspace && (
-            <div className="flex h-full min-h-[420px] items-center justify-center text-text-tertiary system-sm-regular">
-              {t('platformAdmin.selectWorkspace', { ns: 'common' })}
-            </div>
-          )}
-
-          {selectedWorkspace && (
-            <>
-              <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-divider-subtle bg-background-body p-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-text-primary title-xl-semi-bold">{selectedWorkspace.name}</div>
-                    <button
-                      type="button"
-                      className="rounded-md p-1 text-text-tertiary hover:bg-state-base-hover"
-                      onClick={() => setShowRenameDialog(true)}
-                    >
-                      <span className="i-ri-pencil-line h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-4 text-text-tertiary system-sm-regular">
-                    <span>{t('platformAdmin.memberCount', { ns: 'common', count: selectedWorkspace.member_count })}</span>
-                    <span>{selectedWorkspace.owner?.email || t('platformAdmin.ownerless', { ns: 'common' })}</span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => void membersQuery.refetch()}>{t('platformAdmin.refreshMembers', { ns: 'common' })}</Button>
-                  <Button variant="primary" onClick={() => setShowInviteDialog(true)}>
-                    {t('platformAdmin.inviteMembers', { ns: 'common' })}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="overflow-hidden rounded-2xl border border-divider-subtle">
-                <div className="grid grid-cols-[minmax(0,1.4fr)_140px_120px] border-b border-divider-subtle bg-background-body px-4 py-3 text-text-tertiary system-xs-medium-uppercase">
-                  <div>{t('members.name', { ns: 'common' })}</div>
-                  <div>{t('members.role', { ns: 'common' })}</div>
-                  <div>{t('operation.delete', { ns: 'common' })}</div>
-                </div>
-                {members.map(member => (
-                  <div key={member.id} className="grid grid-cols-[minmax(0,1.4fr)_140px_120px] items-center border-b border-divider-subtle px-4 py-3 last:border-b-0">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Avatar avatar={member.avatar_url} size="sm" className="shrink-0" name={member.name} />
-                      <div className="min-w-0">
-                        <div className="truncate text-text-primary system-sm-semibold">
-                          {member.name}
-                          {member.status === 'pending' && <span className="ml-2 text-text-warning system-xs-medium">{t('members.pending', { ns: 'common' })}</span>}
-                        </div>
-                        <div className="truncate text-text-tertiary system-xs-regular">{member.email}</div>
-                      </div>
-                    </div>
-                    <div>
-                      {member.role === 'owner'
-                        ? (
-                            <div className="text-text-secondary system-sm-medium">{t(roleLabels[member.role], { ns: 'common' })}</div>
-                          )
-                        : (
-                            <select
-                              className="h-9 w-full rounded-lg border border-divider-subtle bg-components-input-bg-normal px-3 text-sm text-text-secondary outline-none hover:bg-state-base-hover"
-                              value={member.role}
-                              onChange={e => updateRoleMutation.mutate({ memberId: member.id, role: e.target.value as RoleKey })}
-                              disabled={updateRoleMutation.isPending}
-                            >
-                              {roleOptions.map(role => (
-                                <option key={role} value={role}>{t(roleLabels[role], { ns: 'common' })}</option>
-                              ))}
-                            </select>
-                          )}
-                    </div>
-                    <div>
-                      <Button
-                        size="small"
-                        variant="tertiary"
-                        destructive
-                        loading={removeMemberMutation.isPending}
-                        onClick={() => removeMemberMutation.mutate(member.id)}
-                      >
-                        {t('operation.delete', { ns: 'common' })}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {!membersQuery.isLoading && !members.length && (
-                  <div className="px-4 py-12 text-center text-text-tertiary system-sm-regular">
-                    {t('platformAdmin.noMembers', { ns: 'common' })}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+        <EnterpriseMarketplaceAdmin />
       </div>
 
       <CreateWorkspaceDialog

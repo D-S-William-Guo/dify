@@ -22,6 +22,9 @@ import type {
   InitValidateStatusResponse,
   InvitationResponse,
   IWorkspace,
+  EnterpriseMarketplaceAssetListResponse,
+  EnterpriseMarketplaceSubmissionListResponse,
+  EnterpriseMarketplaceUseResponse,
   LangGeniusVersionResponse,
   Member,
   ModerateResponse,
@@ -133,6 +136,34 @@ export const updateMemberRole = ({ url, body }: { url: string, body: Record<stri
 
 export const deleteMemberOrCancelInvitation = ({ url }: { url: string }): Promise<CommonResponse> => {
   return del<CommonResponse>(url)
+}
+
+export const submitEnterpriseMarketplaceAsset = ({ url, body }: { url: string, body: Record<string, any> }) => {
+  return post(url, { body })
+}
+
+export const fetchEnterpriseMarketplaceSubmissions = ({ url }: { url: string }): Promise<EnterpriseMarketplaceSubmissionListResponse> => {
+  return get<EnterpriseMarketplaceSubmissionListResponse>(url)
+}
+
+export const fetchEnterpriseMarketplaceAssets = ({ url, params }: { url: string, params: Record<string, any> }): Promise<EnterpriseMarketplaceAssetListResponse> => {
+  return get<EnterpriseMarketplaceAssetListResponse>(url, { params })
+}
+
+export const fetchEnterpriseMarketplaceAssetDetail = ({ url }: { url: string }) => {
+  return get(url)
+}
+
+export const useEnterpriseMarketplaceAsset = ({ url }: { url: string }): Promise<EnterpriseMarketplaceUseResponse> => {
+  return post<EnterpriseMarketplaceUseResponse>(url, { body: {} })
+}
+
+export const reviewEnterpriseMarketplaceAsset = ({ url, body }: { url: string, body: Record<string, any> }) => {
+  return post(url, { body })
+}
+
+export const unlistEnterpriseMarketplaceAsset = ({ url }: { url: string }) => {
+  return post(url, { body: {} })
 }
 
 export const sendOwnerEmail = (body: { language?: string }): Promise<CommonResponse & { data: string }> =>
