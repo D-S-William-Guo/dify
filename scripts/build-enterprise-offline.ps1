@@ -23,7 +23,7 @@ $outputPath = Join-Path $repoRoot $OutputDir
 New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
 
 Write-Host "Building enterprise API image: $apiImage"
-docker build --build-arg COMMIT_SHA=$Version -f (Join-Path $repoRoot "api/Dockerfile") -t $apiImage $repoRoot
+docker build --build-arg COMMIT_SHA=$Version -f (Join-Path $repoRoot "api/Dockerfile") -t $apiImage (Join-Path $repoRoot "api")
 
 Write-Host "Building enterprise Web image: $webImage"
 docker build --build-arg COMMIT_SHA=$Version -f (Join-Path $repoRoot "web/Dockerfile") -t $webImage $repoRoot
