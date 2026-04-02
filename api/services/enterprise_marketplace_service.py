@@ -230,7 +230,7 @@ class EnterpriseMarketplaceService:
         if source_app is None or source_app.status != "normal":
             abort(404)
 
-        with sessionmaker(db.engine).begin() as session:
+        with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=source_app, include_secret=False)
             import_result = import_service.import_app(

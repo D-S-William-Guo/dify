@@ -20,18 +20,61 @@ import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import { getRedirection } from '@/utils/app-redirection'
 
+type MarketplaceCopyState = 'idle' | 'submitting' | 'awaiting_confirm' | 'confirming' | 'completed' | 'failed'
+type MarketplaceCopyErrorType = 'start' | 'confirm' | null
+
+type MarketplaceCopyFlow = {
+  assetId: string | null
+  state: MarketplaceCopyState
+  errorType: MarketplaceCopyErrorType
+  errorMessage: string | null
+}
+
+const defaultCopyFlow: MarketplaceCopyFlow = {
+  assetId: null,
+  state: 'idle',
+  errorType: null,
+  errorMessage: null,
+}
+
+const getFriendlyErrorMessage = (error: unknown, fallback: string) => {
+  if (!(error instanceof Error))
+    return fallback
+
+  const normalizedMessage = error.message.trim()
+  if (!normalizedMessage)
+    return fallback
+
+  const genericMessages = new Set([
+    'Internal Server Error',
+    'Failed to fetch',
+    'Network Error',
+  ])
+
+  if (genericMessages.has(normalizedMessage))
+    return fallback
+
+  return normalizedMessage.length > 160 ? fallback : normalizedMessage
+}
+
 const AssetDetailDialog = ({
   asset,
   open,
-  loading,
   canUse,
+  copyState,
+  copyErrorMessage,
+  closeDisabled,
+  primaryDisabled,
   onClose,
   onUse,
 }: {
   asset: EnterpriseMarketplaceAsset | null
   open: boolean
-  loading: boolean
   canUse: boolean
+  copyState: MarketplaceCopyState
+  copyErrorMessage?: string | null
+  closeDisabled: boolean
+  primaryDisabled: boolean
   onClose: () => void
   onUse: () => void
 }) => {
@@ -40,8 +83,47 @@ const AssetDetailDialog = ({
   if (!asset)
     return null
 
+  const statusTone = {
+    idle: '',
+    submitting: 'border-divider-subtle bg-state-base-hover text-text-primary',
+    awaiting_confirm: 'border-divider-subtle bg-components-panel-bg text-text-primary',
+    confirming: 'border-divider-subtle bg-state-base-hover text-text-primary',
+    completed: 'border-divider-subtle bg-components-panel-bg text-text-primary',
+    failed: 'border-divider-subtle bg-state-base-hover text-text-warning-secondary',
+  }[copyState]
+
+  const statusTitle = {
+    idle: '',
+    submitting: t('enterpriseMarketplace.statusLabel.submitting', { ns: 'common' }),
+    awaiting_confirm: t('enterpriseMarketplace.statusLabel.awaitingConfirm', { ns: 'common' }),
+    confirming: t('enterpriseMarketplace.statusLabel.confirming', { ns: 'common' }),
+    completed: t('enterpriseMarketplace.statusLabel.completed', { ns: 'common' }),
+    failed: t('enterpriseMarketplace.statusLabel.failed', { ns: 'common' }),
+  }[copyState]
+
+  const statusDescription = {
+    idle: '',
+    submitting: t('enterpriseMarketplace.statusHint.submitting', { ns: 'common' }),
+    awaiting_confirm: t('enterpriseMarketplace.statusHint.awaitingConfirm', { ns: 'common' }),
+    confirming: t('enterpriseMarketplace.statusHint.confirming', { ns: 'common' }),
+    completed: t('enterpriseMarketplace.statusHint.completed', { ns: 'common' }),
+    failed: copyErrorMessage || t('enterpriseMarketplace.statusHint.retry', { ns: 'common' }),
+  }[copyState]
+
+  const primaryLabel = {
+    idle: t('enterpriseMarketplace.useAction', { ns: 'common' }),
+    submitting: t('enterpriseMarketplace.useActionSubmitting', { ns: 'common' }),
+    awaiting_confirm: t('enterpriseMarketplace.useActionAwaitingConfirm', { ns: 'common' }),
+    confirming: t('enterpriseMarketplace.useActionConfirming', { ns: 'common' }),
+    completed: t('enterpriseMarketplace.useActionCompleted', { ns: 'common' }),
+    failed: t('enterpriseMarketplace.useActionRetry', { ns: 'common' }),
+  }[copyState]
+
   return (
-    <Dialog open={open} onOpenChange={nextOpen => !nextOpen && onClose()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (!nextOpen && !closeDisabled)
+        onClose()
+    }}>
       <DialogContent className="max-w-[720px] p-0">
         <div className="border-b border-divider-subtle p-6 pb-4">
           <DialogTitle className="text-text-primary title-2xl-semi-bold">{asset.title}</DialogTitle>
@@ -71,10 +153,23 @@ const AssetDetailDialog = ({
             </div>
           )}
         </div>
+        {copyState !== 'idle' && (
+          <div className="px-6">
+            <div className={cn('rounded-2xl border px-4 py-3', statusTone)}>
+              <div className="system-sm-semibold">{statusTitle}</div>
+              <div className="mt-1 system-sm-regular">{statusDescription}</div>
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
-          <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-          <Button variant="primary" loading={loading} disabled={!canUse} onClick={onUse}>
-            {t('enterpriseMarketplace.useAction', { ns: 'common' })}
+          <Button disabled={closeDisabled} onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button
+            variant="primary"
+            loading={copyState === 'submitting' || copyState === 'confirming'}
+            disabled={!canUse || primaryDisabled}
+            onClick={onUse}
+          >
+            {primaryLabel}
           </Button>
         </div>
       </DialogContent>
@@ -92,7 +187,7 @@ const EnterpriseMarketplace = () => {
   const [selectedAsset, setSelectedAsset] = useState<EnterpriseMarketplaceAsset | null>(null)
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
   const [pendingVersions, setPendingVersions] = useState<{ importedVersion: string, systemVersion: string }>()
-  const [isConfirmingPendingImport, setIsConfirmingPendingImport] = useState(false)
+  const [copyFlow, setCopyFlow] = useState<MarketplaceCopyFlow>(defaultCopyFlow)
   const pendingImportIdRef = useRef('')
   const pendingAssetIdRef = useRef('')
 
@@ -107,6 +202,10 @@ const EnterpriseMarketplace = () => {
       return allAssets
     return allAssets.filter(item => item.category === selectedCategory)
   }, [allAssets, selectedCategory])
+  const selectedAssetCopyState = selectedAsset && copyFlow.assetId === selectedAsset.id ? copyFlow.state : 'idle'
+  const selectedAssetErrorMessage = selectedAsset && copyFlow.assetId === selectedAsset.id ? copyFlow.errorMessage : null
+  const isCloseDisabled = selectedAssetCopyState === 'submitting' || selectedAssetCopyState === 'confirming'
+  const isPrimaryDisabled = selectedAssetCopyState === 'submitting' || selectedAssetCopyState === 'confirming' || selectedAssetCopyState === 'completed'
 
   return (
     <>
@@ -239,18 +338,36 @@ const EnterpriseMarketplace = () => {
       <AssetDetailDialog
         asset={selectedAsset}
         open={!!selectedAsset}
-        loading={useAssetMutation.isPending || isConfirmingPendingImport}
         canUse={isCurrentWorkspaceEditor}
+        copyState={selectedAssetCopyState}
+        copyErrorMessage={selectedAssetErrorMessage}
+        closeDisabled={isCloseDisabled}
+        primaryDisabled={isPrimaryDisabled}
         onClose={() => setSelectedAsset(null)}
         onUse={() => {
           if (!selectedAsset)
             return
 
+          if (selectedAssetCopyState === 'submitting' || selectedAssetCopyState === 'confirming' || selectedAssetCopyState === 'completed')
+            return
+
           if (pendingImportIdRef.current && pendingAssetIdRef.current === selectedAsset.id) {
+            setCopyFlow({
+              assetId: selectedAsset.id,
+              state: 'awaiting_confirm',
+              errorType: null,
+              errorMessage: null,
+            })
             setShowDSLConfirmModal(true)
             return
           }
 
+          setCopyFlow({
+            assetId: selectedAsset.id,
+            state: 'submitting',
+            errorType: null,
+            errorMessage: null,
+          })
           useAssetMutation.mutate(selectedAsset.id, {
             onSuccess: (response) => {
               const leakedDependencies = response.leaked_dependencies || []
@@ -264,12 +381,24 @@ const EnterpriseMarketplace = () => {
                   importedVersion: response.import_result.imported_dsl_version || '',
                   systemVersion: response.import_result.current_dsl_version || '',
                 })
+                setCopyFlow({
+                  assetId: selectedAsset.id,
+                  state: 'awaiting_confirm',
+                  errorType: null,
+                  errorMessage: null,
+                })
                 setShowDSLConfirmModal(true)
                 toast.info(t('enterpriseMarketplace.usePending', { ns: 'common' }))
                 return
               }
 
               if (response.import_result.app_id) {
+                setCopyFlow({
+                  assetId: selectedAsset.id,
+                  state: 'completed',
+                  errorType: null,
+                  errorMessage: null,
+                })
                 toast.success(t('enterpriseMarketplace.useSuccess', { ns: 'common' }))
                 if (leakedDependencies.length) {
                   toast.warning(t('enterpriseMarketplace.dependencyWarning', { ns: 'common', count: leakedDependencies.length }))
@@ -281,11 +410,26 @@ const EnterpriseMarketplace = () => {
                 }, push)
               }
               else {
-                toast.warning(t('enterpriseMarketplace.usePending', { ns: 'common' }))
+                const fallbackMessage = t('enterpriseMarketplace.copyStartFailed', { ns: 'common' })
+                setCopyFlow({
+                  assetId: selectedAsset.id,
+                  state: 'failed',
+                  errorType: 'start',
+                  errorMessage: fallbackMessage,
+                })
+                toast.error(fallbackMessage)
               }
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : t('api.actionFailed', { ns: 'common' }))
+              const fallbackMessage = t('enterpriseMarketplace.copyStartFailed', { ns: 'common' })
+              const errorMessage = getFriendlyErrorMessage(error, fallbackMessage)
+              setCopyFlow({
+                assetId: selectedAsset.id,
+                state: 'failed',
+                errorType: 'start',
+                errorMessage,
+              })
+              toast.error(errorMessage)
             },
           })
         }}
@@ -293,19 +437,34 @@ const EnterpriseMarketplace = () => {
       {showDSLConfirmModal && (
         <DSLConfirmModal
           versions={pendingVersions}
-          confirmDisabled={isConfirmingPendingImport}
+          confirmDisabled={copyFlow.state === 'confirming'}
           onCancel={() => setShowDSLConfirmModal(false)}
           onConfirm={async () => {
             if (!pendingImportIdRef.current)
               return
 
             try {
-              setIsConfirmingPendingImport(true)
+              setCopyFlow(current => current.assetId
+                ? {
+                    ...current,
+                    state: 'confirming',
+                    errorType: null,
+                    errorMessage: null,
+                  }
+                : current)
               const response = await importDSLConfirm({
                 import_id: pendingImportIdRef.current,
               })
 
               if (response.status === DSLImportStatus.COMPLETED && response.app_id) {
+                setCopyFlow(current => current.assetId
+                  ? {
+                      ...current,
+                      state: 'completed',
+                      errorType: null,
+                      errorMessage: null,
+                    }
+                  : current)
                 toast.success(t('enterpriseMarketplace.useSuccess', { ns: 'common' }))
                 localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
                 pendingImportIdRef.current = ''
@@ -318,13 +477,35 @@ const EnterpriseMarketplace = () => {
                 return
               }
 
-              toast.error(t('enterpriseMarketplace.confirmFailed', { ns: 'common' }))
+              const fallbackMessage = t('enterpriseMarketplace.copyConfirmFailed', { ns: 'common' })
+              pendingImportIdRef.current = ''
+              pendingAssetIdRef.current = ''
+              setShowDSLConfirmModal(false)
+              setCopyFlow(current => current.assetId
+                ? {
+                    ...current,
+                    state: 'failed',
+                    errorType: 'confirm',
+                    errorMessage: fallbackMessage,
+                  }
+                : current)
+              toast.error(fallbackMessage)
             }
             catch (error) {
-              toast.error(error instanceof Error ? error.message : t('enterpriseMarketplace.confirmFailed', { ns: 'common' }))
-            }
-            finally {
-              setIsConfirmingPendingImport(false)
+              const fallbackMessage = t('enterpriseMarketplace.copyConfirmFailed', { ns: 'common' })
+              const errorMessage = getFriendlyErrorMessage(error, fallbackMessage)
+              pendingImportIdRef.current = ''
+              pendingAssetIdRef.current = ''
+              setShowDSLConfirmModal(false)
+              setCopyFlow(current => current.assetId
+                ? {
+                    ...current,
+                    state: 'failed',
+                    errorType: 'confirm',
+                    errorMessage,
+                  }
+                : current)
+              toast.error(errorMessage)
             }
           }}
         />
