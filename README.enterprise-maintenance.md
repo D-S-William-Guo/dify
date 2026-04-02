@@ -266,6 +266,11 @@ git branch -vv
 
 - `docker/docker-compose.enterprise.yaml` 保持当前参数化结构，不需要每次同步官方后去改写具体版本号
 - 企业镜像 tag 统一通过 `DIFY_ENTERPRISE_VERSION` 控制
+- 长期维护时，正式对外识别的企业业务镜像名统一为：
+  - `dify-api-enterprise:<官方版本-enterprise>`
+  - `dify-web-enterprise:<官方版本-enterprise>`
+- `worker` 与 `worker_beat` 运行时继续复用 `dify-api-enterprise:<官方版本-enterprise>`
+- 如果某次本地排障时给 `worker` 或 `worker_beat` 单独补了 tag，可视为临时识别名，不作为正式交付命名规则
 - 正式构建与交付时，企业镜像版本统一采用：
   - `官方版本-enterprise`
 - 示例：
@@ -317,6 +322,38 @@ $env:DIFY_ENTERPRISE_VERSION="1.13.3-enterprise"
 ```powershell
 .\scripts\build-enterprise-offline.ps1 -Version 1.13.3-enterprise
 ```
+
+### 最终打包命令参考
+
+#### Windows 11 + Docker Desktop
+
+```powershell
+cd D:\CodexSpace\dify
+python docker/dify-env-sync.py --dir docker --no-backup
+$env:DIFY_ENTERPRISE_VERSION="1.13.3-enterprise"
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
+docker build --progress=plain --build-arg COMMIT_SHA=$env:DIFY_ENTERPRISE_VERSION -f api/Dockerfile -t dify-api-enterprise:$env:DIFY_ENTERPRISE_VERSION api
+docker build --progress=plain --build-arg COMMIT_SHA=$env:DIFY_ENTERPRISE_VERSION -f web/Dockerfile -t dify-web-enterprise:$env:DIFY_ENTERPRISE_VERSION .
+.\scripts\build-enterprise-offline.ps1 -Version $env:DIFY_ENTERPRISE_VERSION
+```
+
+#### GUI Ubuntu 云电脑
+
+```bash
+cd ~/dify
+python3 docker/dify-env-sync.py --dir docker --no-backup
+export DIFY_ENTERPRISE_VERSION=1.13.3-enterprise
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
+docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f api/Dockerfile -t dify-api-enterprise:$DIFY_ENTERPRISE_VERSION api
+docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f web/Dockerfile -t dify-web-enterprise:$DIFY_ENTERPRISE_VERSION .
+pwsh ./scripts/build-enterprise-offline.ps1 -Version $DIFY_ENTERPRISE_VERSION
+```
+
+说明：
+
+- 如果 Ubuntu 机器没有安装 `pwsh`，先安装 PowerShell，再执行离线打包脚本
+- 如果只是本地联调，不导出离线包，可以在 `docker/` 目录直接执行双 compose 启动
+- 正式交付时，把上面示例里的 `1.13.3-enterprise` 替换为当次同步对应的真实版本
 
 启动方式示例：
 
