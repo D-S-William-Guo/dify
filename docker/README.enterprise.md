@@ -68,9 +68,7 @@ cd D:\CodexSpace\dify
 python docker/dify-env-sync.py --dir docker --no-backup
 $env:DIFY_ENTERPRISE_VERSION = "1.13.3-enterprise"
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
-docker build --progress=plain --build-arg COMMIT_SHA=$env:DIFY_ENTERPRISE_VERSION -f api/Dockerfile -t dify-api-enterprise:$env:DIFY_ENTERPRISE_VERSION api
-docker build --progress=plain --build-arg COMMIT_SHA=$env:DIFY_ENTERPRISE_VERSION -f web/Dockerfile -t dify-web-enterprise:$env:DIFY_ENTERPRISE_VERSION .
-.\scripts\build-enterprise-offline.ps1 -Version $env:DIFY_ENTERPRISE_VERSION
+.\scripts\build-enterprise-offline.ps1 -Version $env:DIFY_ENTERPRISE_VERSION -Mode smart
 ```
 
 ### GUI Ubuntu cloud desktop
@@ -80,14 +78,17 @@ cd ~/dify
 python3 docker/dify-env-sync.py --dir docker --no-backup
 export DIFY_ENTERPRISE_VERSION=1.13.3-enterprise
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
-docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f api/Dockerfile -t dify-api-enterprise:$DIFY_ENTERPRISE_VERSION api
-docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f web/Dockerfile -t dify-web-enterprise:$DIFY_ENTERPRISE_VERSION .
-./scripts/build-enterprise-offline.sh -Version $DIFY_ENTERPRISE_VERSION
+./scripts/build-enterprise-offline.sh -Version $DIFY_ENTERPRISE_VERSION -Mode smart
 ```
 
 Notes:
 
 - Replace `1.13.3-enterprise` with the real release version for the current upstream sync.
+- `Mode=smart` is the recommended default:
+  - reuse existing enterprise images when the tag exists and the internal `COMMIT_SHA` matches
+  - rebuild automatically only when the image is missing or the internal version does not match
+- Use `Mode=rebuild` when you want to force a clean rebuild.
+- Use `Mode=reuse` when you want packaging to fail instead of rebuilding.
 - If you only want a local runtime check and do not need an offline bundle, you can skip the last step and run compose directly from `docker/`.
 
 ## Fresh environment initialization

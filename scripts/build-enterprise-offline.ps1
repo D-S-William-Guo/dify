@@ -1,6 +1,8 @@
 param(
   [string]$Version = "enterprise-local",
-  [string]$OutputDir = "dist/offline"
+  [string]$OutputDir = "dist/offline",
+  [ValidateSet("smart", "rebuild", "reuse")]
+  [string]$Mode = "smart"
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,11 +24,91 @@ $webImage = "dify-web-enterprise:$Version"
 $outputPath = Join-Path $repoRoot $OutputDir
 New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
 
-Write-Host "Building enterprise API image: $apiImage"
-docker build --build-arg COMMIT_SHA=$Version -f (Join-Path $repoRoot "api/Dockerfile") -t $apiImage (Join-Path $repoRoot "api")
+function Get-ImageCommitSha {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Image
+  )
 
-Write-Host "Building enterprise Web image: $webImage"
-docker build --build-arg COMMIT_SHA=$Version -f (Join-Path $repoRoot "web/Dockerfile") -t $webImage $repoRoot
+  try {
+    $envLines = docker image inspect $Image --format '{{range .Config.Env}}{{println .}}{{end}}' 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      return $null
+    }
+  }
+  catch {
+    return $null
+  }
+
+  foreach ($line in $envLines) {
+    if ($line -like 'COMMIT_SHA=*') {
+      return $line.Substring('COMMIT_SHA='.Length)
+    }
+  }
+
+  return $null
+}
+
+function Test-ReusableImage {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Image,
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedCommitSha
+  )
+
+  $commitSha = Get-ImageCommitSha -Image $Image
+  return $commitSha -eq $ExpectedCommitSha
+}
+
+function Ensure-EnterpriseImage {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Image,
+    [Parameter(Mandatory = $true)]
+    [string]$Dockerfile,
+    [Parameter(Mandatory = $true)]
+    [string]$ContextPath,
+    [Parameter(Mandatory = $true)]
+    [string]$ExpectedCommitSha,
+    [Parameter(Mandatory = $true)]
+    [string]$BuildMode
+  )
+
+  $reusable = Test-ReusableImage -Image $Image -ExpectedCommitSha $ExpectedCommitSha
+  switch ($BuildMode) {
+    "reuse" {
+      if (-not $reusable) {
+        throw "Image $Image is not reusable. Expected COMMIT_SHA=$ExpectedCommitSha."
+      }
+      Write-Host "Reusing enterprise image: $Image"
+      return
+    }
+    "smart" {
+      if ($reusable) {
+        Write-Host "Reusing enterprise image: $Image"
+        return
+      }
+    }
+  }
+
+  Write-Host "Building enterprise image: $Image"
+  docker build --build-arg COMMIT_SHA=$ExpectedCommitSha -f $Dockerfile -t $Image $ContextPath
+}
+
+Ensure-EnterpriseImage `
+  -Image $apiImage `
+  -Dockerfile (Join-Path $repoRoot "api/Dockerfile") `
+  -ContextPath (Join-Path $repoRoot "api") `
+  -ExpectedCommitSha $Version `
+  -BuildMode $Mode
+
+Ensure-EnterpriseImage `
+  -Image $webImage `
+  -Dockerfile (Join-Path $repoRoot "web/Dockerfile") `
+  -ContextPath $repoRoot `
+  -ExpectedCommitSha $Version `
+  -BuildMode $Mode
 
 Write-Host "Resolving compose image list"
 $images = docker compose --env-file $envFile @composeFiles config --images `

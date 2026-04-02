@@ -333,9 +333,7 @@ cd D:\CodexSpace\dify
 python docker/dify-env-sync.py --dir docker --no-backup
 $env:DIFY_ENTERPRISE_VERSION="1.13.3-enterprise"
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
-docker build --progress=plain --build-arg COMMIT_SHA=$env:DIFY_ENTERPRISE_VERSION -f api/Dockerfile -t dify-api-enterprise:$env:DIFY_ENTERPRISE_VERSION api
-docker build --progress=plain --build-arg COMMIT_SHA=$env:DIFY_ENTERPRISE_VERSION -f web/Dockerfile -t dify-web-enterprise:$env:DIFY_ENTERPRISE_VERSION .
-.\scripts\build-enterprise-offline.ps1 -Version $env:DIFY_ENTERPRISE_VERSION
+.\scripts\build-enterprise-offline.ps1 -Version $env:DIFY_ENTERPRISE_VERSION -Mode smart
 ```
 
 #### GUI Ubuntu 云电脑
@@ -345,13 +343,16 @@ cd ~/dify
 python3 docker/dify-env-sync.py --dir docker --no-backup
 export DIFY_ENTERPRISE_VERSION=1.13.3-enterprise
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
-docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f api/Dockerfile -t dify-api-enterprise:$DIFY_ENTERPRISE_VERSION api
-docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f web/Dockerfile -t dify-web-enterprise:$DIFY_ENTERPRISE_VERSION .
-./scripts/build-enterprise-offline.sh -Version $DIFY_ENTERPRISE_VERSION
+./scripts/build-enterprise-offline.sh -Version $DIFY_ENTERPRISE_VERSION -Mode smart
 ```
 
 说明：
 
+- 默认推荐 `-Mode smart`：
+  - 若正式 tag 已存在，且镜像内部 `COMMIT_SHA` 与版本一致，则直接复用
+  - 若镜像缺失，或 `COMMIT_SHA` 不匹配，则自动重建
+- 如需无条件重建，可使用 `-Mode rebuild`
+- 如需严格只复用不重建，可使用 `-Mode reuse`
 - 如果只是本地联调，不导出离线包，可以在 `docker/` 目录直接执行双 compose 启动
 - 正式交付时，把上面示例里的 `1.13.3-enterprise` 替换为当次同步对应的真实版本
 

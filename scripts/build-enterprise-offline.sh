@@ -4,6 +4,7 @@ set -euo pipefail
 
 VERSION="enterprise-local"
 OUTPUT_DIR="dist/offline"
+MODE="smart"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -15,13 +16,26 @@ while [[ $# -gt 0 ]]; do
       OUTPUT_DIR="${2:?missing value for $1}"
       shift 2
       ;;
+    -Mode|--Mode)
+      MODE="${2:?missing value for $1}"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "Usage: ./scripts/build-enterprise-offline.sh [-Version <version>] [-OutputDir <dir>]" >&2
+      echo "Usage: ./scripts/build-enterprise-offline.sh [-Version <version>] [-OutputDir <dir>] [-Mode <smart|rebuild|reuse>]" >&2
       exit 1
       ;;
   esac
 done
+
+case "$MODE" in
+  smart|rebuild|reuse)
+    ;;
+  *)
+    echo "Unsupported mode: $MODE" >&2
+    exit 1
+    ;;
+esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -39,19 +53,51 @@ WEB_IMAGE="dify-web-enterprise:$VERSION"
 
 mkdir -p "$OUTPUT_PATH"
 
-echo "Building enterprise API image: $API_IMAGE"
-docker build \
-  --build-arg "COMMIT_SHA=$VERSION" \
-  -f "$REPO_ROOT/api/Dockerfile" \
-  -t "$API_IMAGE" \
-  "$REPO_ROOT/api"
+get_image_commit_sha() {
+  local image="$1"
+  docker image inspect "$image" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+    | awk -F= '/^COMMIT_SHA=/{print $2; exit}'
+}
 
-echo "Building enterprise Web image: $WEB_IMAGE"
-docker build \
-  --build-arg "COMMIT_SHA=$VERSION" \
-  -f "$REPO_ROOT/web/Dockerfile" \
-  -t "$WEB_IMAGE" \
-  "$REPO_ROOT"
+is_reusable_image() {
+  local image="$1"
+  local expected="$2"
+  local actual
+  actual="$(get_image_commit_sha "$image" || true)"
+  [[ -n "$actual" && "$actual" == "$expected" ]]
+}
+
+ensure_enterprise_image() {
+  local image="$1"
+  local dockerfile="$2"
+  local context_path="$3"
+  local expected="$4"
+  local mode="$5"
+
+  if [[ "$mode" == "reuse" ]]; then
+    if ! is_reusable_image "$image" "$expected"; then
+      echo "Image $image is not reusable. Expected COMMIT_SHA=$expected." >&2
+      exit 1
+    fi
+    echo "Reusing enterprise image: $image"
+    return
+  fi
+
+  if [[ "$mode" == "smart" ]] && is_reusable_image "$image" "$expected"; then
+    echo "Reusing enterprise image: $image"
+    return
+  fi
+
+  echo "Building enterprise image: $image"
+  docker build \
+    --build-arg "COMMIT_SHA=$expected" \
+    -f "$dockerfile" \
+    -t "$image" \
+    "$context_path"
+}
+
+ensure_enterprise_image "$API_IMAGE" "$REPO_ROOT/api/Dockerfile" "$REPO_ROOT/api" "$VERSION" "$MODE"
+ensure_enterprise_image "$WEB_IMAGE" "$REPO_ROOT/web/Dockerfile" "$REPO_ROOT" "$VERSION" "$MODE"
 
 echo "Resolving compose image list"
 mapfile -t IMAGES < <(
