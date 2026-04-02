@@ -262,15 +262,61 @@ git branch -vv
 - Docker 部署层补充说明见：
   - [docker/README.enterprise.md](/D:/CodexSpace/dify/docker/README.enterprise.md)
 
+### 企业镜像版本命名规则
+
+- `docker/docker-compose.enterprise.yaml` 保持当前参数化结构，不需要每次同步官方后去改写具体版本号
+- 企业镜像 tag 统一通过 `DIFY_ENTERPRISE_VERSION` 控制
+- 正式构建与交付时，企业镜像版本统一采用：
+  - `官方版本-enterprise`
+- 示例：
+  - `1.13.3-enterprise`
+  - `1.14.0-enterprise`
+- `api`、`web`、`worker`、`worker_beat` 共用同一企业镜像版本
+- 本地临时开发与验证可以继续使用：
+  - `local`
+  - `enterprise-local`
+
+### 每次同步官方后如何确定企业镜像版本
+
+每次同步官方最新代码并合并到 `enterprise/main` 后，按下面顺序处理版本：
+
+1. 确认当前这次同步对应的官方 Dify 版本
+2. 按 `官方版本-enterprise` 生成本次企业镜像 tag
+3. 构建、导出、交付时统一使用这个版本字符串
+
+示例：
+
+- 如果当前同步到的官方版本是 `1.13.3`
+- 那么本次企业镜像版本统一使用 `1.13.3-enterprise`
+
+说明：
+
+- 这里更新的是构建和发布时传入的版本字符串，不是去修改 `docker/docker-compose.enterprise.yaml` 里的固定文本
+- compose 文件继续保持参数化写法即可
+- 如果只是本地调试，不做正式交付，可以继续使用 `local` 或 `enterprise-local`
+
 典型发布流程：
 
 1. 同步官方更新到 `enterprise/main`
 2. 更新 `docker/.env`
-3. 本地构建企业镜像
-4. 导出离线镜像包
-5. 传到生产机
-6. `docker load`
-7. 用双 compose 文件启动
+3. 确认本次企业镜像版本，例如 `1.13.3-enterprise`
+4. 本地构建企业镜像
+5. 导出离线镜像包
+6. 传到生产机
+7. `docker load`
+8. 用双 compose 文件启动
+
+如果需要显式指定版本，可在启动或构建前设置：
+
+```powershell
+$env:DIFY_ENTERPRISE_VERSION="1.13.3-enterprise"
+```
+
+或在离线打包时直接传入：
+
+```powershell
+.\scripts\build-enterprise-offline.ps1 -Version 1.13.3-enterprise
+```
 
 启动方式示例：
 
@@ -287,6 +333,9 @@ docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d
   - `enterprise-v1.0.1`
   - `enterprise-v1.1.0`
 - 代码 tag、离线镜像包版本、交付记录尽量保持一致
+- 代码版本 tag 与 Docker 镜像 tag 可以并行存在：
+  - Git tag 可以继续使用 `enterprise-v1.0.0`
+  - Docker 镜像 tag 统一使用 `官方版本-enterprise`
 
 示例：
 
