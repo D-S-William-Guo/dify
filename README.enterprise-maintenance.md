@@ -17,6 +17,21 @@
 - `enterprise/main` 是企业长期维护分支
 - 企业功能、仓库规整、升级流程、离线发布规则都以本文档为准，不以内化记忆或聊天记录为准
 
+## 当前企业定制概览
+
+- 企业空间管理：已实现并纳入长期维护
+- 平台管理员能力：已实现并纳入长期维护
+- 智慧广场：已实现一期，支持提交、审核、展示和复制导入
+- 离线打包：已收敛为 `smart / rebuild / reuse`
+- 企业镜像命名：已统一为 `官方版本-enterprise`
+- 重大改动、坑点与时间序列记录见：
+  - [CHANGELOG.enterprise.md](/D:/CodexSpace/dify/CHANGELOG.enterprise.md)
+
+最近一次重要规则收敛：
+
+- 企业打包默认优先复用已验证的正式镜像
+- 是否可复用不仅看 tag，还看镜像内部 `COMMIT_SHA`
+
 ## 当前仓库定位
 
 - 官方上游仓库：`https://github.com/langgenius/dify.git`
