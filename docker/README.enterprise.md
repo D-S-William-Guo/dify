@@ -82,14 +82,50 @@ export DIFY_ENTERPRISE_VERSION=1.13.3-enterprise
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
 docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f api/Dockerfile -t dify-api-enterprise:$DIFY_ENTERPRISE_VERSION api
 docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f web/Dockerfile -t dify-web-enterprise:$DIFY_ENTERPRISE_VERSION .
-pwsh ./scripts/build-enterprise-offline.ps1 -Version $DIFY_ENTERPRISE_VERSION
+./scripts/build-enterprise-offline.sh -Version $DIFY_ENTERPRISE_VERSION
 ```
 
 Notes:
 
 - Replace `1.13.3-enterprise` with the real release version for the current upstream sync.
-- If the Ubuntu machine does not have `pwsh`, install PowerShell first before running the offline packaging step.
 - If you only want a local runtime check and do not need an offline bundle, you can skip the last step and run compose directly from `docker/`.
+
+## Fresh environment initialization
+
+If the target machine is meant to be a fresh deployment, do not copy your local runtime data directories.
+
+Bring these:
+
+- `docker/` configuration files and templates
+- your finalized `docker/.env`
+- the offline image archive and image list
+- certificates if HTTPS is enabled
+
+Do not copy these local data directories into the new machine:
+
+- `docker/volumes/app/storage`
+- `docker/volumes/db/data`
+- `docker/volumes/redis/data`
+- `docker/volumes/plugin_daemon`
+- `docker/volumes/weaviate`
+- other populated `docker/volumes/**` runtime data
+
+On the target machine, Docker Compose will create empty data directories and volumes on first startup.
+
+## First startup on the target machine
+
+```bash
+cd ~/dify/docker
+cp .env.example .env
+# fill in the real deployment values in .env
+docker load -i ../dist/offline/dify-enterprise-offline-1.13.3-enterprise.tar
+docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d
+```
+
+Notes:
+
+- Replace `1.13.3-enterprise` with the current release version.
+- If you already prepared a finalized `.env`, use it directly instead of copying `.env.example`.
 
 ## Upgrade workflow
 

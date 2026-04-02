@@ -259,6 +259,7 @@ git branch -vv
   - 或 `docker/dify-env-sync.sh`
 - 离线镜像构建和导出使用：
   - `scripts/build-enterprise-offline.ps1`
+  - `scripts/build-enterprise-offline.sh`
 - Docker 部署层补充说明见：
   - [docker/README.enterprise.md](/D:/CodexSpace/dify/docker/README.enterprise.md)
 
@@ -346,14 +347,57 @@ export DIFY_ENTERPRISE_VERSION=1.13.3-enterprise
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
 docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f api/Dockerfile -t dify-api-enterprise:$DIFY_ENTERPRISE_VERSION api
 docker build --progress=plain --build-arg COMMIT_SHA=$DIFY_ENTERPRISE_VERSION -f web/Dockerfile -t dify-web-enterprise:$DIFY_ENTERPRISE_VERSION .
-pwsh ./scripts/build-enterprise-offline.ps1 -Version $DIFY_ENTERPRISE_VERSION
+./scripts/build-enterprise-offline.sh -Version $DIFY_ENTERPRISE_VERSION
 ```
 
 说明：
 
-- 如果 Ubuntu 机器没有安装 `pwsh`，先安装 PowerShell，再执行离线打包脚本
 - 如果只是本地联调，不导出离线包，可以在 `docker/` 目录直接执行双 compose 启动
 - 正式交付时，把上面示例里的 `1.13.3-enterprise` 替换为当次同步对应的真实版本
+
+### 目标机首次部署命令参考
+
+如果目标机是全新环境，拿到 `docker/` 目录、`.env` 和离线包后，可以按下面方式启动：
+
+```bash
+cd ~/dify/docker
+cp .env.example .env
+# 按实际部署环境补齐 .env
+docker load -i ../dist/offline/dify-enterprise-offline-1.13.3-enterprise.tar
+docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d
+```
+
+说明：
+
+- 如果你已经准备好了自己的 `.env`，就不需要再执行 `cp .env.example .env`
+- 首次部署前默认不需要手工创建 `volumes/**` 数据目录
+- 只要 `docker/` 目录结构完整，Docker Compose 会自动创建需要的空目录与卷
+
+### 新环境重新初始化的部署原则
+
+如果目标机器是全新环境，部署时按“代码目录 + 配置文件 + 离线镜像包”处理，不要把本地运行后的数据状态一起复制过去。
+
+应该带过去的内容：
+
+- `docker/` 目录中的配置、模板、启动脚本
+- 已确认好的 `docker/.env`
+- 离线镜像包和镜像清单
+- 如需 HTTPS，再带证书文件
+
+不要直接复用的内容：
+
+- `docker/volumes/app/storage`
+- `docker/volumes/db/data`
+- `docker/volumes/redis/data`
+- `docker/volumes/plugin_daemon`
+- `docker/volumes/weaviate`
+- 以及其他 `docker/volumes/**` 下已运行产生的数据目录
+
+说明：
+
+- 配置类挂载跟着仓库目录一起带过去即可
+- 数据类挂载在目标机首次 `docker compose up -d` 时自动创建为空目录
+- 如果你的目标是“新环境初始化”而不是“旧环境迁移”，就不要复制本机旧数据目录
 
 启动方式示例：
 
