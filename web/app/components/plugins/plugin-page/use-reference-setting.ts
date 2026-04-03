@@ -19,10 +19,10 @@ const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean)
   return isAdmin
 }
 
-const useReferenceSetting = () => {
+const useReferenceSetting = (enabled = true) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
-  const { data } = useReferenceSettings()
+  const { data } = useReferenceSettings(enabled)
   // console.log(data)
   const { permission: permissions } = data || {}
   const invalidateReferenceSettings = useInvalidateReferenceSettings()

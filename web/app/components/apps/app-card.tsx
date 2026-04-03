@@ -38,7 +38,6 @@ import dynamic from '@/next/dynamic'
 import { useRouter } from '@/next/navigation'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { copyApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import { useSubmitEnterpriseMarketplaceAsset } from '@/service/use-enterprise-marketplace'
 import { fetchInstalledAppList } from '@/service/explore'
 import { useDeleteAppMutation } from '@/service/use-apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -48,7 +47,6 @@ import { cn } from '@/utils/classnames'
 import { downloadBlob } from '@/utils/download'
 import { formatTime } from '@/utils/time'
 import { basePath } from '@/utils/var'
-import SubmitEnterpriseMarketplaceModal from './submit-enterprise-marketplace-modal'
 
 const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
   ssr: false,
@@ -63,6 +61,9 @@ const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/ds
   ssr: false,
 })
 const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
+  ssr: false,
+})
+const SubmitEnterpriseMarketplaceModal = dynamic(() => import('./submit-enterprise-marketplace-modal'), {
   ssr: false,
 })
 
@@ -89,7 +90,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showSubmitMarketplaceModal, setShowSubmitMarketplaceModal] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
-  const submitMarketplaceMutation = useSubmitEnterpriseMarketplaceAsset(app.id)
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -577,30 +577,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       )}
       {showSubmitMarketplaceModal && (
         <SubmitEnterpriseMarketplaceModal
+          appId={app.id}
           open={showSubmitMarketplaceModal}
-          loading={submitMarketplaceMutation.isPending}
           defaultTitle={app.name}
           defaultDescription={app.description}
           onClose={() => setShowSubmitMarketplaceModal(false)}
-          onSubmit={(payload) => {
-            submitMarketplaceMutation.mutate(payload, {
-              onSuccess: () => {
-                setShowSubmitMarketplaceModal(false)
-                notify({
-                  type: 'success',
-                  message: t('enterpriseMarketplace.submitSuccess', { ns: 'common' }),
-                })
-              },
-              onError: (error) => {
-                notify({
-                  type: 'error',
-                  message: error instanceof Error
-                    ? error.message
-                    : t('enterpriseMarketplace.submitFailed', { ns: 'common' }),
-                })
-              },
-            })
-          }}
         />
       )}
     </>

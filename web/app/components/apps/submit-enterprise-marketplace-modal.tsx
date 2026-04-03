@@ -7,32 +7,26 @@ import Checkbox from '@/app/components/base/checkbox'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import { Dialog, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
+import { toast } from '@/app/components/base/ui/toast'
+import { useSubmitEnterpriseMarketplaceAsset } from '@/service/use-enterprise-marketplace'
 
 export type SubmitEnterpriseMarketplaceModalProps = {
+  appId: string
   open: boolean
-  loading: boolean
   defaultTitle: string
   defaultDescription?: string
   onClose: () => void
-  onSubmit: (payload: {
-    title: string
-    description: string
-    category: string
-    tags: string[]
-    scenario: string
-    allow_show_workspace_name: boolean
-  }) => void
 }
 
 const SubmitEnterpriseMarketplaceModal = ({
+  appId,
   open,
-  loading,
   defaultTitle,
   defaultDescription,
   onClose,
-  onSubmit,
 }: SubmitEnterpriseMarketplaceModalProps) => {
   const { t } = useTranslation()
+  const submitMarketplaceMutation = useSubmitEnterpriseMarketplaceAsset(appId)
   const [title, setTitle] = useState(defaultTitle)
   const [description, setDescription] = useState(defaultDescription || '')
   const [category, setCategory] = useState('')
@@ -129,16 +123,31 @@ const SubmitEnterpriseMarketplaceModal = ({
           </Button>
           <Button
             variant="primary"
-            loading={loading}
+            loading={submitMarketplaceMutation.isPending}
             disabled={!title.trim()}
-            onClick={() => onSubmit({
-              title: title.trim(),
-              description: description.trim(),
-              category: category.trim() || 'General',
-              tags: normalizedTags,
-              scenario: scenario.trim(),
-              allow_show_workspace_name: allowShowWorkspaceName,
-            })}
+            onClick={() => submitMarketplaceMutation.mutate(
+              {
+                title: title.trim(),
+                description: description.trim(),
+                category: category.trim() || 'General',
+                tags: normalizedTags,
+                scenario: scenario.trim(),
+                allow_show_workspace_name: allowShowWorkspaceName,
+              },
+              {
+                onSuccess: () => {
+                  onClose()
+                  toast.success(t('enterpriseMarketplace.submitSuccess', { ns: 'common' }))
+                },
+                onError: (error) => {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : t('enterpriseMarketplace.submitFailed', { ns: 'common' }),
+                  )
+                },
+              },
+            )}
           >
             {t('enterpriseMarketplace.submitAction', { ns: 'common' })}
           </Button>

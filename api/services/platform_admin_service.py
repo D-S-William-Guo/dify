@@ -29,22 +29,88 @@ class PlatformAdminService:
             stmt = stmt.where(Tenant.name.ilike(f"%{keyword.strip()}%"))
 
         pagination = db.paginate(select=stmt.order_by(Tenant.created_at.desc()), page=page, per_page=limit, error_out=False)
-        items = [PlatformAdminService.serialize_workspace(tenant) for tenant in pagination.items]
+        tenants = list(pagination.items)
+        tenant_ids = [tenant.id for tenant in tenants]
+        owner_by_tenant: dict[str, dict] = {}
+        member_count_by_tenant: dict[str, int] = {}
+
+        if tenant_ids:
+            owner_rows = db.session.execute(
+                select(
+                    TenantAccountJoin.tenant_id,
+                    Account.id,
+                    Account.name,
+                    Account.email,
+                )
+                .join(Account, Account.id == TenantAccountJoin.account_id)
+                .where(
+                    TenantAccountJoin.tenant_id.in_(tenant_ids),
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
+                )
+            ).all()
+            owner_by_tenant = {
+                tenant_id: {
+                    "id": owner_id,
+                    "name": owner_name,
+                    "email": owner_email,
+                }
+                for tenant_id, owner_id, owner_name, owner_email in owner_rows
+            }
+
+            member_count_rows = db.session.execute(
+                select(
+                    TenantAccountJoin.tenant_id,
+                    func.count(TenantAccountJoin.id),
+                )
+                .where(TenantAccountJoin.tenant_id.in_(tenant_ids))
+                .group_by(TenantAccountJoin.tenant_id)
+            ).all()
+            member_count_by_tenant = {
+                tenant_id: int(member_count or 0)
+                for tenant_id, member_count in member_count_rows
+            }
+
+        items = [
+            PlatformAdminService.serialize_workspace(
+                tenant,
+                owner=owner_by_tenant.get(tenant.id),
+                member_count=member_count_by_tenant.get(tenant.id, 0),
+            )
+            for tenant in tenants
+        ]
         return items, pagination.total
 
     @staticmethod
-    def serialize_workspace(tenant: Tenant) -> dict:
-        owner = (
-            db.session.query(Account)
-            .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == TenantAccountRole.OWNER)
-            .first()
-        )
-        member_count = (
-            db.session.query(func.count(TenantAccountJoin.id))
-            .where(TenantAccountJoin.tenant_id == tenant.id)
-            .scalar()
-        )
+    def serialize_workspace(
+        tenant: Tenant,
+        *,
+        owner: dict | None = None,
+        member_count: int | None = None,
+    ) -> dict:
+        if owner is None:
+            owner_account = (
+                db.session.query(Account)
+                .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
+                .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == TenantAccountRole.OWNER)
+                .first()
+            )
+            owner = (
+                {
+                    "id": owner_account.id,
+                    "name": owner_account.name,
+                    "email": owner_account.email,
+                }
+                if owner_account
+                else None
+            )
+
+        if member_count is None:
+            member_count = (
+                db.session.query(func.count(TenantAccountJoin.id))
+                .where(TenantAccountJoin.tenant_id == tenant.id)
+                .scalar()
+            )
+
         return {
             "id": tenant.id,
             "name": tenant.name,
@@ -52,15 +118,7 @@ class PlatformAdminService:
             "status": tenant.status,
             "created_at": int(tenant.created_at.timestamp()),
             "member_count": int(member_count or 0),
-            "owner": (
-                {
-                    "id": owner.id,
-                    "name": owner.name,
-                    "email": owner.email,
-                }
-                if owner
-                else None
-            ),
+            "owner": owner,
         }
 
     @staticmethod

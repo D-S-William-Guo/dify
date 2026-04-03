@@ -26,18 +26,23 @@ import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 import {
-  fetchDefaultModal,
-  fetchModelList,
   fetchModelProviderCredentials,
   getPayUrl,
 } from '@/service/common'
-import { commonQueryKeys } from '@/service/use-common'
+import {
+  commonQueryKeys,
+  useDefaultModelByType,
+  useModelListByType,
+} from '@/service/use-common'
 import { useExpandModelProviderList } from './atoms'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelStatusEnum,
 } from './declarations'
+
+const providerConfigQueryStaleTime = 5 * 60 * 1000
+const providerConfigQueryGcTime = 5 * 60 * 1000
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -95,6 +100,10 @@ export const useProviderCredentialsAndLoadBalancing = (
       queryKey: ['model-providers', 'credentials', provider, credentialId],
       queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
       enabled: predefinedEnabled,
+      staleTime: providerConfigQueryStaleTime,
+      gcTime: providerConfigQueryGcTime,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     },
   )
   const { data: customFormSchemasValue, isPending: isCustomizedLoading } = useQuery(
@@ -102,6 +111,10 @@ export const useProviderCredentialsAndLoadBalancing = (
       queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId],
       queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`),
       enabled: customEnabled,
+      staleTime: providerConfigQueryStaleTime,
+      gcTime: providerConfigQueryGcTime,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     },
   )
 
@@ -142,10 +155,7 @@ export const useProviderCredentialsAndLoadBalancing = (
 }
 
 export const useModelList = (type: ModelTypeEnum) => {
-  const { data, refetch, isPending } = useQuery({
-    queryKey: commonQueryKeys.modelList(type),
-    queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
-  })
+  const { data, refetch, isPending } = useModelListByType(type)
 
   return {
     data: data?.data || [],
@@ -155,10 +165,7 @@ export const useModelList = (type: ModelTypeEnum) => {
 }
 
 export const useDefaultModel = (type: ModelTypeEnum) => {
-  const { data, refetch, isPending } = useQuery({
-    queryKey: commonQueryKeys.defaultModel(type),
-    queryFn: () => fetchDefaultModal(`/workspaces/current/default-model?model_type=${type}`),
-  })
+  const { data, refetch, isPending } = useDefaultModelByType(type)
 
   return {
     data: data?.data,

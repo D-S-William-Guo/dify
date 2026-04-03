@@ -105,13 +105,18 @@ export function usePluginsWithLatestVersion(plugins: PluginDetail[] = EMPTY_PLUG
   const marketplacePluginIds = useMemo(
     () => plugins
       .filter(p => p.source === PluginSource.marketplace)
-      .map(p => p.plugin_id),
+      .map(p => p.plugin_id)
+      .sort(),
     [plugins],
   )
 
   const { data: latestVersionData } = useQuery(consoleQuery.plugins.latestVersions.queryOptions({
     input: { body: { plugin_ids: marketplacePluginIds } },
     enabled: !!marketplacePluginIds.length,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   }))
 
   return useMemo(() => {

@@ -118,13 +118,7 @@ class EnterpriseMarketplaceService:
             .order_by(EnterpriseMarketplaceAsset.updated_at.desc())
         )
         assets = db.session.scalars(stmt).all()
-        items: list[EnterpriseMarketplaceAssetSummary] = []
-        for asset in assets:
-            source_app = asset.source_app
-            if source_app is None or source_app.status != "normal":
-                continue
-            items.append(EnterpriseMarketplaceService.serialize_asset(asset=asset, include_workspace_name=True))
-        return items
+        return EnterpriseMarketplaceService.serialize_asset_list(assets=assets, include_workspace_name=True)
 
     @staticmethod
     def list_public_assets(
@@ -148,12 +142,10 @@ class EnterpriseMarketplaceService:
             per_page=limit,
             error_out=False,
         )
-        items = []
-        for asset in pagination.items:
-            source_app = asset.source_app
-            if source_app is None or source_app.status != "normal":
-                continue
-            items.append(EnterpriseMarketplaceService.serialize_asset(asset=asset, include_workspace_name=False))
+        items = EnterpriseMarketplaceService.serialize_asset_list(
+            assets=pagination.items,
+            include_workspace_name=False,
+        )
         return EnterpriseMarketplaceListResult(items=items, total=pagination.total, page=page, limit=limit)
 
     @staticmethod
@@ -183,12 +175,10 @@ class EnterpriseMarketplaceService:
             per_page=limit,
             error_out=False,
         )
-        items: list[EnterpriseMarketplaceAssetSummary] = []
-        for asset in pagination.items:
-            source_app = asset.source_app
-            if source_app is None or source_app.status != "normal":
-                continue
-            items.append(EnterpriseMarketplaceService.serialize_asset(asset=asset, include_workspace_name=True))
+        items = EnterpriseMarketplaceService.serialize_asset_list(
+            assets=pagination.items,
+            include_workspace_name=True,
+        )
         return EnterpriseMarketplaceListResult(items=items, total=pagination.total, page=page, limit=limit)
 
     @staticmethod
@@ -265,13 +255,16 @@ class EnterpriseMarketplaceService:
         *,
         asset: EnterpriseMarketplaceAsset,
         include_workspace_name: bool,
+        source_app: App | None = None,
+        submitter: Account | None = None,
+        source_tenant: Tenant | None = None,
     ) -> EnterpriseMarketplaceAssetSummary:
-        source_app = asset.source_app
+        source_app = source_app or asset.source_app
         if source_app is None:
             abort(404)
 
-        submitter = db.session.get(Account, asset.submitter_account_id)
-        source_tenant = db.session.get(Tenant, asset.source_tenant_id)
+        submitter = submitter or db.session.get(Account, asset.submitter_account_id)
+        source_tenant = source_tenant or db.session.get(Tenant, asset.source_tenant_id)
 
         return EnterpriseMarketplaceAssetSummary(
             id=asset.id,
@@ -303,6 +296,46 @@ class EnterpriseMarketplaceService:
             app_icon=source_app.icon,
             app_icon_background=source_app.icon_background,
         )
+
+    @staticmethod
+    def serialize_asset_list(
+        *,
+        assets: list[EnterpriseMarketplaceAsset],
+        include_workspace_name: bool,
+    ) -> list[EnterpriseMarketplaceAssetSummary]:
+        if not assets:
+            return []
+
+        app_ids = [asset.source_app_id for asset in assets]
+        submitter_ids = [asset.submitter_account_id for asset in assets]
+        tenant_ids = [asset.source_tenant_id for asset in assets]
+
+        source_apps = db.session.scalars(select(App).where(App.id.in_(app_ids))).all()
+        source_apps_by_id = {app.id: app for app in source_apps}
+
+        submitters = db.session.scalars(select(Account).where(Account.id.in_(submitter_ids))).all()
+        submitters_by_id = {account.id: account for account in submitters}
+
+        source_tenants = db.session.scalars(select(Tenant).where(Tenant.id.in_(tenant_ids))).all()
+        source_tenants_by_id = {tenant.id: tenant for tenant in source_tenants}
+
+        items: list[EnterpriseMarketplaceAssetSummary] = []
+        for asset in assets:
+            source_app = source_apps_by_id.get(asset.source_app_id)
+            if source_app is None or source_app.status != "normal":
+                continue
+
+            items.append(
+                EnterpriseMarketplaceService.serialize_asset(
+                    asset=asset,
+                    include_workspace_name=include_workspace_name,
+                    source_app=source_app,
+                    submitter=submitters_by_id.get(asset.submitter_account_id),
+                    source_tenant=source_tenants_by_id.get(asset.source_tenant_id),
+                )
+            )
+
+        return items
 
     @staticmethod
     def _normalize_tags(tags: list[str]) -> list[str]:

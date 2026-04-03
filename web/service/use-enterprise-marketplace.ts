@@ -15,6 +15,8 @@ import {
   useEnterpriseMarketplaceAsset,
 } from './common'
 
+const enterpriseMarketplaceListStaleTime = 30 * 1000
+
 type PublicAssetListParams = {
   keyword?: string
   category?: string
@@ -48,6 +50,9 @@ export const useEnterpriseMarketplacePublicAssets = (params: PublicAssetListPara
         category: params.category,
       },
     }),
+    staleTime: enterpriseMarketplaceListStaleTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -57,6 +62,9 @@ export const useEnterpriseMarketplaceMySubmissions = () => {
     queryFn: () => fetchEnterpriseMarketplaceSubmissions({
       url: '/enterprise-marketplace/submissions',
     }),
+    staleTime: enterpriseMarketplaceListStaleTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -75,7 +83,8 @@ export const useSubmitEnterpriseMarketplaceAsset = (appId: string) => {
       body,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.all })
+      void queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.mySubmissions() })
+      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'admin-list'] })
     },
   })
 }
@@ -92,6 +101,9 @@ export const useAdminEnterpriseMarketplaceAssets = (params: AdminAssetListParams
         status: params.status,
       },
     }),
+    staleTime: enterpriseMarketplaceListStaleTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -105,7 +117,9 @@ export const useReviewEnterpriseMarketplaceAsset = () => {
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.all })
+      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'admin-list'] })
+      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'public-list'] })
+      void queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.mySubmissions() })
     },
   })
 }
@@ -117,7 +131,9 @@ export const useUnlistEnterpriseMarketplaceAsset = () => {
       url: `/platform-admin/enterprise-marketplace/assets/${assetId}/unlist`,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.all })
+      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'admin-list'] })
+      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'public-list'] })
+      void queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.mySubmissions() })
     },
   })
 }
