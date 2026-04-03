@@ -184,7 +184,7 @@ describe('MetadataDocument', () => {
         />,
       )
 
-      const divider = container.querySelector('.bg-linear-to-r')
+      const divider = container.querySelector('[class*="bg-gradient"]')
       expect(divider).toBeInTheDocument()
     })
 

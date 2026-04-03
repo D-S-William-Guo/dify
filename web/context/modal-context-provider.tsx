@@ -405,3 +405,5 @@ export const ModalContextProvider = ({
     </ModalContext.Provider>
   )
 }
+
+export default ModalContext

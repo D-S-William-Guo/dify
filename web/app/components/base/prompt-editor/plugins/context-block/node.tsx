@@ -3,7 +3,7 @@ import type { Dataset } from './index'
 import { DecoratorNode } from 'lexical'
 import ContextBlockComponent from './component'
 
-type SerializedNode = SerializedLexicalNode & { datasets: Dataset[], onAddContext: () => void, canNotAddContext: boolean }
+export type SerializedNode = SerializedLexicalNode & { datasets: Dataset[], onAddContext: () => void, canNotAddContext: boolean }
 
 export class ContextBlockNode extends DecoratorNode<React.JSX.Element> {
   __datasets: Dataset[]

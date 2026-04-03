@@ -12,7 +12,7 @@ import { cn } from '@/utils/classnames'
 import CSVDownload from './csv-download'
 import CSVReader from './csv-reader'
 
-type IRunBatchProps = {
+export type IRunBatchProps = {
   vars: { name: string }[]
   onSend: (data: string[][]) => void
   isAllFinished: boolean

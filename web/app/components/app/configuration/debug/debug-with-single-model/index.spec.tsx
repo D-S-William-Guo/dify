@@ -386,6 +386,13 @@ vi.mock('@/context/event-emitter', () => ({
   })),
 }))
 
+// Mock toast context
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: vi.fn(() => ({
+    notify: vi.fn(),
+  })),
+}))
+
 // Mock hooks/use-timestamp
 vi.mock('@/hooks/use-timestamp', () => ({
   default: vi.fn(() => ({

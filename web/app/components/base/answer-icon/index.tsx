@@ -8,7 +8,7 @@ import { cn } from '@/utils/classnames'
 
 init({ data })
 
-type AnswerIconProps = {
+export type AnswerIconProps = {
   iconType?: AppIconType | null
   icon?: string | null
   background?: string | null

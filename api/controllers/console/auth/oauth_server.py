@@ -1,9 +1,8 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate
+from typing import Concatenate, ParamSpec, TypeVar
 
 from flask import jsonify, request
-from flask.typing import ResponseReturnValue
 from flask_restx import Resource
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from pydantic import BaseModel
@@ -16,6 +15,10 @@ from models.model import OAuthProviderApp
 from services.oauth_server import OAUTH_ACCESS_TOKEN_EXPIRES_IN, OAuthGrantType, OAuthServerService
 
 from .. import console_ns
+
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
 
 
 class OAuthClientPayload(BaseModel):
@@ -36,11 +39,9 @@ class OAuthTokenRequest(BaseModel):
     refresh_token: str | None = None
 
 
-def oauth_server_client_id_required[T, **P, R](
-    view: Callable[Concatenate[T, OAuthProviderApp, P], R],
-) -> Callable[Concatenate[T, P], R]:
+def oauth_server_client_id_required(view: Callable[Concatenate[T, OAuthProviderApp, P], R]):
     @wraps(view)
-    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs):
         json_data = request.get_json()
         if json_data is None:
             raise BadRequest("client_id is required")
@@ -57,13 +58,9 @@ def oauth_server_client_id_required[T, **P, R](
     return decorated
 
 
-def oauth_server_access_token_required[T, **P, R](
-    view: Callable[Concatenate[T, OAuthProviderApp, Account, P], R],
-) -> Callable[Concatenate[T, OAuthProviderApp, P], R | ResponseReturnValue]:
+def oauth_server_access_token_required(view: Callable[Concatenate[T, OAuthProviderApp, Account, P], R]):
     @wraps(view)
-    def decorated(
-        self: T, oauth_provider_app: OAuthProviderApp, *args: P.args, **kwargs: P.kwargs
-    ) -> R | ResponseReturnValue:
+    def decorated(self: T, oauth_provider_app: OAuthProviderApp, *args: P.args, **kwargs: P.kwargs):
         if not isinstance(oauth_provider_app, OAuthProviderApp):
             raise BadRequest("Invalid oauth_provider_app")
 

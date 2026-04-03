@@ -7,7 +7,7 @@ import type { AppModeEnum } from '@/types/app'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
-type ExploreAppsResponse = {
+export type ExploreAppsResponse = {
   categories: AppCategory[]
   recommended_apps: App[]
 }
@@ -22,16 +22,16 @@ export type ExploreAppDetailResponse = {
   can_trial?: boolean
 }
 
-type InstalledAppsResponse = {
+export type InstalledAppsResponse = {
   installed_apps: InstalledApp[]
 }
 
-type InstalledAppMutationResponse = {
+export type InstalledAppMutationResponse = {
   result: string
   message: string
 }
 
-type AppAccessModeResponse = {
+export type AppAccessModeResponse = {
   accessMode: AccessMode
 }
 

@@ -1,6 +1,6 @@
 import type { Credential, ModelProvider } from '../../../declarations'
 import { act, renderHook } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import { useActivateCredential } from '../use-activate-credential'
 
 const mockMutate = vi.fn()
@@ -40,14 +40,10 @@ const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
 } as Credential)
 
 describe('useActivateCredential', () => {
-  const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
-  const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsPending = false
-    toastSuccessSpy.mockClear()
-    toastErrorSpy.mockClear()
+    vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
   })
 
   it('should expose the current credential id by default', () => {
@@ -98,7 +94,10 @@ describe('useActivateCredential', () => {
       callbacks.onSuccess()
     })
 
-    expect(toastSuccessSpy).toHaveBeenCalledWith('common.api.actionSuccess')
+    expect(Toast.notify).toHaveBeenCalledWith({
+      type: 'success',
+      message: 'common.api.actionSuccess',
+    })
     expect(mockUpdateModelProviders).toHaveBeenCalledTimes(1)
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(1, 'llm')
     expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, 'text-embedding')
@@ -120,6 +119,9 @@ describe('useActivateCredential', () => {
     })
 
     expect(result.current.selectedCredentialId).toBe('cred-1')
-    expect(toastErrorSpy).toHaveBeenCalledWith('common.actionMsg.modifiedUnsuccessfully')
+    expect(Toast.notify).toHaveBeenCalledWith({
+      type: 'error',
+      message: 'common.actionMsg.modifiedUnsuccessfully',
+    })
   })
 })

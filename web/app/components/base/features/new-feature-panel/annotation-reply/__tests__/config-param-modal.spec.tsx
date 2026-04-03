@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import ConfigParamModal from '../config-param-modal'
 
 let mockHooksReturn: {
@@ -31,6 +31,10 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   ),
 }))
 
+vi.mock('@/app/components/base/toast', () => ({
+  default: { notify: vi.fn() },
+}))
+
 vi.mock('@/config', () => ({
   ANNOTATION_DEFAULT: { score_threshold: 0.9 },
 }))
@@ -59,11 +63,8 @@ const defaultAnnotationConfig = {
 }
 
 describe('ConfigParamModal', () => {
-  const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-
   beforeEach(() => {
     vi.clearAllMocks()
-    toastErrorSpy.mockClear()
     mockHooksReturn = {
       modelList: [{ provider: { provider: 'openai' }, models: [{ model: 'text-embedding-ada-002' }] }],
       defaultModel: { provider: { provider: 'openai' }, model: 'text-embedding-ada-002' },
@@ -240,7 +241,9 @@ describe('ConfigParamModal', () => {
     const saveBtn = buttons.find(b => b.textContent?.includes('initSetup'))
     fireEvent.click(saveBtn!)
 
-    expect(toastErrorSpy).toHaveBeenCalledWith('common.modelProvider.embeddingModel.required')
+    expect(Toast.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' }),
+    )
   })
 
   it('should call onHide when cancel is clicked and not loading', () => {

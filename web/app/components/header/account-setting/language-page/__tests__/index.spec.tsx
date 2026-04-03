@@ -1,6 +1,6 @@
 import type { UserProfileResponse } from '@/models/common'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { ToastHost } from '@/app/components/base/ui/toast'
+import { ToastProvider } from '@/app/components/base/toast'
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
@@ -100,10 +100,9 @@ const createUserProfile = (overrides: Partial<UserProfileResponse> = {}): UserPr
 
 const renderPage = () => {
   render(
-    <>
+    <ToastProvider>
       <LanguagePage />
-      <ToastHost />
-    </>,
+    </ToastProvider>,
   )
 }
 

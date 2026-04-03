@@ -1,9 +1,7 @@
 from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVector
 from core.rag.datasource.vdb.analyticdb.analyticdb_vector_openapi import AnalyticdbVectorOpenAPIConfig
 from core.rag.datasource.vdb.analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySqlConfig
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest
-
-pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, setup_mock_redis
 
 
 class AnalyticdbVectorTest(AbstractVectorTest):

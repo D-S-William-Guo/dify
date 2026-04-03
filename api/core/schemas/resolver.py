@@ -3,15 +3,15 @@ import re
 import threading
 from collections import deque
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Union
 
 from core.schemas.registry import SchemaRegistry
 
 logger = logging.getLogger(__name__)
 
 # Type aliases for better clarity
-type SchemaType = dict[str, Any] | list[Any] | str | int | float | bool | None
-type SchemaDict = dict[str, Any]
+SchemaType = Union[dict[str, Any], list[Any], str, int, float, bool, None]
+SchemaDict = dict[str, Any]
 
 # Pre-compiled pattern for better performance
 _DIFY_SCHEMA_PATTERN = re.compile(r"^https://dify\.ai/schemas/(v\d+)/(.+)\.json$")
@@ -54,7 +54,7 @@ class QueueItem:
 
     current: Any
     parent: Any | None
-    key: str | int | None
+    key: Union[str, int] | None
     depth: int
     ref_path: set[str]
 

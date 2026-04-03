@@ -3,9 +3,8 @@
 from core.rag.datasource.vdb.iris.iris_vector import IrisVector, IrisVectorConfig
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
+    setup_mock_redis,
 )
-
-pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
 
 
 class IrisVectorTest(AbstractVectorTest):

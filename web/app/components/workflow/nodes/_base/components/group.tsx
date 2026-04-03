@@ -1,7 +1,7 @@
 import type { ComponentProps, FC, PropsWithChildren, ReactNode } from 'react'
 import { cn } from '@/utils/classnames'
 
-type GroupLabelProps = ComponentProps<'div'>
+export type GroupLabelProps = ComponentProps<'div'>
 
 export const GroupLabel: FC<GroupLabelProps> = (props) => {
   const { children, className, ...rest } = props
@@ -12,7 +12,7 @@ export const GroupLabel: FC<GroupLabelProps> = (props) => {
   )
 }
 
-type GroupProps = PropsWithChildren<{
+export type GroupProps = PropsWithChildren<{
   label: ReactNode
 }>
 

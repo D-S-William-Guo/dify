@@ -1,7 +1,7 @@
 import type { ComponentProps, FC } from 'react'
 import { cn } from '@/utils/classnames'
 
-type FormattedTextProps = ComponentProps<'p'>
+export type FormattedTextProps = ComponentProps<'p'>
 
 export const FormattedText: FC<FormattedTextProps> = (props) => {
   const { className, ...rest } = props

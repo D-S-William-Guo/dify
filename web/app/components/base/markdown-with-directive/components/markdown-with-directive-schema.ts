@@ -15,12 +15,12 @@ export const withIconCardItemPropsSchema = z.object({
   ),
 }).strict()
 
-const directivePropsSchemas = {
+export const directivePropsSchemas = {
   withiconcardlist: withIconCardListPropsSchema,
   withiconcarditem: withIconCardItemPropsSchema,
 } as const
 
-type DirectiveName = keyof typeof directivePropsSchemas
+export type DirectiveName = keyof typeof directivePropsSchemas
 
 function isDirectiveName(name: string): name is DirectiveName {
   return Object.hasOwn(directivePropsSchemas, name)

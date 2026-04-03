@@ -9,7 +9,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
 import { cn } from '@/utils/classnames'
 
-type TaskStatusIndicatorProps = {
+export type TaskStatusIndicatorProps = {
   tip: string
   isInstalling: boolean
   isInstallingWithSuccess: boolean

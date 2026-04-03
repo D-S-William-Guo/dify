@@ -32,32 +32,13 @@ vi.mock('@/app/components/workflow/plugin-dependency/hooks', () => ({
   }),
 }))
 
-const toastMocks = vi.hoisted(() => {
-  const record = vi.fn()
-  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
-  return {
-    record,
-    api: Object.assign(api, {
-      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    }),
-  }
-})
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: toastMocks.api,
-}))
+const mockNotify = vi.fn()
 
 vi.mock('use-context-selector', async () => {
   const actual = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
   return {
     ...actual,
-    useContext: vi.fn(() => ({ notify: toastMocks.api })),
+    useContext: vi.fn(() => ({ notify: mockNotify })),
   }
 })
 
@@ -92,7 +73,7 @@ describe('useDSLImport', () => {
     mockImportDSL.mockReset()
     mockImportDSLConfirm.mockReset()
     mockPush.mockReset()
-    toastMocks.record.mockReset()
+    mockNotify.mockReset()
     mockHandleCheckPluginDependencies.mockReset()
   })
 
@@ -307,7 +288,7 @@ describe('useDSLImport', () => {
       await waitFor(() => {
         expect(onSuccess).toHaveBeenCalled()
         expect(onClose).toHaveBeenCalled()
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'success',
         }))
         expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-789/pipeline')
@@ -340,7 +321,7 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'warning',
         }))
       })
@@ -408,7 +389,7 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })
@@ -434,7 +415,7 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })
@@ -630,7 +611,7 @@ describe('useDSLImport', () => {
         expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-123')
         expect(onSuccess).toHaveBeenCalled()
         expect(result.current.showConfirmModal).toBe(false)
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'success',
         }))
       })
@@ -672,7 +653,7 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })
@@ -718,7 +699,7 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(expect.objectContaining({
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
           type: 'error',
         }))
       })

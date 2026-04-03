@@ -66,3 +66,4 @@ const PremiumBadge: React.FC<PremiumBadgeProps> = ({
 PremiumBadge.displayName = 'PremiumBadge'
 
 export default PremiumBadge
+export { PremiumBadge, PremiumBadgeVariants }

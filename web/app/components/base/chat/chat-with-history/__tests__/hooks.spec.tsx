@@ -4,7 +4,7 @@ import type { InstalledApp } from '@/models/explore'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { ToastHost } from '@/app/components/base/ui/toast'
+import { ToastProvider } from '@/app/components/base/toast'
 import {
   AppSourceType,
   delConversation,
@@ -95,8 +95,7 @@ const createQueryClient = () => new QueryClient({
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
-      <ToastHost />
-      {children}
+      <ToastProvider>{children}</ToastProvider>
     </QueryClientProvider>
   )
 }

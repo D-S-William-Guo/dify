@@ -3,8 +3,9 @@ import type { RefObject } from 'react'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { toast } from '@/app/components/base/ui/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { IS_CE_EDITION } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -19,7 +20,7 @@ export type FileUploadConfig = {
   file_upload_limit: number
 }
 
-type UseFileUploadOptions = {
+export type UseFileUploadOptions = {
   fileList: FileItem[]
   prepareFileList: (files: FileItem[]) => void
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
@@ -33,7 +34,7 @@ type UseFileUploadOptions = {
   allowedExtensions?: string[]
 }
 
-type UseFileUploadReturn = {
+export type UseFileUploadReturn = {
   // Refs
   dropRef: RefObject<HTMLDivElement | null>
   dragRef: RefObject<HTMLDivElement | null>
@@ -69,6 +70,7 @@ export const useFileUpload = ({
   allowedExtensions,
 }: UseFileUploadOptions): UseFileUploadReturn => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const locale = useLocale()
 
   const [dragging, setDragging] = useState(false)
@@ -117,14 +119,14 @@ export const useFileUpload = ({
     const ext = `.${getFileExtension(file.name)}`
     const isValidType = acceptTypes.includes(ext.toLowerCase())
     if (!isValidType)
-      toast.error(t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }))
+      notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
 
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      toast.error(t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }))
+      notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
-  }, [fileUploadConfig, t, acceptTypes])
+  }, [fileUploadConfig, notify, t, acceptTypes])
 
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
@@ -154,12 +156,12 @@ export const useFileUpload = ({
       })
       .catch((e) => {
         const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
-        toast.error(errorMessage)
+        notify({ type: 'error', message: errorMessage })
         onFileUpdate(fileItem, PROGRESS_ERROR, fileListRef.current)
         return Promise.resolve({ ...fileItem })
       })
       .finally()
-  }, [onFileUpdate, t])
+  }, [notify, onFileUpdate, t])
 
   const uploadBatchFiles = useCallback((bFiles: FileItem[]) => {
     bFiles.forEach(bf => (bf.progress = 0))
@@ -189,7 +191,7 @@ export const useFileUpload = ({
       return false
 
     if (files.length + fileList.length > filesCountLimit && !IS_CE_EDITION) {
-      toast.error(t('stepOne.uploader.validation.filesNumber', { ns: 'datasetCreation', filesNumber: filesCountLimit }))
+      notify({ type: 'error', message: t('stepOne.uploader.validation.filesNumber', { ns: 'datasetCreation', filesNumber: filesCountLimit }) })
       return false
     }
 
@@ -202,7 +204,7 @@ export const useFileUpload = ({
     prepareFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [prepareFileList, uploadMultipleFiles, t, fileList, fileUploadConfig])
+  }, [prepareFileList, uploadMultipleFiles, notify, t, fileList, fileUploadConfig])
 
   const traverseFileEntry = useCallback(
     (entry: FileSystemEntry, prefix = ''): Promise<FileWithPath[]> => {

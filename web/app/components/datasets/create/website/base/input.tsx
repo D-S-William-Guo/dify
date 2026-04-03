@@ -56,7 +56,7 @@ const Input: FC<Props> = ({
         caret-[#295eff] placeholder:text-components-input-text-placeholder hover:border
         hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border focus:border-components-input-border-active
         focus:shadow-xs focus:shadow-shadow-shadow-3
-        focus-visible:outline-hidden"
+        focus-visible:outline-none"
       placeholder={placeholder}
     />
   )

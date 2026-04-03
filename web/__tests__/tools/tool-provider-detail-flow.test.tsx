@@ -153,14 +153,8 @@ vi.mock('@/app/components/base/confirm', () => ({
   ),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@/app/components/base/toast', () => ({
   default: { notify: vi.fn() },
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-  },
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/line/general', () => ({

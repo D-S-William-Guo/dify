@@ -6,6 +6,10 @@ import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from './client'
 import { fetchAppList, fetchBanners, fetchInstalledAppList, fetchInstalledAppMeta, fetchInstalledAppParams, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 
+const exploreListStaleTime = 30 * 1000
+const exploreConfigStaleTime = 5 * 60 * 1000
+const exploreGcTime = 5 * 60 * 1000
+
 type ExploreAppListData = {
   categories: AppCategory[]
   allList: App[]
@@ -27,6 +31,10 @@ export const useExploreAppList = () => {
         allList: [...recommended_apps].sort((a, b) => a.position - b.position),
       }
     },
+    staleTime: exploreListStaleTime,
+    gcTime: exploreGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -36,6 +44,10 @@ export const useGetInstalledApps = () => {
     queryFn: () => {
       return fetchInstalledAppList()
     },
+    staleTime: exploreListStaleTime,
+    gcTime: exploreGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -103,6 +115,10 @@ export const useGetInstalledAppParams = (appId: string | null) => {
       return fetchInstalledAppParams(installedAppId)
     },
     enabled: !!installedAppId,
+    staleTime: exploreConfigStaleTime,
+    gcTime: exploreGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -118,6 +134,10 @@ export const useGetInstalledAppMeta = (appId: string | null) => {
       return fetchInstalledAppMeta(installedAppId)
     },
     enabled: !!installedAppId,
+    staleTime: exploreConfigStaleTime,
+    gcTime: exploreGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -132,5 +152,9 @@ export const useGetBanners = (locale?: string) => {
     queryFn: () => {
       return fetchBanners(bannersLanguage)
     },
+    staleTime: exploreConfigStaleTime,
+    gcTime: exploreGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }

@@ -6,7 +6,7 @@ export type IconData = {
   icon: AbstractNode
 }
 
-type IconBaseProps = {
+export type IconBaseProps = {
   data: IconData
   className?: string
   onClick?: React.MouseEventHandler<SVGElement>

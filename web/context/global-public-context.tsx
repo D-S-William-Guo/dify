@@ -20,6 +20,7 @@ export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
 
 const systemFeaturesQueryKey = ['systemFeatures'] as const
 const setupStatusQueryKey = ['setupStatus'] as const
+const publicConfigStaleTime = 5 * 60 * 1000
 
 async function fetchSystemFeatures() {
   const data = await consoleClient.systemFeatures()
@@ -32,6 +33,10 @@ export function useSystemFeaturesQuery() {
   return useQuery({
     queryKey: systemFeaturesQueryKey,
     queryFn: fetchSystemFeatures,
+    staleTime: publicConfigStaleTime,
+    gcTime: publicConfigStaleTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -40,7 +45,7 @@ export function useIsSystemFeaturesPending() {
   return isPending
 }
 
-function useSetupStatusQuery() {
+export function useSetupStatusQuery() {
   return useQuery({
     queryKey: setupStatusQueryKey,
     queryFn: fetchSetupStatusWithCache,

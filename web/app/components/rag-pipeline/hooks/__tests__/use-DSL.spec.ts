@@ -2,24 +2,11 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDSL } from '../use-DSL'
 
-const toastMocks = vi.hoisted(() => ({
-  call: vi.fn(),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({ notify: mockNotify }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
-  }),
-}))
 const mockEventEmitter = { emit: vi.fn() }
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({ eventEmitter: mockEventEmitter }),
@@ -164,7 +151,7 @@ describe('useDSL', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
           message: 'app.exportFailed',
         })
@@ -245,7 +232,7 @@ describe('useDSL', () => {
       })
 
       await waitFor(() => {
-        expect(toastMocks.call).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
           message: 'app.exportFailed',
         })

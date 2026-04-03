@@ -6,7 +6,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { createActions, matchAction } from '../actions'
 import { useGotoAnythingContext } from '../context'
 
-type UseGotoAnythingSearchReturn = {
+export type UseGotoAnythingSearchReturn = {
   searchQuery: string
   setSearchQuery: (query: string) => void
   searchQueryDebouncedValue: string

@@ -10,33 +10,14 @@ vi.mock('../../context', () => ({
   },
 }))
 
-const toastMocks = vi.hoisted(() => {
-  const record = vi.fn()
-  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
-  return {
-    record,
-    api: Object.assign(api, {
-      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    }),
-  }
-})
+const mockNotify = vi.fn()
 vi.mock('use-context-selector', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, unknown>
   return {
     ...actual,
-    useContext: () => ({ notify: toastMocks.api }),
+    useContext: () => ({ notify: mockNotify }),
   }
 })
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: toastMocks.api,
-}))
 
 // Mock modifyDocMetadata
 const mockModifyDocMetadata = vi.fn()
@@ -265,7 +246,7 @@ describe('Metadata', () => {
       fireEvent.click(screen.getByText(/operation\.save/i))
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(
+        expect(mockNotify).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'success',
           }),
@@ -283,7 +264,7 @@ describe('Metadata', () => {
       fireEvent.click(screen.getByText(/operation\.save/i))
 
       await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(
+        expect(mockNotify).toHaveBeenCalledWith(
           expect.objectContaining({
             type: 'error',
           }),

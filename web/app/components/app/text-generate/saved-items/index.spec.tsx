@@ -4,7 +4,7 @@ import copy from 'copy-to-clipboard'
 
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import SavedItems from './index'
 
 vi.mock('copy-to-clipboard', () => ({
@@ -16,7 +16,7 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const mockCopy = vi.mocked(copy)
-const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
+const toastNotifySpy = vi.spyOn(Toast, 'notify')
 
 const baseProps: ISavedItemsProps = {
   list: [
@@ -30,7 +30,7 @@ const baseProps: ISavedItemsProps = {
 describe('SavedItems', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    toastSuccessSpy.mockClear()
+    toastNotifySpy.mockClear()
   })
 
   it('renders saved answers with metadata and controls', () => {
@@ -58,7 +58,7 @@ describe('SavedItems', () => {
 
     fireEvent.click(copyButton)
     expect(mockCopy).toHaveBeenCalledWith('hello world')
-    expect(toastSuccessSpy).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+    expect(toastNotifySpy).toHaveBeenCalledWith({ type: 'success', message: 'common.actionMsg.copySuccessfully' })
 
     fireEvent.click(deleteButton)
     expect(handleRemove).toHaveBeenCalledWith('1')

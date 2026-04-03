@@ -5,8 +5,8 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
+import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
-import { toast } from '@/app/components/base/ui/toast'
 import { downloadUrl } from '@/utils/download'
 
 type ImagePreviewProps = {
@@ -51,7 +51,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       win?.document.write(`<img src="${url}" alt="${title}" />`)
     }
     else {
-      toast.error(`Unable to open image: ${url}`)
+      Toast.notify({
+        type: 'error',
+        message: `Unable to open image: ${url}`,
+      })
     }
   }
 
@@ -61,7 +64,10 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       downloadUrl({ url, fileName: title, target: '_blank' })
       return
     }
-    toast.error(`Unable to open image: ${url}`)
+    Toast.notify({
+      type: 'error',
+      message: `Unable to open image: ${url}`,
+    })
   }
 
   const zoomIn = () => {
@@ -108,14 +114,20 @@ const ImagePreview: FC<ImagePreviewProps> = ({
         ])
         setIsCopied(true)
 
-        toast.success(t('operation.imageCopied', { ns: 'common' }))
+        Toast.notify({
+          type: 'success',
+          message: t('operation.imageCopied', { ns: 'common' }),
+        })
       }
       catch (err) {
         console.error('Failed to copy image:', err)
 
         downloadUrl({ url, fileName: `${title}.png` })
 
-        toast.info(t('operation.imageDownloaded', { ns: 'common' }))
+        Toast.notify({
+          type: 'info',
+          message: t('operation.imageDownloaded', { ns: 'common' }),
+        })
       }
     }
     shareImage()
@@ -175,7 +187,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
 
   return createPortal(
     <div
-      className="image-preview-container fixed inset-0 z-1000 flex items-center justify-center bg-black/80 p-8"
+      className="image-preview-container fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-8"
       onClick={e => e.stopPropagation()}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
@@ -186,7 +198,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       data-testid="image-preview-container"
     >
       { }
-      { }
+      {/* eslint-disable-next-line next/no-img-element */}
       <img
         ref={imgRef}
         alt={title}

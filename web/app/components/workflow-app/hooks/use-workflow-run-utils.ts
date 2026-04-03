@@ -19,7 +19,7 @@ export type HandleRunOptions = {
   allNodeIds?: string[]
 }
 
-type DebuggableTriggerType = Exclude<TriggerType, TriggerType.UserInput>
+export type DebuggableTriggerType = Exclude<TriggerType, TriggerType.UserInput>
 
 type AppDetailLike = {
   id?: string
@@ -53,14 +53,14 @@ type TriggerDebugRunnerOptions = {
   setWorkflowRunningData: ListeningStateActions['setWorkflowRunningData']
 }
 
-const controllerKeyMap: Record<DebuggableTriggerType, string> = {
+export const controllerKeyMap: Record<DebuggableTriggerType, string> = {
   [TriggerType.Webhook]: '__webhookDebugAbortController',
   [TriggerType.Plugin]: '__pluginDebugAbortController',
   [TriggerType.All]: '__allTriggersDebugAbortController',
   [TriggerType.Schedule]: '__scheduleDebugAbortController',
 }
 
-const debugLabelMap: Record<DebuggableTriggerType, string> = {
+export const debugLabelMap: Record<DebuggableTriggerType, string> = {
   [TriggerType.Webhook]: 'Webhook',
   [TriggerType.Plugin]: 'Plugin',
   [TriggerType.All]: 'All',
@@ -306,7 +306,7 @@ export const normalizePublishedWorkflowNodes = (publishedWorkflow: VersionHistor
   }))
 }
 
-const waitWithAbort = (signal: AbortSignal, delay: number) => new Promise<void>((resolve) => {
+export const waitWithAbort = (signal: AbortSignal, delay: number) => new Promise<void>((resolve) => {
   const timer = window.setTimeout(resolve, delay)
   signal.addEventListener('abort', () => {
     clearTimeout(timer)

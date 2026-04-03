@@ -12,7 +12,7 @@ import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 import psycopg2
 import pytest
@@ -48,8 +48,11 @@ class _CloserProtocol(Protocol):
         pass
 
 
+_Closer = TypeVar("_Closer", bound=_CloserProtocol)
+
+
 @contextmanager
-def _auto_close[T: _CloserProtocol](closer: T) -> Generator[T, None, None]:
+def _auto_close(closer: _Closer) -> Generator[_Closer, None, None]:
     yield closer
     closer.close()
 

@@ -17,6 +17,7 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
+from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
@@ -66,6 +67,16 @@ class InstalledAppsListApi(Resource):
             installed_apps = db.session.scalars(
                 select(InstalledApp).where(InstalledApp.tenant_id == current_tenant_id)
             ).all()
+
+        installed_app_ids = [installed_app.app_id for installed_app in installed_apps]
+        prefetched_apps_by_id: dict[str, App] = {}
+        if installed_app_ids:
+            prefetched_apps = db.session.scalars(select(App).where(App.id.in_(installed_app_ids))).all()
+            AppService.prefetch_list_dependencies(prefetched_apps)
+            prefetched_apps_by_id = {app.id: app for app in prefetched_apps}
+
+        for installed_app in installed_apps:
+            installed_app._prefetched_app = prefetched_apps_by_id.get(installed_app.app_id)  # type: ignore[attr-defined]
 
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")

@@ -20,7 +20,8 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account
-from models.model import App, AppMode, AppModelConfig, IconType, Site
+from models.model import App, AppMode, AppModelConfig, IconType, Site, Tag, TagBinding
+from models.workflow import Workflow
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -32,6 +33,62 @@ logger = logging.getLogger(__name__)
 
 
 class AppService:
+    @staticmethod
+    def prefetch_list_dependencies(apps: list[App]) -> None:
+        """
+        Batch attach frequently serialized app relations for list endpoints.
+
+        App list responses expose fields like `model_config`, `workflow`, `tags`, and `author_name`.
+        Those attributes are implemented as model properties that fall back to individual lookups,
+        which turns paginated responses into hidden N+1 query patterns. This helper keeps the
+        existing response shape intact while making the expensive paths explicit at the service layer.
+        """
+        if not apps:
+            return
+
+        app_model_config_ids = {app.app_model_config_id for app in apps if app.app_model_config_id}
+        workflows_ids = {app.workflow_id for app in apps if app.workflow_id}
+        author_ids = {app.created_by for app in apps if app.created_by}
+        app_ids = [app.id for app in apps]
+
+        model_configs_by_id = {}
+        if app_model_config_ids:
+            model_configs = db.session.scalars(select(AppModelConfig).where(AppModelConfig.id.in_(app_model_config_ids))).all()
+            model_configs_by_id = {model_config.id: model_config for model_config in model_configs}
+
+        workflows_by_id = {}
+        if workflows_ids:
+            workflows = db.session.scalars(select(Workflow).where(Workflow.id.in_(workflows_ids))).all()
+            workflows_by_id = {workflow.id: workflow for workflow in workflows}
+
+        author_names_by_id = {}
+        if author_ids:
+            authors = db.session.scalars(select(Account).where(Account.id.in_(author_ids))).all()
+            author_names_by_id = {author.id: author.name for author in authors}
+
+        tags_by_app_id: dict[str, list[Tag]] = {app_id: [] for app_id in app_ids}
+        if app_ids:
+            app_tags = (
+                db.session.execute(
+                    select(TagBinding.target_id, Tag)
+                    .join(Tag, Tag.id == TagBinding.tag_id)
+                    .where(
+                        TagBinding.target_id.in_(app_ids),
+                        Tag.type == "app",
+                    )
+                )
+                .all()
+            )
+            for target_id, tag in app_tags:
+                if target_id:
+                    tags_by_app_id.setdefault(target_id, []).append(tag)
+
+        for app in apps:
+            app._prefetched_app_model_config = model_configs_by_id.get(app.app_model_config_id)  # type: ignore[attr-defined]
+            app._prefetched_workflow = workflows_by_id.get(app.workflow_id)  # type: ignore[attr-defined]
+            app._prefetched_author_name = author_names_by_id.get(app.created_by)  # type: ignore[attr-defined]
+            app._prefetched_tags = tags_by_app_id.get(app.id, [])  # type: ignore[attr-defined]
+
     def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
         """
         Get app list with pagination
@@ -75,6 +132,8 @@ class AppService:
             per_page=args["limit"],
             error_out=False,
         )
+
+        self.prefetch_list_dependencies(list(app_models.items))
 
         return app_models
 

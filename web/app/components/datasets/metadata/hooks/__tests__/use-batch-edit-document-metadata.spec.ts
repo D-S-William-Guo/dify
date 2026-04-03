@@ -34,10 +34,9 @@ vi.mock('@/service/knowledge/use-metadata', () => ({
   }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
+vi.mock('@/app/components/base/toast', () => ({
+  default: {
+    notify: vi.fn(),
   },
 }))
 

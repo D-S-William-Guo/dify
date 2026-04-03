@@ -8,14 +8,14 @@ import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigat
 import { useRouter } from '@/next/navigation'
 import { slashCommandRegistry } from '../actions/commands/registry'
 
-type UseGotoAnythingNavigationReturn = {
+export type UseGotoAnythingNavigationReturn = {
   handleCommandSelect: (commandKey: string) => void
   handleNavigate: (result: SearchResult) => void
   activePlugin: Plugin | undefined
   setActivePlugin: (plugin: Plugin | undefined) => void
 }
 
-type UseGotoAnythingNavigationOptions = {
+export type UseGotoAnythingNavigationOptions = {
   Actions: Record<string, ActionItem>
   setSearchQuery: (query: string) => void
   clearSelection: () => void

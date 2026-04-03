@@ -6,7 +6,6 @@ import { camelCase, template } from 'es-toolkit/compat'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const iconsDir = path.resolve(__dirname, '../app/components/base/icons')
-const svgAssetsDir = path.resolve(__dirname, '../../packages/iconify-collections/assets')
 
 const generateDir = async (currentPath) => {
   try {
@@ -33,8 +32,8 @@ const processSvgStructure = (svgStructure, replaceFillOrStrokeColor) => {
     })
   }
 }
-const generateSvgComponent = async (fileHandle, entry, relativeSegments, replaceFillOrStrokeColor) => {
-  const currentPath = path.resolve(iconsDir, 'src', ...relativeSegments)
+const generateSvgComponent = async (fileHandle, entry, pathList, replaceFillOrStrokeColor) => {
+  const currentPath = path.resolve(iconsDir, 'src', ...pathList.slice(2))
 
   try {
     await access(currentPath)
@@ -87,8 +86,8 @@ export { default as <%= svgName %> } from './<%= svgName %>'
   await appendFile(path.resolve(currentPath, 'index.ts'), `${indexingRender({ svgName: fileName })}\n`)
 }
 
-const generateImageComponent = async (entry, relativeSegments) => {
-  const currentPath = path.resolve(iconsDir, 'src', ...relativeSegments)
+const generateImageComponent = async (entry, pathList) => {
+  const currentPath = path.resolve(iconsDir, 'src', ...pathList.slice(2))
 
   try {
     await access(currentPath)
@@ -108,7 +107,7 @@ const generateImageComponent = async (entry, relativeSegments) => {
 }
 `.trim())
 
-  await writeFile(path.resolve(currentPath, `${fileName}.module.css`), `${componentCSSRender({ assetPath: path.posix.join('~@/app/components/base/icons/assets', ...relativeSegments, entry) })}\n`)
+  await writeFile(path.resolve(currentPath, `${fileName}.module.css`), `${componentCSSRender({ assetPath: path.posix.join('~@/app/components/base/icons/assets', ...pathList.slice(2), entry) })}\n`)
 
   const componentRender = template(`
 // GENERATE BY script
@@ -142,8 +141,8 @@ export { default as <%= fileName %> } from './<%= fileName %>'
   await appendFile(path.resolve(currentPath, 'index.ts'), `${indexingRender({ fileName })}\n`)
 }
 
-const walk = async (basePath, entry, relativeSegments, replaceFillOrStrokeColor) => {
-  const currentPath = path.resolve(basePath, ...relativeSegments, entry)
+const walk = async (entry, pathList, replaceFillOrStrokeColor) => {
+  const currentPath = path.resolve(...pathList, entry)
   let fileHandle
 
   try {
@@ -154,14 +153,14 @@ const walk = async (basePath, entry, relativeSegments, replaceFillOrStrokeColor)
       const files = await readdir(currentPath)
 
       for (const file of files)
-        await walk(basePath, file, [...relativeSegments, entry], replaceFillOrStrokeColor)
+        await walk(file, [...pathList, entry], replaceFillOrStrokeColor)
     }
 
     if (stat.isFile() && /.+\.svg$/.test(entry))
-      await generateSvgComponent(fileHandle, entry, relativeSegments, replaceFillOrStrokeColor)
+      await generateSvgComponent(fileHandle, entry, pathList, replaceFillOrStrokeColor)
 
     if (stat.isFile() && /.+\.png$/.test(entry))
-      await generateImageComponent(entry, relativeSegments)
+      await generateImageComponent(entry, pathList)
   }
   finally {
     fileHandle?.close()
@@ -170,7 +169,7 @@ const walk = async (basePath, entry, relativeSegments, replaceFillOrStrokeColor)
 
 (async () => {
   await rm(path.resolve(iconsDir, 'src'), { recursive: true, force: true })
-  await walk(svgAssetsDir, 'public', [], false)
-  await walk(svgAssetsDir, 'vender', [], true)
-  await walk(path.resolve(iconsDir, 'assets'), 'image', [], false)
+  await walk('public', [iconsDir, 'assets'])
+  await walk('vender', [iconsDir, 'assets'], true)
+  await walk('image', [iconsDir, 'assets'])
 })()

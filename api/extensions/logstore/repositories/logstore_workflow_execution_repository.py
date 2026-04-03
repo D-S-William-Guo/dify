@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import time
+from typing import Union
 
 from graphon.entities import WorkflowExecution
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
@@ -26,7 +27,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         app_id: str | None,
         triggered_from: WorkflowRunTriggeredFrom | None,
     ):

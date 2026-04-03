@@ -9,7 +9,7 @@ import {
 import { flatten } from 'es-toolkit/compat'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, useRouter } from '@/next/navigation'
+import { useParams, useRouter, useSelectedLayoutSegment } from '@/next/navigation'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
 import { basePath } from '@/utils/var'
 import Nav from '../nav'
@@ -18,6 +18,8 @@ const DatasetNav = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { datasetId } = useParams()
+  const selectedSegment = useSelectedLayoutSegment()
+  const isDatasetRoute = selectedSegment === 'datasets'
   const { data: currentDataset } = useDatasetDetail(datasetId as string)
   const {
     data: datasetList,
@@ -27,6 +29,8 @@ const DatasetNav = () => {
   } = useDatasetList({
     initialPage: 1,
     limit: 30,
+  }, {
+    enabled: isDatasetRoute,
   })
   const datasetItems = flatten(datasetList?.pages.map(datasetData => datasetData.data))
 

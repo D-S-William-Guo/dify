@@ -1,7 +1,7 @@
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
-type ConsoleNotification = {
+export type ConsoleNotification = {
   body: string
   frequency: 'once' | 'always'
   lang: string
@@ -11,7 +11,7 @@ type ConsoleNotification = {
   title_pic_url?: string
 }
 
-type ConsoleNotificationResponse = {
+export type ConsoleNotificationResponse = {
   notifications: ConsoleNotification[]
   should_show: boolean
 }

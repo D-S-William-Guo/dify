@@ -13,7 +13,7 @@ type ExternalKnowledgeApiContextType = {
 
 const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextType | undefined>(undefined)
 
-type ExternalKnowledgeApiProviderProps = {
+export type ExternalKnowledgeApiProviderProps = {
   children: ReactNode
 }
 

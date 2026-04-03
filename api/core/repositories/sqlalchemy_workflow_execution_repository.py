@@ -4,6 +4,7 @@ SQLAlchemy implementation of the WorkflowExecutionRepository.
 
 import json
 import logging
+from typing import Union
 
 from graphon.entities import WorkflowExecution
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
@@ -39,7 +40,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         app_id: str | None,
         triggered_from: WorkflowRunTriggeredFrom | None,
     ):

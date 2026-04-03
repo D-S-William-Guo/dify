@@ -5,7 +5,7 @@ import {
   useState,
 } from 'react'
 
-type UseResizePanelParams = {
+export type UseResizePanelParams = {
   direction?: 'horizontal' | 'vertical' | 'both'
   triggerDirection?: 'top' | 'right' | 'bottom' | 'left' | 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left'
   minWidth?: number

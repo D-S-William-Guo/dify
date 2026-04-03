@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 
-type IModalFootProps = {
+export type IModalFootProps = {
   onConfirm: () => void
   onCancel: () => void
 }

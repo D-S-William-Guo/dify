@@ -26,7 +26,7 @@ import { usePathname } from '@/next/navigation'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
 
-type IAppDetailLayoutProps = {
+export type IAppDetailLayoutProps = {
   children: React.ReactNode
   datasetId: string
 }

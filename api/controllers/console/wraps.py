@@ -4,6 +4,7 @@ import os
 import time
 from collections.abc import Callable
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 from flask import abort, request
 from sqlalchemy import select
@@ -25,6 +26,9 @@ from services.operation_service import OperationService
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
 # Field names for decryption
 FIELD_NAME_PASSWORD = "password"
 FIELD_NAME_CODE = "code"
@@ -34,7 +38,7 @@ ERROR_MSG_INVALID_ENCRYPTED_DATA = "Invalid encrypted data"
 ERROR_MSG_INVALID_ENCRYPTED_CODE = "Invalid encrypted code"
 
 
-def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def account_initialization_required(view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         # check account initialization
@@ -47,7 +51,7 @@ def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P,
     return decorated
 
 
-def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def only_edition_cloud(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if dify_config.EDITION != "CLOUD":
@@ -58,7 +62,7 @@ def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def only_edition_enterprise(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if not dify_config.ENTERPRISE_ENABLED:
@@ -69,7 +73,7 @@ def only_edition_enterprise[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def only_edition_self_hosted(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if dify_config.EDITION != "SELF_HOSTED":
@@ -80,7 +84,7 @@ def only_edition_self_hosted[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def cloud_edition_billing_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
@@ -92,7 +96,7 @@ def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R
     return decorated
 
 
-def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def cloud_edition_billing_resource_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -134,9 +138,7 @@ def cloud_edition_billing_resource_check[**P, R](resource: str) -> Callable[[Cal
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check[**P, R](
-    resource: str,
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def cloud_edition_billing_knowledge_limit_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -159,7 +161,7 @@ def cloud_edition_billing_knowledge_limit_check[**P, R](
     return interceptor
 
 
-def cloud_edition_billing_rate_limit_check[**P, R](resource: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def cloud_edition_billing_rate_limit_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
@@ -195,7 +197,7 @@ def cloud_edition_billing_rate_limit_check[**P, R](resource: str) -> Callable[[C
     return interceptor
 
 
-def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def cloud_utm_record(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
@@ -214,7 +216,7 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def setup_required(view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
         # check setup
@@ -228,7 +230,7 @@ def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def enterprise_license_required(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         settings = FeatureService.get_system_features()
@@ -240,7 +242,7 @@ def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def email_password_login_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
@@ -253,7 +255,7 @@ def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]
     return decorated
 
 
-def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def email_register_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
@@ -266,7 +268,7 @@ def email_register_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def enable_change_email(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
@@ -279,7 +281,7 @@ def enable_change_email[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def is_allow_transfer_owner[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def is_allow_transfer_owner(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         from libs.workspace_permission import check_workspace_owner_transfer_permission
@@ -292,7 +294,7 @@ def is_allow_transfer_owner[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def knowledge_pipeline_publish_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
@@ -304,7 +306,7 @@ def knowledge_pipeline_publish_enabled[**P, R](view: Callable[P, R]) -> Callable
     return decorated
 
 
-def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
+def edit_permission_required(f: Callable[P, R]):
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
         from werkzeug.exceptions import Forbidden
@@ -322,7 +324,7 @@ def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     return decorated_function
 
 
-def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
+def is_admin_or_owner_required(f: Callable[P, R]):
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
         from werkzeug.exceptions import Forbidden
@@ -338,7 +340,7 @@ def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     return decorated_function
 
 
-def annotation_import_rate_limit[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def annotation_import_rate_limit(view: Callable[P, R]):
     """
     Rate limiting decorator for annotation import operations.
 
@@ -387,7 +389,7 @@ def annotation_import_rate_limit[**P, R](view: Callable[P, R]) -> Callable[P, R]
     return decorated
 
 
-def annotation_import_concurrency_limit[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def annotation_import_concurrency_limit(view: Callable[P, R]):
     """
     Concurrency control decorator for annotation import operations.
 
@@ -469,7 +471,7 @@ def _decrypt_field(field_name: str, error_class: type[Exception], error_message:
     payload[field_name] = decoded_value
 
 
-def decrypt_password_field[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def decrypt_password_field(view: Callable[P, R]):
     """
     Decorator to decrypt password field in request payload.
 
@@ -491,7 +493,7 @@ def decrypt_password_field[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def decrypt_code_field[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def decrypt_code_field(view: Callable[P, R]):
     """
     Decorator to decrypt verification code field in request payload.
 

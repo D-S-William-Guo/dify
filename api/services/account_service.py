@@ -5,11 +5,12 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 
 class InvitationData(TypedDict):

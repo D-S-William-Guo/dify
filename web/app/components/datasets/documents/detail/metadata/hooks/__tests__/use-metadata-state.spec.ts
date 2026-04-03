@@ -3,25 +3,13 @@ import type { FullDocumentDetail } from '@/models/datasets'
 import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { ToastContext } from '@/app/components/base/toast/context'
 
 import { useMetadataState } from '../use-metadata-state'
 
-const { mockNotify, mockModifyDocMetadata, mockToast } = vi.hoisted(() => {
-  const mockNotify = vi.fn()
-  const mockToast = Object.assign(mockNotify, {
-    success: vi.fn((message, options) => mockNotify({ type: 'success', message, ...options })),
-    error: vi.fn((message, options) => mockNotify({ type: 'error', message, ...options })),
-    warning: vi.fn((message, options) => mockNotify({ type: 'warning', message, ...options })),
-    info: vi.fn((message, options) => mockNotify({ type: 'info', message, ...options })),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockNotify, mockModifyDocMetadata: vi.fn(), mockToast }
-})
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
+const { mockNotify, mockModifyDocMetadata } = vi.hoisted(() => ({
+  mockNotify: vi.fn(),
+  mockModifyDocMetadata: vi.fn(),
 }))
 
 vi.mock('../../../context', () => ({
@@ -44,8 +32,9 @@ vi.mock('@/utils', () => ({
   },
 }))
 
+// Wrapper that provides ToastContext with the mock notify function
 const wrapper = ({ children }: { children: ReactNode }) =>
-  React.createElement(React.Fragment, { children })
+  React.createElement(ToastContext.Provider, { value: { notify: mockNotify, close: vi.fn() }, children })
 
 type DocDetail = Parameters<typeof useMetadataState>[0]['docDetail']
 

@@ -20,15 +20,9 @@ const {
   useDocumentTitleMock: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@/app/components/base/toast', () => ({
   default: {
     notify: notifyMock,
-  },
-  toast: {
-    success: (message: string) => notifyMock({ type: 'success', message }),
-    error: (message: string) => notifyMock({ type: 'error', message }),
-    warning: (message: string) => notifyMock({ type: 'warning', message }),
-    info: (message: string) => notifyMock({ type: 'info', message }),
   },
 }))
 

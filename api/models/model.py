@@ -8,7 +8,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, NotRequired, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -19,6 +19,7 @@ from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.file import helpers as file_helpers
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
+from typing_extensions import TypedDict
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -430,6 +431,9 @@ class App(Base):
 
     @property
     def app_model_config(self) -> AppModelConfig | None:
+        prefetched_model_config = getattr(self, "_prefetched_app_model_config", None)
+        if prefetched_model_config is not None:
+            return prefetched_model_config
         if self.app_model_config_id:
             return db.session.scalar(select(AppModelConfig).where(AppModelConfig.id == self.app_model_config_id))
 
@@ -437,6 +441,9 @@ class App(Base):
 
     @property
     def workflow(self) -> Workflow | None:
+        prefetched_workflow = getattr(self, "_prefetched_workflow", None)
+        if prefetched_workflow is not None:
+            return prefetched_workflow
         if self.workflow_id:
             from .workflow import Workflow
 
@@ -591,6 +598,9 @@ class App(Base):
 
     @property
     def tags(self) -> Sequence[Tag]:
+        prefetched_tags = getattr(self, "_prefetched_tags", None)
+        if prefetched_tags is not None:
+            return prefetched_tags
         tags = db.session.scalars(
             select(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -606,6 +616,9 @@ class App(Base):
 
     @property
     def author_name(self) -> str | None:
+        prefetched_author_name = getattr(self, "_prefetched_author_name", None)
+        if prefetched_author_name is not None:
+            return prefetched_author_name
         if self.created_by:
             account = db.session.scalar(select(Account).where(Account.id == self.created_by))
             if account:
@@ -664,6 +677,9 @@ class AppModelConfig(TypeBase):
 
     @property
     def app(self) -> App | None:
+        prefetched_app = getattr(self, "_prefetched_app", None)
+        if prefetched_app is not None:
+            return prefetched_app
         return db.session.scalar(select(App).where(App.id == self.app_id))
 
     @property

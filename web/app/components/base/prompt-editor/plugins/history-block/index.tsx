@@ -24,6 +24,13 @@ export type RoleName = {
   assistant: string
 }
 
+export type HistoryBlockProps = {
+  roleName: RoleName
+  onEditRole: () => void
+  onInsert?: () => void
+  onDelete?: () => void
+}
+
 const HistoryBlock = memo(({
   history = { user: '', assistant: '' },
   onEditRole = noop,

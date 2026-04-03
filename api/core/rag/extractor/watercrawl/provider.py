@@ -1,6 +1,8 @@
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any, TypedDict
+from typing import Any
+
+from typing_extensions import TypedDict
 
 from core.rag.extractor.watercrawl.client import PageOptions, SpiderOptions, WaterCrawlAPIClient
 

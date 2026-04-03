@@ -17,7 +17,8 @@ from extensions.ext_database import db
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params
 
-pytest_plugins = ("tests.integration_tests.model_runtime.__mock.plugin_daemon",)
+"""FOR MOCK FIXTURES, DO NOT REMOVE"""
+from tests.integration_tests.model_runtime.__mock.plugin_daemon import setup_model_mock
 
 
 def get_mocked_fetch_memory(memory_text: str):

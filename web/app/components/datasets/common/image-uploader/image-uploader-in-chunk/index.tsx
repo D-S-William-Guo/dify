@@ -72,7 +72,7 @@ const ImageUploaderInChunk = ({
   )
 }
 
-type ImageUploaderInChunkWrapperProps = {
+export type ImageUploaderInChunkWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
 } & ImageUploaderInChunkProps

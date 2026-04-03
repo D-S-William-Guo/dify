@@ -2,7 +2,7 @@ import type { FormData, InputFieldFormProps } from '../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useConfigurations, useHiddenConfigurations, useHiddenFieldNames } from '../hooks'
 import InputFieldForm from '../index'
@@ -81,11 +81,9 @@ const renderHookWithProviders = <TResult,>(hook: () => TResult) => {
 }
 
 // Silence expected console.error from form submit preventDefault
-const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
-  toastErrorSpy.mockClear()
+  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
 })
 
 describe('InputFieldForm', () => {
@@ -212,7 +210,12 @@ describe('InputFieldForm', () => {
       fireEvent.submit(form)
 
       await waitFor(() => {
-        expect(toastErrorSpy).toHaveBeenCalledWith(expect.any(String))
+        expect(Toast.notify).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            message: expect.any(String),
+          }),
+        )
       })
       expect(onSubmit).not.toHaveBeenCalled()
     })
@@ -614,7 +617,7 @@ describe('useConfigurations', () => {
       expect(mockSetFieldValue).toHaveBeenCalledWith('maxLength', expect.any(Number))
     })
 
-    it('should set label from variable name on blur-sm when label is empty', () => {
+    it('should set label from variable name on blur when label is empty', () => {
       const mockGetFieldValue = vi.fn().mockReturnValue('')
       const mockSetFieldValue = vi.fn()
 
@@ -632,7 +635,7 @@ describe('useConfigurations', () => {
       expect(mockSetFieldValue).toHaveBeenCalledWith('label', 'test_variable')
     })
 
-    it('should not set label from variable name on blur-sm when label is not empty', () => {
+    it('should not set label from variable name on blur when label is not empty', () => {
       const mockGetFieldValue = vi.fn().mockReturnValue('Existing Label')
       const mockSetFieldValue = vi.fn()
 
@@ -1294,7 +1297,7 @@ describe('InitialFields', () => {
   })
 
   describe('getFieldValue and setFieldValue Callbacks', () => {
-    it('should trigger getFieldValue when variable name blur-sm event fires with empty label', async () => {
+    it('should trigger getFieldValue when variable name blur event fires with empty label', async () => {
       const initialData = createFormData({
         variable: '',
         label: '', // Empty label to trigger the condition
@@ -1313,7 +1316,7 @@ describe('InitialFields', () => {
       })
     })
 
-    it('should not update label when it already has a value on variable blur-sm', async () => {
+    it('should not update label when it already has a value on variable blur', async () => {
       const initialData = createFormData({
         variable: '',
         label: 'Existing Label', // Label already has value
@@ -1332,7 +1335,7 @@ describe('InitialFields', () => {
       })
     })
 
-    it('should trigger setFieldValue when display name blur-sm event fires with empty value', async () => {
+    it('should trigger setFieldValue when display name blur event fires with empty value', async () => {
       const initialData = createFormData({
         variable: 'original_var',
         label: 'Some Label',
@@ -1350,7 +1353,7 @@ describe('InitialFields', () => {
       })
     })
 
-    it('should keep label value when display name blur-sm event fires with non-empty value', async () => {
+    it('should keep label value when display name blur event fires with non-empty value', async () => {
       const initialData = createFormData({
         variable: 'test_var',
         label: 'Original Label',

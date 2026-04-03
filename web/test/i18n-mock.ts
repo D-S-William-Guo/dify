@@ -7,7 +7,7 @@ type TranslationMap = Record<string, string | string[]>
  * Create a t function with optional custom translations
  * Checks translations[key] first, then translations[ns.key], then returns ns.key as fallback
  */
-function createTFunction(translations: TranslationMap, defaultNs?: string) {
+export function createTFunction(translations: TranslationMap, defaultNs?: string) {
   return (key: string, options?: Record<string, unknown>) => {
     // Check custom translations first (without namespace)
     if (translations[key] !== undefined)
@@ -40,7 +40,7 @@ function createTFunction(translations: TranslationMap, defaultNs?: string) {
  *   'operation.confirm': 'Confirm',
  * }))
  */
-function createUseTranslationMock(translations: TranslationMap = {}) {
+export function createUseTranslationMock(translations: TranslationMap = {}) {
   const tCache = new Map<string, ReturnType<typeof createTFunction>>()
   const i18n = {
     language: 'en',
@@ -62,7 +62,7 @@ function createUseTranslationMock(translations: TranslationMap = {}) {
 /**
  * Create Trans component mock with optional custom translations
  */
-function createTransMock(translations: TranslationMap = {}) {
+export function createTransMock(translations: TranslationMap = {}) {
   return {
     Trans: ({ i18nKey, children }: {
       i18nKey: string

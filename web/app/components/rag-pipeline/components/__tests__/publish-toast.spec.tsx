@@ -96,7 +96,7 @@ describe('PublishToast', () => {
     it('should have gradient overlay', () => {
       const { container } = render(<PublishToast />)
 
-      const gradientOverlay = container.querySelector('.bg-linear-to-r')
+      const gradientOverlay = container.querySelector('.bg-gradient-to-r')
       expect(gradientOverlay).toBeInTheDocument()
     })
 
@@ -107,7 +107,7 @@ describe('PublishToast', () => {
       expect(toastContainer).toBeInTheDocument()
     })
 
-    it('should have rounded-sm border', () => {
+    it('should have rounded border', () => {
       render(<PublishToast />)
 
       const toastContainer = screen.getByText('pipeline.publishToast.title').closest('.rounded-xl')

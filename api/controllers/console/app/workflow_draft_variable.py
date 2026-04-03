@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import Any
+from typing import Any, NoReturn, ParamSpec, TypeVar
 
 from flask import Response, request
 from flask_restx import Resource, fields, marshal, marshal_with
@@ -192,8 +192,11 @@ workflow_draft_variable_list_model = console_ns.model(
     "WorkflowDraftVariableList", workflow_draft_variable_list_fields_copy
 )
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
+
+def _api_prerequisite(f: Callable[P, R]):
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -210,7 +213,7 @@ def _api_prerequisite[**P, R](f: Callable[P, R]) -> Callable[P, R | Response]:
     @edit_permission_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @wraps(f)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | Response:
+    def wrapper(*args: P.args, **kwargs: P.kwargs):
         return f(*args, **kwargs)
 
     return wrapper
@@ -267,7 +270,7 @@ class WorkflowVariableCollectionApi(Resource):
         return Response("", 204)
 
 
-def validate_node_id(node_id: str) -> None:
+def validate_node_id(node_id: str) -> NoReturn | None:
     if node_id in [
         CONVERSATION_VARIABLE_NODE_ID,
         SYSTEM_VARIABLE_NODE_ID,
@@ -282,6 +285,7 @@ def validate_node_id(node_id: str) -> None:
         raise InvalidArgumentError(
             f"invalid node_id, please use correspond api for conversation and system variables, node_id={node_id}",
         )
+    return None
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")

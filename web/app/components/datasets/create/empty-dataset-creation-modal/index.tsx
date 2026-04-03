@@ -2,12 +2,14 @@
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { useRouter } from '@/next/navigation'
+
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
@@ -17,18 +19,24 @@ type IProps = {
   show: boolean
   onHide: () => void
 }
-const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
+
+const EmptyDatasetCreationModal = ({
+  show = false,
+  onHide,
+}: IProps) => {
   const [inputValue, setInputValue] = useState('')
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const router = useRouter()
   const invalidDatasetList = useInvalidDatasetList()
+
   const submit = async () => {
     if (!inputValue) {
-      toast.error(t('stepOne.modal.nameNotEmpty', { ns: 'datasetCreation' }))
+      notify({ type: 'error', message: t('stepOne.modal.nameNotEmpty', { ns: 'datasetCreation' }) })
       return
     }
     if (inputValue.length > 40) {
-      toast.error(t('stepOne.modal.nameLengthInvalid', { ns: 'datasetCreation' }))
+      notify({ type: 'error', message: t('stepOne.modal.nameLengthInvalid', { ns: 'datasetCreation' }) })
       return
     }
     try {
@@ -42,11 +50,16 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
       router.push(`/datasets/${dataset.id}/documents`)
     }
     catch {
-      toast.error(t('stepOne.modal.failed', { ns: 'datasetCreation' }))
+      notify({ type: 'error', message: t('stepOne.modal.failed', { ns: 'datasetCreation' }) })
     }
   }
+
   return (
-    <Modal isShow={show} onClose={onHide} className={cn(s.modal, '!max-w-[520px]', 'px-8')}>
+    <Modal
+      isShow={show}
+      onClose={onHide}
+      className={cn(s.modal, '!max-w-[520px]', 'px-8')}
+    >
       <div className={s.modalHeader}>
         <div className={s.title}>{t('stepOne.modal.title', { ns: 'datasetCreation' })}</div>
         <span className={s.close} onClick={onHide} />
@@ -63,4 +76,5 @@ const EmptyDatasetCreationModal = ({ show = false, onHide }: IProps) => {
     </Modal>
   )
 }
+
 export default EmptyDatasetCreationModal

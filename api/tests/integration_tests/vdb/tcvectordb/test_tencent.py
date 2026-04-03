@@ -1,12 +1,8 @@
 from unittest.mock import MagicMock
 
 from core.rag.datasource.vdb.tencent.tencent_vector import TencentConfig, TencentVector
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text
-
-pytest_plugins = (
-    "tests.integration_tests.vdb.test_vector_store",
-    "tests.integration_tests.vdb.__mock.tcvectordb",
-)
+from tests.integration_tests.vdb.__mock.tcvectordb import setup_tcvectordb_mock
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text, setup_mock_redis
 
 mock_client = MagicMock()
 mock_client.list_databases.return_value = [{"name": "test"}]

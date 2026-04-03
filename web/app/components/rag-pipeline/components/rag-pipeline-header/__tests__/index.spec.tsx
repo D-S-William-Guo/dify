@@ -154,24 +154,13 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const toastMocks = vi.hoisted(() => ({
-  call: vi.fn(),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
   }),
 }))
+
 vi.mock('@/app/components/workflow/utils', () => ({
   getKeyboardKeyCodeBySystem: (key: string) => key,
   getKeyboardKeyNameBySystem: (key: string) => key,

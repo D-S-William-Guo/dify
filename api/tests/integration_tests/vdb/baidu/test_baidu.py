@@ -1,10 +1,6 @@
 from core.rag.datasource.vdb.baidu.baidu_vector import BaiduConfig, BaiduVector
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text
-
-pytest_plugins = (
-    "tests.integration_tests.vdb.test_vector_store",
-    "tests.integration_tests.vdb.__mock.baiduvectordb",
-)
+from tests.integration_tests.vdb.__mock.baiduvectordb import setup_baiduvectordb_mock
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text, setup_mock_redis
 
 
 class BaiduVectorTest(AbstractVectorTest):

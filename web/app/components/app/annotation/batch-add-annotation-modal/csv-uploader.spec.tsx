@@ -1,28 +1,11 @@
 import type { Props } from './csv-uploader'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { ToastContext } from '@/app/components/base/toast/context'
 import CSVUploader from './csv-uploader'
 
-const toastMocks = vi.hoisted(() => ({
-  notify: vi.fn(),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: {
-    success: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'success', message, ...options }),
-    error: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'error', message, ...options }),
-    warning: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'warning', message, ...options }),
-    info: (message: string, options?: Record<string, unknown>) => toastMocks.notify({ type: 'info', message, ...options }),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
-  },
-}))
-
 describe('CSVUploader', () => {
+  const notify = vi.fn()
   const updateFile = vi.fn()
 
   const getDropElements = () => {
@@ -41,8 +24,9 @@ describe('CSVUploader', () => {
       ...props,
     }
     return render(
-      <CSVUploader {...mergedProps} />,
-
+      <ToastContext.Provider value={{ notify, close: vi.fn() }}>
+        <CSVUploader {...mergedProps} />
+      </ToastContext.Provider>,
     )
   }
 
@@ -92,7 +76,7 @@ describe('CSVUploader', () => {
 
     fireEvent.drop(dropContainer, { dataTransfer: { files: [fileA, fileB] } })
 
-    await waitFor(() => expect(toastMocks.notify).toHaveBeenCalledWith({
+    await waitFor(() => expect(notify).toHaveBeenCalledWith({
       type: 'error',
       message: 'datasetCreation.stepOne.uploader.validation.count',
     }))

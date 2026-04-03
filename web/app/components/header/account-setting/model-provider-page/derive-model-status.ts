@@ -2,7 +2,7 @@ import type { Model, ModelItem, ModelProvider } from './declarations'
 import type { CredentialPanelState } from './provider-added-card/use-credential-panel-state'
 import { ModelStatusEnum } from './declarations'
 
-type DerivedModelStatus
+export type DerivedModelStatus
   = | 'empty'
     | 'active'
     | 'configure-required'

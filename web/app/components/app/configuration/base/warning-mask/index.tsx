@@ -4,7 +4,7 @@ import * as React from 'react'
 
 import s from './style.module.css'
 
-type IWarningMaskProps = {
+export type IWarningMaskProps = {
   title: string
   description: string
   footer: React.ReactNode

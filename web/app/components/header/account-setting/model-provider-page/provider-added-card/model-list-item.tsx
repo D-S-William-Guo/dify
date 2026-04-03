@@ -19,7 +19,7 @@ import { ConfigModel } from '../model-auth'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 
-type ModelListItemProps = {
+export type ModelListItemProps = {
   model: ModelItem
   provider: ModelProvider
   isConfigurable: boolean

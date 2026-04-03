@@ -13,12 +13,13 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 import click
 from pydantic import TypeAdapter
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
+from typing_extensions import TypedDict
 
 
 class _TableInfo(TypedDict, total=False):

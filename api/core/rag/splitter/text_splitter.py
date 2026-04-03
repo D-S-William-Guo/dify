@@ -6,11 +6,18 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Collection, Iterable, Sequence, Set
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import (
+    Any,
+    Literal,
+    TypeVar,
+    Union,
+)
 
 from core.rag.models.document import BaseDocumentTransformer, Document
 
 logger = logging.getLogger(__name__)
+
+TS = TypeVar("TS", bound="TextSplitter")
 
 
 def _split_text_with_regex(text: str, separator: str, keep_separator: bool) -> list[str]:
@@ -187,8 +194,8 @@ class TokenTextSplitter(TextSplitter):
         self,
         encoding_name: str = "gpt2",
         model_name: str | None = None,
-        allowed_special: Literal["all"] | Set[str] = set(),
-        disallowed_special: Literal["all"] | Collection[str] = "all",
+        allowed_special: Union[Literal["all"], Set[str]] = set(),
+        disallowed_special: Union[Literal["all"], Collection[str]] = "all",
         **kwargs: Any,
     ):
         """Create a new TextSplitter."""

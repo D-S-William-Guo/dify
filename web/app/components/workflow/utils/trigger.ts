@@ -1,7 +1,7 @@
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
 
-type TriggerCheckParams = {
+export type TriggerCheckParams = {
   triggerInputsSchema: Array<{
     variable: string
     label: string

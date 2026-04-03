@@ -163,10 +163,16 @@ class Dataset(Base):
 
     @property
     def total_documents(self):
+        prefetched_total_documents = getattr(self, "_prefetched_total_documents", None)
+        if prefetched_total_documents is not None:
+            return prefetched_total_documents
         return db.session.scalar(select(func.count(Document.id)).where(Document.dataset_id == self.id)) or 0
 
     @property
     def total_available_documents(self):
+        prefetched_total_available_documents = getattr(self, "_prefetched_total_available_documents", None)
+        if prefetched_total_available_documents is not None:
+            return prefetched_total_available_documents
         return (
             db.session.scalar(
                 select(func.count(Document.id)).where(
@@ -201,6 +207,9 @@ class Dataset(Base):
 
     @property
     def author_name(self) -> str | None:
+        prefetched_author_name = getattr(self, "_prefetched_author_name", None)
+        if prefetched_author_name is not None:
+            return prefetched_author_name
         account = db.session.get(Account, self.created_by)
         if account:
             return account.name
@@ -217,6 +226,9 @@ class Dataset(Base):
 
     @property
     def app_count(self):
+        prefetched_app_count = getattr(self, "_prefetched_app_count", None)
+        if prefetched_app_count is not None:
+            return prefetched_app_count
         return (
             db.session.scalar(
                 select(func.count(AppDatasetJoin.id)).where(
@@ -228,6 +240,9 @@ class Dataset(Base):
 
     @property
     def document_count(self):
+        prefetched_document_count = getattr(self, "_prefetched_document_count", None)
+        if prefetched_document_count is not None:
+            return prefetched_document_count
         return db.session.scalar(select(func.count(Document.id)).where(Document.dataset_id == self.id)) or 0
 
     @property
@@ -259,12 +274,18 @@ class Dataset(Base):
 
     @property
     def word_count(self):
+        prefetched_word_count = getattr(self, "_prefetched_word_count", None)
+        if prefetched_word_count is not None:
+            return prefetched_word_count
         return db.session.scalar(
             select(func.coalesce(func.sum(Document.word_count), 0)).where(Document.dataset_id == self.id)
         )
 
     @property
     def doc_form(self) -> str | None:
+        prefetched_doc_form = getattr(self, "_prefetched_doc_form", None)
+        if prefetched_doc_form is not None:
+            return prefetched_doc_form
         if self.chunk_structure:
             return self.chunk_structure
         document = db.session.scalar(select(Document).where(Document.dataset_id == self.id).limit(1))
@@ -285,6 +306,9 @@ class Dataset(Base):
 
     @property
     def tags(self):
+        prefetched_tags = getattr(self, "_prefetched_tags", None)
+        if prefetched_tags is not None:
+            return prefetched_tags
         tags = db.session.scalars(
             select(Tag)
             .join(TagBinding, Tag.id == TagBinding.tag_id)
@@ -300,6 +324,9 @@ class Dataset(Base):
 
     @property
     def external_knowledge_info(self):
+        prefetched_external_knowledge_info = getattr(self, "_prefetched_external_knowledge_info", None)
+        if prefetched_external_knowledge_info is not None:
+            return prefetched_external_knowledge_info
         if self.provider != "external":
             return None
         external_knowledge_binding = db.session.scalar(
@@ -323,6 +350,9 @@ class Dataset(Base):
 
     @property
     def is_published(self):
+        prefetched_is_published = getattr(self, "_prefetched_is_published", None)
+        if prefetched_is_published is not None:
+            return prefetched_is_published
         if self.pipeline_id:
             pipeline = db.session.scalar(select(Pipeline).where(Pipeline.id == self.pipeline_id))
             if pipeline:
@@ -331,6 +361,9 @@ class Dataset(Base):
 
     @property
     def doc_metadata(self):
+        prefetched_doc_metadata = getattr(self, "_prefetched_doc_metadata", None)
+        if prefetched_doc_metadata is not None:
+            return prefetched_doc_metadata
         dataset_metadatas = db.session.scalars(
             select(DatasetMetadata).where(DatasetMetadata.dataset_id == self.id)
         ).all()

@@ -26,6 +26,9 @@ import { get, post } from '../base'
 import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'dataset'
+const datasetListStaleTime = 30 * 1000
+const datasetConfigStaleTime = 5 * 60 * 1000
+const datasetGcTime = 5 * 60 * 1000
 
 const DatasetListKey = [NAME_SPACE, 'list']
 
@@ -75,13 +78,16 @@ export const useInfiniteDatasets = (
     queryFn: ({ pageParam = normalizedParams.page }) => get<DataSetListResponse>(buildUrl(pageParam as number | undefined)),
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    staleTime: datasetListStaleTime,
+    gcTime: datasetGcTime,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     ...options,
   })
 }
 
-export const useDatasetList = (params: DatasetListRequest) => {
+export const useDatasetList = (params: DatasetListRequest, options?: { enabled?: boolean }) => {
   const { initialPage, tag_ids, limit, include_all, keyword } = params
   return useInfiniteQuery({
     queryKey: [...DatasetListKey, initialPage, tag_ids, limit, include_all, keyword],
@@ -97,6 +103,11 @@ export const useDatasetList = (params: DatasetListRequest) => {
     },
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
     initialPageParam: initialPage,
+    enabled: options?.enabled ?? true,
+    staleTime: datasetListStaleTime,
+    gcTime: datasetGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -111,6 +122,10 @@ export const useDatasetDetail = (datasetId: string) => {
     queryKey: [...datasetDetailQueryKeyPrefix, datasetId],
     queryFn: () => get<DataSet>(`/datasets/${datasetId}`),
     enabled: !!datasetId,
+    staleTime: datasetListStaleTime,
+    gcTime: datasetGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -118,6 +133,11 @@ export const useDatasetRelatedApps = (datasetId: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'related-apps', datasetId],
     queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`),
+    enabled: !!datasetId,
+    staleTime: datasetConfigStaleTime,
+    gcTime: datasetGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -146,6 +166,10 @@ export const useDatasetApiBaseUrl = () => {
   return useQuery<{ api_base_url: string }>({
     queryKey: [NAME_SPACE, 'api-base-info'],
     queryFn: () => get<{ api_base_url: string }>('/datasets/api-base-info'),
+    staleTime: datasetConfigStaleTime,
+    gcTime: datasetGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -168,6 +192,10 @@ export const useDatasetApiKeys = (options?: { enabled?: boolean }) => {
     queryKey: [NAME_SPACE, 'api-keys'],
     queryFn: () => get<ApiKeysListResponse>('/datasets/api-keys'),
     enabled: options?.enabled ?? true,
+    staleTime: datasetConfigStaleTime,
+    gcTime: datasetGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -185,7 +213,20 @@ export const useExternalKnowledgeApiList = (options?: { enabled?: boolean }) => 
     queryKey: [NAME_SPACE, 'external-knowledge-api'],
     queryFn: () => get<ExternalAPIListResponse>('/datasets/external-knowledge-api'),
     enabled: options?.enabled ?? true,
+    staleTime: datasetConfigStaleTime,
+    gcTime: datasetGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
+}
+
+export const useInvalidateExternalKnowledgeApiList = () => {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({
+      queryKey: [NAME_SPACE, 'external-knowledge-api'],
+    })
+  }
 }
 
 export const useDatasetTestingRecords = (
@@ -197,6 +238,10 @@ export const useDatasetTestingRecords = (
     queryFn: () => get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params }),
     enabled: !!datasetId && !!params,
     placeholderData: keepPreviousData,
+    staleTime: datasetListStaleTime,
+    gcTime: datasetGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 

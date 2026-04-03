@@ -21,8 +21,11 @@ import {
 import { consoleClient, consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { get, post } from './base'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'apps'
+const appListStaleTime = 30 * 1000
+const appListGcTime = 5 * 60 * 1000
 
 type AppListParams = {
   page?: number
@@ -100,8 +103,27 @@ export const useAppList = (params: AppListParams, options?: { enabled?: boolean 
   return useQuery<AppListResponse>({
     queryKey: appListKey(normalizedParams),
     queryFn: () => get<AppListResponse>('/apps', { params: normalizedParams }),
+    staleTime: appListStaleTime,
+    gcTime: appListGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     ...options,
   })
+}
+
+export const useAppFullList = () => {
+  return useQuery<AppListResponse>({
+    queryKey: useAppFullListKey,
+    queryFn: () => get<AppListResponse>('/apps', { params: { page: 1, limit: 100, name: '' } }),
+    staleTime: appListStaleTime,
+    gcTime: appListGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+}
+
+export const useInvalidateAppFullList = () => {
+  return useInvalid(useAppFullListKey)
 }
 
 export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: boolean }) => {
@@ -112,6 +134,10 @@ export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: 
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
     placeholderData: keepPreviousData,
+    staleTime: appListStaleTime,
+    gcTime: appListGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     ...options,
   })
 }

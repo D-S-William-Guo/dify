@@ -3,21 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import Uploader from '../uploader'
 
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
-})
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/toast/context', () => ({
+  ToastContext: {
+    Provider: ({ children }: { children: React.ReactNode }) => children,
+    Consumer: ({ children }: { children: (value: { notify: typeof mockNotify }) => React.ReactNode }) => children({ notify: mockNotify }),
+  },
+}))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
+// Mock use-context-selector
+vi.mock('use-context-selector', () => ({
+  useContext: () => ({ notify: mockNotify }),
 }))
 
 const createMockFile = (name = 'test.pipeline', _size = 1024): File => {

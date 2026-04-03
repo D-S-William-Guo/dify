@@ -2,7 +2,6 @@ import type {
   ModelProvider,
 } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,7 +9,7 @@ import { usePluginsWithLatestVersion } from '@/app/components/plugins/hooks'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useSystemFeaturesQuery } from '@/context/global-public-context'
 import { useProviderContext } from '@/context/provider-context'
-import { consoleQuery } from '@/service/client'
+import { useCheckInstalled } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
@@ -47,11 +46,10 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const allPluginIds = useMemo(() => {
     return [...new Set(providers.map(p => providerToPluginId(p.provider)).filter(Boolean))]
   }, [providers])
-  const { data: installedPlugins } = useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
-    input: { body: { plugin_ids: allPluginIds } },
+  const { data: installedPlugins } = useCheckInstalled({
+    pluginIds: allPluginIds,
     enabled: allPluginIds.length > 0,
-    staleTime: 0,
-  }))
+  })
   const enrichedPlugins = usePluginsWithLatestVersion(installedPlugins?.plugins)
   const pluginDetailMap = useMemo(() => {
     const map = new Map<string, PluginDetail>()
@@ -158,8 +156,8 @@ const ModelProviderPage = ({ searchText }: Props) => {
       </div>
       {IS_CLOUD_EDITION && <QuotaPanel providers={providers} />}
       {!filteredConfiguredProviders?.length && (
-        <div className="mb-2 radius-lg bg-workflow-process-bg p-4">
-          <div className="flex h-10 w-10 items-center justify-center radius-lg border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur-sm">
+        <div className="mb-2 rounded-[10px] bg-workflow-process-bg p-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur">
             <span className="i-ri-brain-line h-5 w-5 text-text-primary" />
           </div>
           <div className="mt-2 text-text-secondary system-sm-medium">{t('modelProvider.emptyProviderTitle', { ns: 'common' })}</div>

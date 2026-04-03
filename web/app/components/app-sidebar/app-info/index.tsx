@@ -5,7 +5,7 @@ import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
 import { useAppInfoActions } from './use-app-info-actions'
 
-type IAppInfoProps = {
+export type IAppInfoProps = {
   expand: boolean
   onlyShowDetail?: boolean
   openState?: boolean

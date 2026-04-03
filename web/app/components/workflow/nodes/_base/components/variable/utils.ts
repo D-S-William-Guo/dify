@@ -101,7 +101,7 @@ export const isSpecialVar = (prefix: string): boolean => {
   return ['sys', 'env', 'conversation', 'rag'].includes(prefix)
 }
 
-const hasValidChildren = (children: any): boolean => {
+export const hasValidChildren = (children: any): boolean => {
   return (
     children
     && ((Array.isArray(children) && children.length > 0)

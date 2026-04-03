@@ -6,9 +6,8 @@ from core.rag.datasource.vdb.oceanbase.oceanbase_vector import (
 )
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
+    setup_mock_redis,
 )
-
-pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
 
 
 @pytest.fixture

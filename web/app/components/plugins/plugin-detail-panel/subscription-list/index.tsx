@@ -14,6 +14,7 @@ type SubscriptionListProps = {
   pluginDetail?: PluginDetail
 }
 
+export { SubscriptionSelectorEntry } from './selector-entry'
 export type { SimpleSubscription } from './types'
 
 export const SubscriptionList = withErrorBoundary(({

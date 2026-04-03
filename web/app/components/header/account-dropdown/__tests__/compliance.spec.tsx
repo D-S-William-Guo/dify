@@ -2,13 +2,13 @@ import type { ModalContextState } from '@/context/modal-context'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/app/components/base/ui/dropdown-menu'
-import { toast } from '@/app/components/base/ui/toast'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { getDocDownloadUrl } from '@/service/common'
 import { downloadUrl } from '@/utils/download'
+import Toast from '../../../base/toast'
 import Compliance from '../compliance'
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
@@ -38,14 +38,10 @@ vi.mock('@/utils/download', () => ({
 describe('Compliance', () => {
   const mockSetShowPricingModal = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
-  const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
-  const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
   let queryClient: QueryClient
 
   beforeEach(() => {
     vi.clearAllMocks()
-    toastSuccessSpy.mockClear()
-    toastErrorSpy.mockClear()
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -63,6 +59,8 @@ describe('Compliance', () => {
       setShowPricingModal: mockSetShowPricingModal,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
     } as unknown as ModalContextState)
+
+    vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
   })
 
   const renderWithQueryClient = (ui: React.ReactElement) => {
@@ -160,7 +158,10 @@ describe('Compliance', () => {
       await waitFor(() => {
         expect(getDocDownloadUrl).toHaveBeenCalled()
         expect(downloadUrl).toHaveBeenCalledWith({ url: mockUrl })
-        expect(toastSuccessSpy).toHaveBeenCalledWith('common.operation.downloadSuccess')
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'success',
+          message: 'common.operation.downloadSuccess',
+        }))
       })
     })
 
@@ -184,7 +185,10 @@ describe('Compliance', () => {
       // Assert
       await waitFor(() => {
         expect(getDocDownloadUrl).toHaveBeenCalled()
-        expect(toastErrorSpy).toHaveBeenCalledWith('common.operation.downloadFailed')
+        expect(Toast.notify).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'error',
+          message: 'common.operation.downloadFailed',
+        }))
       })
       expect(consoleSpy).toHaveBeenCalled()
       consoleSpy.mockRestore()

@@ -1,5 +1,6 @@
 import type { PluginProvider } from '@/models/common'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import SerpapiPlugin from '../SerpapiPlugin'
 import { updatePluginKey, validatePluginKey } from '../utils'
@@ -19,22 +20,13 @@ const mockEventEmitter = vi.hoisted(() => {
   }
 })
 
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
+vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
+  return {
+    ...actual,
+    useToastContext: vi.fn(),
+  }
 })
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
-}))
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(),
@@ -53,6 +45,7 @@ vi.mock('@/context/event-emitter', () => ({
 
 describe('SerpapiPlugin', () => {
   const mockOnUpdate = vi.fn()
+  const mockNotify = vi.fn()
   const mockUpdatePluginKey = updatePluginKey as ReturnType<typeof vi.fn>
   const mockValidatePluginKey = validatePluginKey as ReturnType<typeof vi.fn>
 
@@ -60,8 +53,12 @@ describe('SerpapiPlugin', () => {
     vi.clearAllMocks()
     mockEventEmitter.reset()
     const mockUseAppContext = useAppContext as ReturnType<typeof vi.fn>
+    const mockUseToastContext = useToastContext as ReturnType<typeof vi.fn>
     mockUseAppContext.mockReturnValue({
       isCurrentWorkspaceManager: true,
+    })
+    mockUseToastContext.mockReturnValue({
+      notify: mockNotify,
     })
     mockValidatePluginKey.mockResolvedValue({ status: 'success' })
     mockUpdatePluginKey.mockResolvedValue({ status: 'success' })

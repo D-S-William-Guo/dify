@@ -50,24 +50,14 @@ vi.mock('../../hooks/use-credential', () => ({
   }),
 }))
 
-const toastMocks = vi.hoisted(() => ({
-  call: vi.fn(),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
+// Mock toast context
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
   }),
 }))
+
 // Mock openOAuthPopup
 vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
@@ -517,7 +507,7 @@ describe('Authorized Component', () => {
           expect(mockDeletePluginCredential).toHaveBeenCalledWith({ credential_id: 'delete-me' })
         })
 
-        expect(toastMocks.call).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
           message: 'common.api.actionSuccess',
         })
@@ -570,7 +560,7 @@ describe('Authorized Component', () => {
           expect(mockSetPluginDefaultCredential).toHaveBeenCalledWith('set-default-id')
         })
 
-        expect(toastMocks.call).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
           message: 'common.api.actionSuccess',
         })
@@ -622,7 +612,7 @@ describe('Authorized Component', () => {
           })
         })
 
-        expect(toastMocks.call).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
           message: 'common.api.actionSuccess',
         })
@@ -684,7 +674,7 @@ describe('Authorized Component', () => {
             })
           })
 
-          expect(toastMocks.call).toHaveBeenCalledWith({
+          expect(mockNotify).toHaveBeenCalledWith({
             type: 'success',
             message: 'common.api.actionSuccess',
           })
@@ -722,7 +712,7 @@ describe('Authorized Component', () => {
     it('should execute handleRename function body when saving', async () => {
       // Reset mock to ensure clean state
       mockUpdatePluginCredential.mockClear()
-      toastMocks.call.mockClear()
+      mockNotify.mockClear()
 
       const pluginPayload = createPluginPayload()
       const credentials = [
@@ -754,7 +744,7 @@ describe('Authorized Component', () => {
 
     it('should fully execute handleRename when Item triggers onRename callback', async () => {
       mockUpdatePluginCredential.mockClear()
-      toastMocks.call.mockClear()
+      mockNotify.mockClear()
       mockUpdatePluginCredential.mockResolvedValue({})
 
       const pluginPayload = createPluginPayload()
@@ -813,7 +803,7 @@ describe('Authorized Component', () => {
             })
 
             // Verify success notification
-            expect(toastMocks.call).toHaveBeenCalledWith({
+            expect(mockNotify).toHaveBeenCalledWith({
               type: 'success',
               message: 'common.api.actionSuccess',
             })
@@ -1649,7 +1639,7 @@ describe('Authorized Component', () => {
       const onUpdate = vi.fn()
 
       mockDeletePluginCredential.mockResolvedValue({})
-      toastMocks.call.mockClear()
+      mockNotify.mockClear()
 
       render(
         <Authorized
@@ -1715,7 +1705,7 @@ describe('Authorized Component', () => {
         })
 
         // Verify success notification
-        expect(toastMocks.call).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'success',
           message: 'common.api.actionSuccess',
         })

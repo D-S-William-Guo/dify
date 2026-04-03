@@ -1,20 +1,50 @@
-import type { ConfigurationMethodEnum, Credential, CustomConfigurationModelFixedFields, CustomModel, ModelModalModeEnum, ModelProvider } from '../../declarations'
-import { useCallback, useRef, useState } from 'react'
+import type {
+  ConfigurationMethodEnum,
+  Credential,
+  CustomConfigurationModelFixedFields,
+  CustomModel,
+  ModelModalModeEnum,
+  ModelProvider,
+} from '../../declarations'
+import {
+  useCallback,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
-import { useModelModalHandler, useRefreshModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useToastContext } from '@/app/components/base/toast/context'
+import {
+  useModelModalHandler,
+  useRefreshModel,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useDeleteModel } from '@/service/use-models'
 import { useAuthService } from './use-auth-service'
 
-export const useAuth = (provider: ModelProvider, configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields, extra: {
-  isModelCredential?: boolean
-  onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
-  onRemove?: (credentialId: string) => void
-  mode?: ModelModalModeEnum
-} = {}) => {
-  const { isModelCredential, onUpdate, onRemove, mode } = extra
+export const useAuth = (
+  provider: ModelProvider,
+  configurationMethod: ConfigurationMethodEnum,
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  extra: {
+    isModelCredential?: boolean
+    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
+    onRemove?: (credentialId: string) => void
+    mode?: ModelModalModeEnum
+  } = {},
+) => {
+  const {
+    isModelCredential,
+    onUpdate,
+    onRemove,
+    mode,
+  } = extra
   const { t } = useTranslation()
-  const { getDeleteCredentialService, getActiveCredentialService, getEditCredentialService, getAddCredentialService } = useAuthService(provider.provider)
+  const { notify } = useToastContext()
+  const {
+    getDeleteCredentialService,
+    getActiveCredentialService,
+    getEditCredentialService,
+    getAddCredentialService,
+  } = useAuthService(provider.provider)
   const { mutateAsync: deleteModelService } = useDeleteModel(provider.provider)
   const handleOpenModelModal = useModelModalHandler()
   const { handleRefreshModel } = useRefreshModel()
@@ -56,13 +86,16 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
         model: model?.model,
         model_type: model?.model_type,
       })
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      notify({
+        type: 'success',
+        message: t('api.actionSuccess', { ns: 'common' }),
+      })
       handleRefreshModel(provider, undefined, true)
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [getActiveCredentialService, t, handleSetDoingAction])
+  }, [getActiveCredentialService, notify, t, handleSetDoingAction])
   const handleConfirmDelete = useCallback(async () => {
     if (doingActionRef.current)
       return
@@ -88,7 +121,10 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
         }
         await deleteModelService(payload)
       }
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
+      notify({
+        type: 'success',
+        message: t('api.actionSuccess', { ns: 'common' }),
+      })
       handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
       closeConfirmDelete()
@@ -96,36 +132,41 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
     finally {
       handleSetDoingAction(false)
     }
-  }, [t, handleSetDoingAction, getDeleteCredentialService, isModelCredential, closeConfirmDelete, handleRefreshModel, provider, configurationMethod, deleteModelService])
+  }, [notify, t, handleSetDoingAction, getDeleteCredentialService, isModelCredential, closeConfirmDelete, handleRefreshModel, provider, configurationMethod, deleteModelService])
   const handleSaveCredential = useCallback(async (payload: Record<string, any>) => {
     if (doingActionRef.current)
       return
     try {
       handleSetDoingAction(true)
-      let res: {
-        result?: string
-      } = {}
+
+      let res: { result?: string } = {}
       if (payload.credential_id)
         res = await getEditCredentialService(!!isModelCredential)(payload as any)
       else
         res = await getAddCredentialService(!!isModelCredential)(payload as any)
+
       if (res.result === 'success') {
-        toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         handleRefreshModel(provider, undefined, !payload.credential_id)
       }
     }
     finally {
       handleSetDoingAction(false)
     }
-  }, [t, handleSetDoingAction, getEditCredentialService, getAddCredentialService])
+  }, [notify, t, handleSetDoingAction, getEditCredentialService, getAddCredentialService])
   const handleOpenModal = useCallback((credential?: Credential, model?: CustomModel) => {
-    handleOpenModelModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields, {
-      isModelCredential,
-      credential,
-      model,
-      onUpdate,
-      mode,
-    })
+    handleOpenModelModal(
+      provider,
+      configurationMethod,
+      currentCustomConfigurationModelFixedFields,
+      {
+        isModelCredential,
+        credential,
+        model,
+        onUpdate,
+        mode,
+      },
+    )
   }, [
     handleOpenModelModal,
     provider,
@@ -135,6 +176,7 @@ export const useAuth = (provider: ModelProvider, configurationMethod: Configurat
     onUpdate,
     mode,
   ])
+
   return {
     pendingOperationCredentialId,
     pendingOperationModel,

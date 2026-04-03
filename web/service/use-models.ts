@@ -18,11 +18,18 @@ import {
 } from './base'
 
 const NAME_SPACE = 'models'
+const modelConfigQueryStaleTime = 5 * 60 * 1000
+const modelConfigQueryGcTime = 5 * 60 * 1000
 
 export const useModelProviderModelList = (provider: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'model-list', provider],
     queryFn: () => get<{ data: ModelItem[] }>(`/workspaces/current/model-providers/${provider}/models`),
+    enabled: !!provider,
+    staleTime: modelConfigQueryStaleTime,
+    gcTime: modelConfigQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -31,6 +38,10 @@ export const useGetProviderCredential = (enabled: boolean, provider: string, cre
     enabled,
     queryKey: [NAME_SPACE, 'model-list', provider, credentialId],
     queryFn: () => get<ProviderCredential>(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
+    staleTime: modelConfigQueryStaleTime,
+    gcTime: modelConfigQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -84,8 +95,10 @@ export const useGetModelCredential = (
     enabled,
     queryKey: [NAME_SPACE, 'model-list', provider, model, modelType, credentialId, configFrom],
     queryFn: () => get<ModelCredential>(`/workspaces/current/model-providers/${provider}/models/credentials?model=${model}&model_type=${modelType}&config_from=${configFrom}${credentialId ? `&credential_id=${credentialId}` : ''}`),
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: modelConfigQueryStaleTime,
+    gcTime: modelConfigQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 

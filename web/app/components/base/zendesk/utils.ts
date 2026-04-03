@@ -1,6 +1,6 @@
 import { IS_CE_EDITION } from '@/config'
 
-type ConversationField = {
+export type ConversationField = {
   id: string
   value: any
 }

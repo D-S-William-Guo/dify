@@ -15,7 +15,7 @@ import Confirm from '@/app/components/base/confirm'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -31,7 +31,7 @@ import { GeneratorType } from '../automatic/types'
 import useGenData from '../automatic/use-gen-data'
 
 const i18nPrefix = 'generate'
-type IGetCodeGeneratorResProps = {
+export type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
   currentCode?: string
@@ -97,10 +97,13 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
 
   const isValid = () => {
     if (instruction.trim() === '') {
-      toast.error(t('errorMsg.fieldRequired', {
-        ns: 'common',
-        field: t('code.instruction', { ns: 'appDebug' }),
-      }))
+      Toast.notify({
+        type: 'error',
+        message: t('errorMsg.fieldRequired', {
+          ns: 'common',
+          field: t('code.instruction', { ns: 'appDebug' }),
+        }),
+      })
       return false
     }
     return true
@@ -146,7 +149,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         res.modified = (res as any).code
 
       if (error) {
-        toast.error(error)
+        Toast.notify({
+          type: 'error',
+          message: error,
+        })
       }
       else {
         addVersion(res)
@@ -197,7 +203,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className="min-w-[1140px] p-0!"
+      className="min-w-[1140px] !p-0"
     >
       <div className="relative flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
@@ -207,7 +213,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div className="mb-4">
             <ModelParameterModal
-              popupClassName="w-[520px]!"
+              popupClassName="!w-[520px]"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}

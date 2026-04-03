@@ -16,6 +16,7 @@ type INavProps = {
   text: string
   activeSegment: string | string[]
   link: string
+  prefetch?: boolean
   isApp: boolean
 } & INavSelectorProps
 
@@ -25,6 +26,7 @@ const Nav = ({
   text,
   activeSegment,
   link,
+  prefetch = false,
   curNav,
   navigationItems,
   createText,
@@ -45,7 +47,7 @@ const Nav = ({
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}
     >
-      <Link href={link}>
+      <Link href={link} prefetch={prefetch}>
         <div
           onClick={(e) => {
             // Don't clear state if opening in new tab/window
@@ -53,7 +55,7 @@ const Nav = ({
               return
             setAppDetail()
           }}
-          className={cn('flex h-7 cursor-pointer items-center radius-lg px-2.5', isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text', curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover')}
+          className={cn('flex h-7 cursor-pointer items-center rounded-[10px] px-2.5', isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text', curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover')}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >

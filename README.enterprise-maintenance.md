@@ -26,6 +26,8 @@
 - 企业镜像命名：已统一为 `官方版本-enterprise`
 - 重大改动、坑点与时间序列记录见：
   - [CHANGELOG.enterprise.md](/D:/CodexSpace/dify/CHANGELOG.enterprise.md)
+- 路线二性能治理原则、已完成示范与后续开发检查单见：
+  - [README.performance-route2.md](/D:/CodexSpace/dify/README.performance-route2.md)
 
 最近一次重要规则收敛：
 

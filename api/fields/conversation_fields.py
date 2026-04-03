@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeAlias
 
 from graphon.file import File
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-type JSONValue = Any
+JSONValue: TypeAlias = Any
 
 
 class ResponseModel(BaseModel):

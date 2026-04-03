@@ -1,11 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Import mocks for assertions
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 import { useInvalidateReferenceSettings, useMutationReferenceSettings, useReferenceSettings } from '@/service/use-plugins'
+import Toast from '../../../base/toast'
 import { PermissionType } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
@@ -23,12 +23,15 @@ vi.mock('@/service/use-plugins', () => ({
   useInvalidateReferenceSettings: vi.fn(),
 }))
 
-const toastSuccessSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
+vi.mock('../../../base/toast', () => ({
+  default: {
+    notify: vi.fn(),
+  },
+}))
 
 describe('useReferenceSetting Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    toastSuccessSpy.mockClear()
 
     // Default mocks
     vi.mocked(useAppContext).mockReturnValue({
@@ -223,7 +226,10 @@ describe('useReferenceSetting Hook', () => {
 
       await waitFor(() => {
         expect(mockInvalidate).toHaveBeenCalled()
-        expect(toastSuccessSpy).toHaveBeenCalledWith('common.api.actionSuccess')
+        expect(Toast.notify).toHaveBeenCalledWith({
+          type: 'success',
+          message: 'common.api.actionSuccess',
+        })
       })
     })
   })

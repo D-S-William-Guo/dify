@@ -1,23 +1,11 @@
 import type { TFunction } from 'i18next'
-import type { ReactElement } from 'react'
+import type { IToastProps } from '@/app/components/base/toast/context'
 import { fireEvent, render as RTLRender, screen, waitFor } from '@testing-library/react'
 import * as reactI18next from 'react-i18next'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { useDocLink } from '@/context/i18n'
 import { addApiBasedExtension, updateApiBasedExtension } from '@/service/common'
 import ApiBasedExtensionModal from '../modal'
-
-const { mockToast } = vi.hoisted(() => {
-  const mockToast = Object.assign(vi.fn(), {
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
-  return { mockToast }
-})
 
 vi.mock('@/context/i18n', () => ({
   useDocLink: vi.fn(),
@@ -28,16 +16,21 @@ vi.mock('@/service/common', () => ({
   updateApiBasedExtension: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: mockToast,
-}))
-
 describe('ApiBasedExtensionModal', () => {
   const mockOnCancel = vi.fn()
   const mockOnSave = vi.fn()
+  const mockNotify = vi.fn()
   const mockDocLink = vi.fn((path?: string) => `https://docs.dify.ai${path || ''}`)
 
-  const render = (ui: ReactElement) => RTLRender(ui)
+  const render = (ui: React.ReactElement) => RTLRender(
+    <ToastContext.Provider value={{
+      notify: mockNotify as unknown as (props: IToastProps) => void,
+      close: vi.fn(),
+    }}
+    >
+      {ui}
+    </ToastContext.Provider>,
+  )
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -118,7 +111,7 @@ describe('ApiBasedExtensionModal', () => {
             api_key: '[__HIDDEN__]',
           }),
         })
-        expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'success', message: 'common.actionMsg.modifiedSuccessfully' })
         expect(mockOnSave).toHaveBeenCalled()
       })
     })
@@ -157,7 +150,7 @@ describe('ApiBasedExtensionModal', () => {
       fireEvent.click(screen.getByText('common.operation.save'))
 
       // Assert
-      expect(mockToast.error).toHaveBeenCalledWith('common.apiBasedExtension.modal.apiKey.lengthError')
+      expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'common.apiBasedExtension.modal.apiKey.lengthError' })
       expect(addApiBasedExtension).not.toHaveBeenCalled()
     })
   })

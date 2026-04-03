@@ -6,6 +6,12 @@ export type DataSourceNodeProcessingResponse = {
   completed: number
 }
 
+export type DataSourceNodeError = {
+  event: 'datasource_error'
+  message: string
+  code?: string
+}
+
 export type OnlineDriveFile = {
   id: string
   name: string

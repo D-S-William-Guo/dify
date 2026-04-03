@@ -23,6 +23,7 @@ const EnterpriseMarketplaceNav = ({
   return (
     <Link
       href="/explore/marketplace"
+      prefetch={false}
       className={cn(
         className,
         'group',

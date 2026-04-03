@@ -1,10 +1,15 @@
 import type { TextGenerationCustomConfig } from '../types'
-import type { MoreLikeThisConfig, PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
+import type {
+  MoreLikeThisConfig,
+  PromptConfig,
+  SavedMessage,
+  TextToSpeechConfig,
+} from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -18,6 +23,7 @@ type UseTextGenerationAppStateOptions = {
   isInstalledApp: boolean
   isWorkflow: boolean
 }
+
 type ShareAppParams = {
   user_input_form: Parameters<typeof userInputsFormToPromptVariables>[0]
   more_like_this: MoreLikeThisConfig | null
@@ -30,13 +36,19 @@ type ShareAppParams = {
     image_file_size_limit?: number
   }
 }
-export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTextGenerationAppStateOptions) => {
+
+export const useTextGenerationAppState = ({
+  isInstalledApp,
+  isWorkflow,
+}: UseTextGenerationAppStateOptions) => {
+  const { notify } = Toast
   const { t } = useTranslation()
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const appData = useWebAppStore(s => s.appInfo)
   const appParams = useWebAppStore(s => s.appParams)
   const accessMode = useWebAppStore(s => s.webAppAccessMode)
+
   const [appId, setAppId] = useState('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [customConfig, setCustomConfig] = useState<TextGenerationCustomConfig | null>(null)
@@ -50,41 +62,48 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
+
   const fetchSavedMessages = useCallback(async (targetAppId = appId) => {
     if (!targetAppId)
       return
-    const res = await doFetchSavedMessage(appSourceType, targetAppId) as {
-      data: SavedMessage[]
-    }
+    const res = await doFetchSavedMessage(appSourceType, targetAppId) as { data: SavedMessage[] }
     setSavedMessages(res.data)
   }, [appId, appSourceType])
+
   const handleSaveMessage = useCallback(async (messageId: string) => {
     if (!appId)
       return
     await saveMessage(messageId, appSourceType, appId)
-    toast.success(t('api.saved', { ns: 'common' }))
+    notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
     await fetchSavedMessages(appId)
-  }, [appId, appSourceType, fetchSavedMessages, t])
+  }, [appId, appSourceType, fetchSavedMessages, notify, t])
+
   const handleRemoveSavedMessage = useCallback(async (messageId: string) => {
     if (!appId)
       return
     await removeMessage(messageId, appSourceType, appId)
-    toast.success(t('api.remove', { ns: 'common' }))
+    notify({ type: 'success', message: t('api.remove', { ns: 'common' }) })
     await fetchSavedMessages(appId)
-  }, [appId, appSourceType, fetchSavedMessages, t])
+  }, [appId, appSourceType, fetchSavedMessages, notify, t])
+
   useEffect(() => {
     let cancelled = false
+
     const initialize = async () => {
       if (!appData || !appParams)
         return
+
       const { app_id: nextAppId, site, custom_config } = appData
+
       setAppId(nextAppId)
       setSiteInfo(site as SiteInfo)
       setCustomConfig((custom_config || null) as TextGenerationCustomConfig | null)
       await changeLanguage(site.default_language)
+
       const { user_input_form, more_like_this, file_upload, text_to_speech } = appParams as unknown as ShareAppParams
       if (cancelled)
         return
+
       setVisionConfig({
         ...file_upload,
         transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
@@ -97,15 +116,20 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
       } as PromptConfig)
       setMoreLikeThisConfig(more_like_this)
       setTextToSpeechConfig(text_to_speech)
+
       if (!isWorkflow)
         await fetchSavedMessages(nextAppId)
     }
+
     void initialize()
+
     return () => {
       cancelled = true
     }
   }, [appData, appParams, fetchSavedMessages, isWorkflow])
+
   useDocumentTitle(siteInfo?.title || t('generation.title', { ns: 'share' }))
+
   useAppFavicon({
     enable: !isInstalledApp,
     icon_type: siteInfo?.icon_type,
@@ -113,6 +137,7 @@ export const useTextGenerationAppState = ({ isInstalledApp, isWorkflow }: UseTex
     icon_background: siteInfo?.icon_background,
     icon_url: siteInfo?.icon_url,
   })
+
   return {
     accessMode,
     appId,

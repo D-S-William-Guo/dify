@@ -10,6 +10,7 @@ import type {
   ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
+  DataSourceNotion,
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace,
@@ -24,8 +25,12 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 import { get, post } from './base'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'
+const sessionQueryStaleTime = 30 * 1000
+const configQueryStaleTime = 5 * 60 * 1000
+const sessionQueryGcTime = 5 * 60 * 1000
 
 export const commonQueryKeys = {
   fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
@@ -63,6 +68,10 @@ export const useFileUploadConfig = () => {
   return useQuery<FileUploadConfigResponse>({
     queryKey: commonQueryKeys.fileUploadConfig,
     queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -90,8 +99,10 @@ export const useUserProfile = () => {
         },
       }
     },
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: sessionQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -100,6 +111,10 @@ export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: b
     queryKey: commonQueryKeys.langGeniusVersion(currentVersion || undefined),
     queryFn: () => get<LangGeniusVersionResponse>('/version', { params: { current_version: currentVersion } }),
     enabled: !!currentVersion && (enabled ?? true),
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -107,6 +122,10 @@ export const useCurrentWorkspace = () => {
   return useQuery<ICurrentWorkspace>({
     queryKey: commonQueryKeys.currentWorkspace,
     queryFn: () => post<ICurrentWorkspace>('/workspaces/current'),
+    staleTime: sessionQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -114,6 +133,10 @@ export const useWorkspaces = () => {
   return useQuery<{ workspaces: IWorkspace[] }>({
     queryKey: commonQueryKeys.workspaces,
     queryFn: () => get<{ workspaces: IWorkspace[] }>('/workspaces'),
+    staleTime: sessionQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -176,6 +199,10 @@ export const useMembers = () => {
   return useQuery<MemberResponse>({
     queryKey: commonQueryKeys.members,
     queryFn: () => get<MemberResponse>('/workspaces/current/members', { params: {} }),
+    staleTime: sessionQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -260,10 +287,15 @@ export const useOneMoreStep = () => {
   })
 }
 
-export const useModelProviders = () => {
+export const useModelProviders = (enabled = true) => {
   return useQuery<{ data: ModelProvider[] }>({
     queryKey: commonQueryKeys.modelProviders,
     queryFn: () => get<{ data: ModelProvider[] }>('/workspaces/current/model-providers'),
+    enabled,
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -272,13 +304,34 @@ export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
     queryKey: commonQueryKeys.modelList(type),
     queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
     enabled,
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
-export const useSupportRetrievalMethods = () => {
+export const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
+  return useQuery({
+    queryKey: commonQueryKeys.defaultModel(type),
+    queryFn: () => get(`/workspaces/current/default-model?model_type=${type}`),
+    enabled,
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+}
+
+export const useSupportRetrievalMethods = (enabled = true) => {
   return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
     queryKey: commonQueryKeys.retrievalMethods,
     queryFn: () => get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting'),
+    enabled,
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -286,13 +339,44 @@ export const useAccountIntegrates = () => {
   return useQuery<{ data: AccountIntegrate[] | null }>({
     queryKey: commonQueryKeys.accountIntegrates,
     queryFn: () => get<{ data: AccountIntegrate[] | null }>('/account/integrates'),
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
+}
+
+type DataSourceIntegratesOptions = {
+  enabled?: boolean
+  initialData?: { data: DataSourceNotion[] }
+}
+
+export const useDataSourceIntegrates = (options: DataSourceIntegratesOptions = {}) => {
+  const { enabled = true, initialData } = options
+  return useQuery<{ data: DataSourceNotion[] }>({
+    queryKey: commonQueryKeys.dataSourceIntegrates,
+    queryFn: () => get<{ data: DataSourceNotion[] }>('/data-source/integrates'),
+    enabled,
+    initialData,
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+}
+
+export const useInvalidDataSourceIntegrates = () => {
+  return useInvalid(commonQueryKeys.dataSourceIntegrates)
 }
 
 export const usePluginProviders = () => {
   return useQuery<PluginProvider[] | null>({
     queryKey: commonQueryKeys.pluginProviders,
     queryFn: () => get<PluginProvider[] | null>('/workspaces/current/tool-providers'),
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -300,6 +384,18 @@ export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
     queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+}
+
+export const useNotionConnection = (enabled: boolean) => {
+  return useQuery<{ data: string }>({
+    queryKey: commonQueryKeys.notionConnection,
+    queryFn: () => get<{ data: string }>('/oauth/data-source/notion'),
+    enabled,
   })
 }
 
@@ -307,6 +403,10 @@ export const useApiBasedExtensions = () => {
   return useQuery<ApiBasedExtension[]>({
     queryKey: commonQueryKeys.apiBasedExtensions,
     queryFn: () => get<ApiBasedExtension[]>('/api-based-extension'),
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -336,5 +436,9 @@ export const useModelParameterRules = (provider?: string, model?: string, enable
     queryKey: commonQueryKeys.modelParameterRules(provider, model),
     queryFn: () => get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model }, silent: true }),
     enabled: !!provider && !!model && (enabled ?? true),
+    staleTime: configQueryStaleTime,
+    gcTime: sessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }

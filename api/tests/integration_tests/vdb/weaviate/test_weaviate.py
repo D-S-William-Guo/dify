@@ -1,9 +1,8 @@
 from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
+    setup_mock_redis,
 )
-
-pytest_plugins = ("tests.integration_tests.vdb.test_vector_store",)
 
 
 class WeaviateVectorTest(AbstractVectorTest):

@@ -26,6 +26,7 @@ import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import Config from '@/app/components/app/configuration/config'
@@ -47,7 +48,8 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import Loading from '@/app/components/base/loading'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
@@ -91,6 +93,7 @@ type PublishConfig = {
 
 const Configuration: FC = () => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const { isLoadingCurrentWorkspace, currentWorkspace } = useAppContext()
 
   const { appDetail, showAppConfigureFeaturesModal, setAppSidebarExpand, setShowAppConfigureFeaturesModal } = useAppStore(useShallow(state => ({
@@ -489,11 +492,11 @@ const Configuration: FC = () => {
         isAdvancedMode,
       )
       if (Object.keys(removedDetails).length)
-        toast.warning(`${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}`)
+        Toast.notify({ type: 'warning', message: `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
       setCompletionParams(filtered)
     }
     catch {
-      toast.error(t('error', { ns: 'common' }))
+      Toast.notify({ type: 'error', message: t('error', { ns: 'common' }) })
       setCompletionParams({})
     }
   }
@@ -764,23 +767,23 @@ const Configuration: FC = () => {
     const promptVariables = modelConfig.configs.prompt_variables
 
     if (promptEmpty) {
-      toast.error(t('otherError.promptNoBeEmpty', { ns: 'appDebug' }))
+      notify({ type: 'error', message: t('otherError.promptNoBeEmpty', { ns: 'appDebug' }) })
       return
     }
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          toast.error(t('otherError.historyNoBeEmpty', { ns: 'appDebug' }))
+          notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
           return
         }
         if (!hasSetBlockStatus.query) {
-          toast.error(t('otherError.queryNoBeEmpty', { ns: 'appDebug' }))
+          notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
           return
         }
       }
     }
     if (contextVarEmpty) {
-      toast.error(t('feature.dataSet.queryVariable.contextVarNotEmpty', { ns: 'appDebug' }))
+      notify({ type: 'error', message: t('feature.dataSet.queryVariable.contextVarNotEmpty', { ns: 'appDebug' }) })
       return
     }
     const postDatasets = dataSets.map(({ id }) => ({
@@ -846,7 +849,7 @@ const Configuration: FC = () => {
       modelConfig: newModelConfig,
       completionParams,
     })
-    toast.success(t('api.success', { ns: 'common' }))
+    notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
 
     setCanReturnToSimpleMode(false)
     return true
@@ -1005,7 +1008,7 @@ const Configuration: FC = () => {
                       </>
                     )}
                     {isMobile && (
-                      <Button className="mr-2 h-8! text-[13px]! font-medium" onClick={showDebugPanel}>
+                      <Button className="mr-2 !h-8 !text-[13px] font-medium" onClick={showDebugPanel}>
                         <span className="mr-1">{t('operation.debugConfig', { ns: 'appDebug' })}</span>
                         <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
                       </Button>

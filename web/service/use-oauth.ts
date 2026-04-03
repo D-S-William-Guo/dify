@@ -3,13 +3,13 @@ import { post } from './base'
 
 const NAME_SPACE = 'oauth-provider'
 
-type OAuthAppInfo = {
+export type OAuthAppInfo = {
   app_icon: string
   app_label: Record<string, string>
   scope: string
 }
 
-type OAuthAuthorizeResponse = {
+export type OAuthAuthorizeResponse = {
   code: string
 }
 

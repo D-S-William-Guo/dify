@@ -4,7 +4,7 @@ import { useCallback, useRef } from 'react'
 import { useFileUpload } from '@/app/components/datasets/create/file-uploader/hooks/use-file-upload'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../../store'
 
-type UseLocalFileUploadOptions = {
+export type UseLocalFileUploadOptions = {
   allowedExtensions: string[]
   supportBatchUpload?: boolean
 }

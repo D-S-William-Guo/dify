@@ -6,32 +6,15 @@ import { act } from 'react'
 import { useStore as useTagStore } from '../store'
 import TagItemEditor from '../tag-item-editor'
 
-const tagMocks = vi.hoisted(() => {
-  const record = vi.fn()
-  const api = vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options }))
-  return {
-    updateTag: vi.fn(),
-    deleteTag: vi.fn(),
-    record,
-    api: Object.assign(api, {
-      success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-      error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-      warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-      info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
-      dismiss: vi.fn(),
-      update: vi.fn(),
-      promise: vi.fn(),
-    }),
-  }
-})
-
-vi.mock('@/service/tag', () => ({
-  updateTag: tagMocks.updateTag,
-  deleteTag: tagMocks.deleteTag,
+const { updateTag, deleteTag, mockNotify } = vi.hoisted(() => ({
+  updateTag: vi.fn(),
+  deleteTag: vi.fn(),
+  mockNotify: vi.fn(),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: tagMocks.api,
+vi.mock('@/service/tag', () => ({
+  updateTag,
+  deleteTag,
 }))
 
 vi.mock('ahooks', async (importOriginal) => {
@@ -47,7 +30,7 @@ vi.mock('ahooks', async (importOriginal) => {
 vi.mock('use-context-selector', () => ({
   createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
   useContext: () => ({
-    notify: tagMocks.api,
+    notify: mockNotify,
   }),
 }))
 
@@ -68,8 +51,8 @@ const anotherTag: Tag = {
 describe('TagItemEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(tagMocks.updateTag).mockResolvedValue(undefined)
-    vi.mocked(tagMocks.deleteTag).mockResolvedValue(undefined)
+    vi.mocked(updateTag).mockResolvedValue(undefined)
+    vi.mocked(deleteTag).mockResolvedValue(undefined)
     act(() => {
       useTagStore.setState({
         tagList: [baseTag, anotherTag],
@@ -114,9 +97,9 @@ describe('TagItemEditor', () => {
       await user.keyboard('{Enter}')
 
       await waitFor(() => {
-        expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Frontend V2')
+        expect(updateTag).toHaveBeenCalledWith('tag-1', 'Frontend V2')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
+      expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       })
@@ -131,7 +114,7 @@ describe('TagItemEditor', () => {
       await user.click(screen.getByTestId('tag-item-editor-edit-button') as HTMLElement)
       await user.keyboard('{Enter}')
 
-      expect(tagMocks.updateTag).not.toHaveBeenCalled()
+      expect(updateTag).not.toHaveBeenCalled()
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })
 
@@ -147,19 +130,19 @@ describe('TagItemEditor', () => {
       await user.click(document.body)
 
       await waitFor(() => {
-        expect(tagMocks.record).toHaveBeenCalledWith({
+        expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
           message: 'tag name is empty',
         })
       })
-      expect(tagMocks.updateTag).not.toHaveBeenCalled()
+      expect(updateTag).not.toHaveBeenCalled()
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
       expect(screen.getByText('Frontend')).toBeInTheDocument()
     })
 
     it('should recover and notify error when update request fails', async () => {
       const user = userEvent.setup()
-      vi.mocked(tagMocks.updateTag).mockRejectedValueOnce(new Error('update failed'))
+      vi.mocked(updateTag).mockRejectedValueOnce(new Error('update failed'))
       render(<TagItemEditor tag={baseTag} />)
 
       const editButton = screen.getByTestId('tag-item-editor-edit-button')
@@ -171,9 +154,9 @@ describe('TagItemEditor', () => {
       await user.keyboard('{Enter}')
 
       await waitFor(() => {
-        expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Broken Name')
+        expect(updateTag).toHaveBeenCalledWith('tag-1', 'Broken Name')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
+      expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
         message: 'common.actionMsg.modifiedUnsuccessfully',
       })
@@ -196,9 +179,9 @@ describe('TagItemEditor', () => {
       await user.click(removeButton as HTMLElement)
 
       await waitFor(() => {
-        expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
+        expect(deleteTag).toHaveBeenCalledWith('tag-1')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
+      expect(mockNotify).toHaveBeenCalledWith({
         type: 'success',
         message: 'common.actionMsg.modifiedSuccessfully',
       })
@@ -216,7 +199,7 @@ describe('TagItemEditor', () => {
       await user.click(screen.getByText('common.operation.confirm'))
 
       await waitFor(() => {
-        expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
+        expect(deleteTag).toHaveBeenCalledWith('tag-1')
       })
       await waitFor(() => {
         expect(screen.queryByText('common.tag.delete "Frontend"')).not.toBeInTheDocument()
@@ -233,7 +216,7 @@ describe('TagItemEditor', () => {
       expect(screen.getByText('common.tag.delete "Frontend"')).toBeInTheDocument()
       await user.click(screen.getByText('common.operation.cancel'))
 
-      expect(tagMocks.deleteTag).not.toHaveBeenCalled()
+      expect(deleteTag).not.toHaveBeenCalled()
       await waitFor(() => {
         expect(screen.queryByText('common.tag.delete "Frontend"')).not.toBeInTheDocument()
       })
@@ -241,7 +224,7 @@ describe('TagItemEditor', () => {
 
     it('should notify error and keep tag when delete request fails', async () => {
       const user = userEvent.setup()
-      vi.mocked(tagMocks.deleteTag).mockRejectedValueOnce(new Error('delete failed'))
+      vi.mocked(deleteTag).mockRejectedValueOnce(new Error('delete failed'))
       const removableTag: Tag = { ...baseTag, binding_count: 0 }
       act(() => {
         useTagStore.setState({ tagList: [removableTag, anotherTag] })
@@ -252,9 +235,9 @@ describe('TagItemEditor', () => {
       await user.click(removeButton as HTMLElement)
 
       await waitFor(() => {
-        expect(tagMocks.deleteTag).toHaveBeenCalledWith('tag-1')
+        expect(deleteTag).toHaveBeenCalledWith('tag-1')
       })
-      expect(tagMocks.record).toHaveBeenCalledWith({
+      expect(mockNotify).toHaveBeenCalledWith({
         type: 'error',
         message: 'common.actionMsg.modifiedUnsuccessfully',
       })
@@ -264,7 +247,7 @@ describe('TagItemEditor', () => {
     it('should prevent duplicate delete requests while pending', async () => {
       const user = userEvent.setup()
       let resolveDelete!: () => void
-      vi.mocked(tagMocks.deleteTag).mockImplementation(() => new Promise((resolve) => {
+      vi.mocked(deleteTag).mockImplementation(() => new Promise((resolve) => {
         resolveDelete = () => resolve(undefined)
       }))
 
@@ -278,7 +261,7 @@ describe('TagItemEditor', () => {
       await user.click(removeButton as HTMLElement)
       await user.click(removeButton as HTMLElement)
 
-      expect(tagMocks.deleteTag).toHaveBeenCalledTimes(1)
+      expect(deleteTag).toHaveBeenCalledTimes(1)
 
       await act(async () => {
         resolveDelete()

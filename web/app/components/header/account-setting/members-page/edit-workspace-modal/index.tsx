@@ -1,10 +1,11 @@
 'use client'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@/app/components/base/ui/dialog'
-import { toast } from '@/app/components/base/ui/toast'
 import { useAppContext } from '@/context/app-context'
 import { updateWorkspaceInfo } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -12,8 +13,12 @@ import { cn } from '@/utils/classnames'
 type IEditWorkspaceModalProps = {
   onCancel: () => void
 }
-const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
+
+const EditWorkspaceModal = ({
+  onCancel,
+}: IEditWorkspaceModalProps) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
   const [name, setName] = useState<string>(currentWorkspace.name)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -26,14 +31,17 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
   const nameErrorMessage = useMemo(() => {
     if (!hasError)
       return ''
+
     return t('errorMsg.fieldRequired', {
       ns: 'common',
       field: t('account.workspaceName', { ns: 'common' }),
     })
   }, [hasError, t])
+
   const changeWorkspaceInfo = async () => {
     if (isSaveDisabled)
       return
+
     setIsSubmitting(true)
     try {
       await updateWorkspaceInfo({
@@ -42,16 +50,17 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           name: normalizedName,
         },
       })
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       location.assign(`${location.origin}`)
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
     finally {
       setIsSubmitting(false)
     }
   }
+
   return (
     <Dialog
       open
@@ -60,7 +69,10 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           onCancel()
       }}
     >
-      <DialogContent backdropProps={{ forceRender: true }} className="overflow-visible">
+      <DialogContent
+        backdropProps={{ forceRender: true }}
+        className="overflow-visible"
+      >
         <DialogCloseButton data-testid="edit-workspace-close" />
 
         <form
@@ -90,11 +102,18 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
               }}
               aria-invalid={hasError}
               aria-describedby={hasError ? errorId : undefined}
-              className={cn(hasError && 'border-components-input-border-destructive bg-components-input-bg-destructive hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive focus:border-components-input-border-destructive focus:bg-components-input-bg-destructive')}
+              className={cn(
+                hasError && 'border-components-input-border-destructive bg-components-input-bg-destructive hover:border-components-input-border-destructive hover:bg-components-input-bg-destructive focus:border-components-input-border-destructive focus:bg-components-input-bg-destructive',
+              )}
             />
             <div className="min-h-6">
               {hasError && (
-                <p id={errorId} data-testid="edit-workspace-error" className="text-text-destructive system-xs-regular" role="alert">
+                <p
+                  id={errorId}
+                  data-testid="edit-workspace-error"
+                  className="text-text-destructive system-xs-regular"
+                  role="alert"
+                >
                   {nameErrorMessage}
                 </p>
               )}
@@ -102,11 +121,26 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
           </div>
 
           <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
-            <Button size="large" type="button" data-testid="edit-workspace-cancel" onClick={onCancel}>
+            <Button
+              size="large"
+              type="button"
+              data-testid="edit-workspace-cancel"
+              onClick={onCancel}
+            >
               {t('operation.cancel', { ns: 'common' })}
             </Button>
-            <Button size="large" type="submit" variant="primary" data-testid="edit-workspace-save" disabled={isSaveDisabled} loading={isSubmitting}>
-              {t(isSubmitting ? 'operation.saving' : 'operation.save', { ns: 'common' })}
+            <Button
+              size="large"
+              type="submit"
+              variant="primary"
+              data-testid="edit-workspace-save"
+              disabled={isSaveDisabled}
+              loading={isSubmitting}
+            >
+              {t(
+                isSubmitting ? 'operation.saving' : 'operation.save',
+                { ns: 'common' },
+              )}
             </Button>
           </div>
         </form>
@@ -114,4 +148,5 @@ const EditWorkspaceModal = ({ onCancel }: IEditWorkspaceModalProps) => {
     </Dialog>
   )
 }
+
 export default EditWorkspaceModal

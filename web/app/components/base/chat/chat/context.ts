@@ -26,3 +26,5 @@ export const ChatContext = createContext<ChatContextValue>({
 })
 
 export const useChatContext = () => useContext(ChatContext)
+
+export default ChatContext

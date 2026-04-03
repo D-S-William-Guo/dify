@@ -342,7 +342,7 @@ describe('http path', () => {
       expect(screen.getByDisplayValue('https://api.example.com')).toHaveAttribute('placeholder', '')
     })
 
-    it('should update focus styling for editable inputs and show the remove action again on blur-sm', () => {
+    it('should update focus styling for editable inputs and show the remove action again on blur', () => {
       const onChange = vi.fn()
       const onRemove = vi.fn()
       const { container, rerender } = render(

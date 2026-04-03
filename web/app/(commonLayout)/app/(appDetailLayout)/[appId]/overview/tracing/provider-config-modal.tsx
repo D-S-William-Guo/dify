@@ -14,7 +14,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import { docURL } from './config'
 import Field from './field'
@@ -155,7 +155,10 @@ const ProviderConfigModal: FC<Props> = ({
       appId,
       provider: type,
     })
-    toast(t('api.remove', { ns: 'common' }), { type: 'success' })
+    Toast.notify({
+      type: 'success',
+      message: t('api.remove', { ns: 'common' }),
+    })
     onRemoved()
     hideRemoveConfirm()
   }, [hideRemoveConfirm, appId, type, t, onRemoved])
@@ -261,7 +264,10 @@ const ProviderConfigModal: FC<Props> = ({
       return
     const errorMessage = checkValid()
     if (errorMessage) {
-      toast(errorMessage, { type: 'error' })
+      Toast.notify({
+        type: 'error',
+        message: errorMessage,
+      })
       return
     }
     const action = isEdit ? updateTracingConfig : addTracingConfig
@@ -273,7 +279,10 @@ const ProviderConfigModal: FC<Props> = ({
           tracing_config: config,
         },
       })
-      toast(t('api.success', { ns: 'common' }), { type: 'success' })
+      Toast.notify({
+        type: 'success',
+        message: t('api.success', { ns: 'common' }),
+      })
       onSaved(config)
       if (isAdd)
         onChosen(type)
@@ -288,7 +297,7 @@ const ProviderConfigModal: FC<Props> = ({
       {!isShowRemoveConfirm
         ? (
             <PortalToFollowElem open>
-              <PortalToFollowElemContent className="z-60 h-full w-full">
+              <PortalToFollowElemContent className="z-[60] h-full w-full">
                 <div className="fixed inset-0 flex items-center justify-center bg-background-overlay">
                   <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
                     <div className="px-8 pt-8">
@@ -304,7 +313,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label="API Key"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as ArizeConfig).api_key}
                               onChange={handleConfigChange('api_key')}
@@ -312,7 +321,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Space ID"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as ArizeConfig).space_id}
                               onChange={handleConfigChange('space_id')}
@@ -320,7 +329,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.project`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as ArizeConfig).project}
                               onChange={handleConfigChange('project')}
@@ -328,7 +337,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Endpoint"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as ArizeConfig).endpoint}
                               onChange={handleConfigChange('endpoint')}
                               placeholder="https://otlp.arize.com"
@@ -339,7 +348,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label="API Key"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as PhoenixConfig).api_key}
                               onChange={handleConfigChange('api_key')}
@@ -347,7 +356,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.project`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as PhoenixConfig).project}
                               onChange={handleConfigChange('project')}
@@ -355,7 +364,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Endpoint"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as PhoenixConfig).endpoint}
                               onChange={handleConfigChange('endpoint')}
                               placeholder="https://app.phoenix.arize.com"
@@ -366,7 +375,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label="License Key"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as AliyunConfig).license_key}
                               onChange={handleConfigChange('license_key')}
@@ -374,14 +383,14 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Endpoint"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as AliyunConfig).endpoint}
                               onChange={handleConfigChange('endpoint')}
                               placeholder="https://tracing.arms.aliyuncs.com"
                             />
                             <Field
                               label="App Name"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as AliyunConfig).app_name}
                               onChange={handleConfigChange('app_name')}
                             />
@@ -391,7 +400,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label="Token"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as TencentConfig).token}
                               onChange={handleConfigChange('token')}
@@ -399,7 +408,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Endpoint"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as TencentConfig).endpoint}
                               onChange={handleConfigChange('endpoint')}
@@ -407,7 +416,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Service Name"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as TencentConfig).service_name}
                               onChange={handleConfigChange('service_name')}
@@ -419,7 +428,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label="API Key"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as WeaveConfig).api_key}
                               onChange={handleConfigChange('api_key')}
@@ -427,7 +436,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.project`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as WeaveConfig).project}
                               onChange={handleConfigChange('project')}
@@ -435,21 +444,21 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Entity"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as WeaveConfig).entity}
                               onChange={handleConfigChange('entity')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: 'Entity' })!}
                             />
                             <Field
                               label="Endpoint"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as WeaveConfig).endpoint}
                               onChange={handleConfigChange('endpoint')}
                               placeholder="https://trace.wandb.ai/"
                             />
                             <Field
                               label="Host"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as WeaveConfig).host}
                               onChange={handleConfigChange('host')}
                               placeholder="https://api.wandb.ai"
@@ -460,7 +469,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label="API Key"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as LangSmithConfig).api_key}
                               onChange={handleConfigChange('api_key')}
@@ -468,7 +477,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.project`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as LangSmithConfig).project}
                               onChange={handleConfigChange('project')}
@@ -476,7 +485,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Endpoint"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as LangSmithConfig).endpoint}
                               onChange={handleConfigChange('endpoint')}
                               placeholder="https://api.smith.langchain.com"
@@ -487,7 +496,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label={t(`${I18N_PREFIX}.secretKey`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as LangFuseConfig).secret_key}
                               isRequired
                               onChange={handleConfigChange('secret_key')}
@@ -495,7 +504,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.publicKey`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as LangFuseConfig).public_key}
                               onChange={handleConfigChange('public_key')}
@@ -503,7 +512,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label="Host"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as LangFuseConfig).host}
                               onChange={handleConfigChange('host')}
@@ -515,28 +524,28 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label="API Key"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as OpikConfig).api_key}
                               onChange={handleConfigChange('api_key')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: 'API Key' })!}
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.project`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as OpikConfig).project}
                               onChange={handleConfigChange('project')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.project`, { ns: 'app' }) })!}
                             />
                             <Field
                               label="Workspace"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as OpikConfig).workspace}
                               onChange={handleConfigChange('workspace')}
                               placeholder="default"
                             />
                             <Field
                               label="Url"
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as OpikConfig).url}
                               onChange={handleConfigChange('url')}
                               placeholder="https://www.comet.com/opik/api/"
@@ -547,7 +556,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label={t(`${I18N_PREFIX}.trackingUri`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as MLflowConfig).tracking_uri}
                               isRequired
                               onChange={handleConfigChange('tracking_uri')}
@@ -555,7 +564,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.experimentId`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               isRequired
                               value={(config as MLflowConfig).experiment_id}
                               onChange={handleConfigChange('experiment_id')}
@@ -563,14 +572,14 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.username`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as MLflowConfig).username}
                               onChange={handleConfigChange('username')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.username`, { ns: 'app' }) })!}
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.password`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as MLflowConfig).password}
                               onChange={handleConfigChange('password')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.password`, { ns: 'app' }) })!}
@@ -581,7 +590,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <>
                             <Field
                               label={t(`${I18N_PREFIX}.experimentId`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as DatabricksConfig).experiment_id}
                               onChange={handleConfigChange('experiment_id')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.experimentId`, { ns: 'app' }) })!}
@@ -589,7 +598,7 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.databricksHost`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as DatabricksConfig).host}
                               onChange={handleConfigChange('host')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.databricksHost`, { ns: 'app' }) })!}
@@ -597,21 +606,21 @@ const ProviderConfigModal: FC<Props> = ({
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.clientId`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as DatabricksConfig).client_id}
                               onChange={handleConfigChange('client_id')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.clientId`, { ns: 'app' }) })!}
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.clientSecret`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as DatabricksConfig).client_secret}
                               onChange={handleConfigChange('client_secret')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.clientSecret`, { ns: 'app' }) })!}
                             />
                             <Field
                               label={t(`${I18N_PREFIX}.personalAccessToken`, { ns: 'app' })!}
-                              labelClassName="text-sm!"
+                              labelClassName="!text-sm"
                               value={(config as DatabricksConfig).personal_access_token}
                               onChange={handleConfigChange('personal_access_token')}
                               placeholder={t(`${I18N_PREFIX}.placeholder`, { ns: 'app', key: t(`${I18N_PREFIX}.personalAccessToken`, { ns: 'app' }) })!}

@@ -1,6 +1,7 @@
 import type { Viewport } from 'reactflow'
 import type { DSLImportMode, DSLImportStatus } from './app'
-import type { ChunkingMode, DocumentIndexingStatus, FileIndexingEstimateResponse, IconInfo } from './datasets'
+import type { ChunkingMode, DatasetPermission, DocumentIndexingStatus, FileIndexingEstimateResponse, IconInfo } from './datasets'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { Edge, EnvironmentVariable, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
@@ -50,6 +51,14 @@ export type PipelineTemplateByIdResponse = {
     viewport: Viewport
   }
   created_by: string
+}
+
+export type CreateFormData = {
+  name: string
+  appIcon: AppIconSelection
+  description: string
+  permission: DatasetPermission
+  selectedMemberIDs: string[]
 }
 
 export type UpdateTemplateInfoRequest = {

@@ -1,3 +1,5 @@
+import type { Plugin } from '../types'
+
 export type SearchParamsFromCollection = {
   query?: string
   sort_by?: string
@@ -13,6 +15,16 @@ export type MarketplaceCollection = {
   updated_at: string
   searchable?: boolean
   search_params?: SearchParamsFromCollection
+}
+
+export type MarketplaceCollectionsResponse = {
+  collections: MarketplaceCollection[]
+  total: number
+}
+
+export type MarketplaceCollectionPluginsResponse = {
+  plugins: Plugin[]
+  total: number
 }
 
 export type PluginsSearchParams = {
@@ -37,4 +49,11 @@ export type CollectionsAndPluginsSearchParams = {
   condition?: string
   exclude?: string[]
   type?: 'plugin' | 'bundle'
+}
+
+export type SearchParams = {
+  language?: string
+  q?: string
+  tags?: string
+  category?: string
 }

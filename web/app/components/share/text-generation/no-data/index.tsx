@@ -5,7 +5,7 @@ import {
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type INoDataProps = {}
+export type INoDataProps = {}
 const NoData: FC<INoDataProps> = () => {
   const { t } = useTranslation()
   return (

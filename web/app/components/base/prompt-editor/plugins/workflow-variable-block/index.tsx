@@ -1,4 +1,5 @@
-import type { WorkflowVariableBlockType } from '../../types'
+import type { GetVarType, WorkflowVariableBlockType } from '../../types'
+import type { Node } from '@/app/components/workflow/types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
 import {
@@ -18,6 +19,13 @@ import {
 export const INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND')
 export const DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND = createCommand('DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND')
 export const UPDATE_WORKFLOW_NODES_MAP = createCommand('UPDATE_WORKFLOW_NODES_MAP')
+
+export type WorkflowVariableBlockProps = {
+  getWorkflowNode: (nodeId: string) => Node
+  onInsert?: () => void
+  onDelete?: () => void
+  getVarType: GetVarType
+}
 const WorkflowVariableBlock = memo(({
   workflowNodesMap,
   onInsert,

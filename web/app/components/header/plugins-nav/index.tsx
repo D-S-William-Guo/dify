@@ -23,11 +23,12 @@ const PluginsNav = ({
     isInstalling,
     isInstallingWithError,
     isFailed,
-  } = usePluginTaskStatus()
+  } = usePluginTaskStatus(activated)
 
   return (
     <Link
       href="/plugins"
+      prefetch={false}
       className={cn(className, 'group', 'plugins-nav-button',
       // used for use-fold-anim-into.ts
       )}
@@ -39,7 +40,7 @@ const PluginsNav = ({
           (isFailed || isInstallingWithError) && !activated && (
             <Indicator
               color="red"
-              className="absolute -left-px -top-px"
+              className="absolute left-[-1px] top-[-1px]"
             />
           )
         }

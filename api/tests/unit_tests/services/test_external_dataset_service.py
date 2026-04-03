@@ -805,12 +805,11 @@ class TestExternalDatasetServiceGetAPI:
         mock_query.first.return_value = expected_api
 
         # Act
-        tenant_id = "tenant-123"
-        result = ExternalDatasetService.get_external_knowledge_api(api_id, tenant_id)
+        result = ExternalDatasetService.get_external_knowledge_api(api_id)
 
         # Assert
         assert result.id == api_id
-        mock_query.filter_by.assert_called_once_with(id=api_id, tenant_id=tenant_id)
+        mock_query.filter_by.assert_called_once_with(id=api_id)
 
     @patch("services.external_knowledge_service.db")
     def test_get_external_knowledge_api_not_found(self, mock_db, factory):
@@ -823,7 +822,7 @@ class TestExternalDatasetServiceGetAPI:
 
         # Act & Assert
         with pytest.raises(ValueError, match="api template not found"):
-            ExternalDatasetService.get_external_knowledge_api("nonexistent-id", "tenant-123")
+            ExternalDatasetService.get_external_knowledge_api("nonexistent-id")
 
 
 class TestExternalDatasetServiceUpdateAPI:

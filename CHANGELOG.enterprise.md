@@ -11,7 +11,79 @@
 阅读方式：
 
 - 想了解“当前仓库应该怎么维护、怎么同步、怎么打包”，先看 [README.enterprise-maintenance.md](/D:/CodexSpace/dify/README.enterprise-maintenance.md)
+- 想了解“当前性能治理为什么选路线二、以后如何沿用”，看 [README.performance-route2.md](/D:/CodexSpace/dify/README.performance-route2.md)
 - 想了解“这段时间做过哪些重大改动、踩过哪些坑”，看本文件
+
+---
+
+## 2026-04-03 路线二性能治理第一阶段收敛
+
+### 背景
+
+在企业功能和通用功能持续叠加之后，性能问题已经不再只是单页热点，而是开始呈现出系统性模式：
+
+- 后端列表接口容易被隐式查库属性放大成 `N+1`
+- 前端高频 query 默认零缓存，容易在切页、切 tab、开弹窗时反复补请求
+- 常驻 header、context、导航和弹层容易提前带起次级页面的重查询
+
+分析阶段曾考虑三条路线：
+
+- 路线一：热点驱动，快速救火
+- 路线二：建立统一性能规范，中等投入，逐步治理
+- 路线三：结构性重构，全面重做查询和序列化边界
+
+最终选择路线二，因为它能保留当前项目的开发效率与架构主体，同时把高频路径逐步拉回可控范围，对企业长期分支和后续合并官方代码更友好。
+
+### 改动内容
+
+- 后端：
+  - `Platform Admin` 工作区列表去掉 `2N+1`
+  - `Enterprise Marketplace` 列表去掉多重 `N+1`
+  - `apps list`、`installed-apps`、`datasets` 列表链路增加批量预取
+- 前端：
+  - 企业空间管理和智慧广场改为精准 invalidation
+  - 平台管理员页、设置页、模型供应商页按 section / tab 挂载
+  - 插件任务、插件偏好、模型供应商、知识库等高频 query 做缓存分层
+  - 插件任务轮询只在 `/plugins` 页面活跃
+  - 主导航中的重页面默认关闭 Next 路由预取
+  - 顶部知识库导航只在知识库路由激活时拉列表
+  - 去除“为了拿 refetch 而先挂 query”的隐性请求模式
+
+### 影响模块
+
+- 企业后台 service 与企业设置页
+- `web/service/use-common.ts`
+- `web/service/use-plugins.ts`
+- `web/service/knowledge/use-dataset.ts`
+- `web/context/provider-context-provider.tsx`
+- `web/context/modal-context-provider.tsx`
+- `web/app/components/header/*`
+
+### 踩坑记录
+
+- 知识库第二批改造时，曾因列表预取遗漏 `Tag` / `TagBinding` 导入导致创建后列表 `500`
+- 模型 provider 保存报错中，存在“真实外部模型端点变化”和“本地性能回归”两类现象混在一起，需要靠日志区分
+- 仅凭页面体感无法可靠定位根因，必须结合 Docker 容器日志比对请求收敛情况
+- 有些问题不是页面主体造成，而是常驻 hook 或常驻组件间接触发
+
+### 当前结论
+
+- 路线二已被证明适合当前仓库：收益稳定、风险可控、验证成本可接受
+- 当前前端最值得长期保留的做法是：
+  - 缓存分层
+  - 精准 invalidation
+  - `enabled` 按需启用
+  - 重页面导航默认不预取
+  - 避免为了拿 `refetch` 而订阅 query
+- 当前后端最值得长期保留的做法是：
+  - 列表接口在 service 层显式批量预取
+  - 避免列表序列化过程中走隐式查库属性
+
+### 后续注意
+
+- 后续新增功能优先沿用 [README.performance-route2.md](/D:/CodexSpace/dify/README.performance-route2.md) 中的规则，而不是继续按页面零散修补
+- 以后合并官方代码时，重点复查高频冲突区，而不是机械保留全部补丁
+- 这轮治理的核心价值不仅是“当前更快”，更是给企业长期分支建立了可重复应用的性能边界
 
 ---
 

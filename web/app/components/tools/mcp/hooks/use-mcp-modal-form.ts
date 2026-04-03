@@ -5,15 +5,17 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { getDomain } from 'tldts'
 import { v4 as uuid } from 'uuid'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import { uploadRemoteFileInfo } from '@/service/common'
 
 const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
+
 const extractFileId = (url: string) => {
   const match = /files\/(.+?)\/file-preview/.exec(url)
   return match ? match[1] : null
 }
+
 const getIcon = (data?: ToolWithProvider): AppIconSelection => {
   if (!data)
     return DEFAULT_ICON as AppIconSelection
@@ -25,9 +27,11 @@ const getIcon = (data?: ToolWithProvider): AppIconSelection => {
     type: 'emoji',
   } as unknown as AppIconSelection
 }
+
 const getInitialHeaders = (data?: ToolWithProvider): HeaderItem[] => {
   return Object.entries(data?.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value }))
 }
+
 export const isValidUrl = (string: string) => {
   try {
     const url = new URL(string)
@@ -37,10 +41,12 @@ export const isValidUrl = (string: string) => {
     return false
   }
 }
+
 export const isValidServerID = (str: string) => {
   return /^[a-z0-9_-]{1,24}$/.test(str)
 }
-type MCPModalFormState = {
+
+export type MCPModalFormState = {
   url: string
   name: string
   appIcon: AppIconSelection
@@ -55,7 +61,8 @@ type MCPModalFormState = {
   clientID: string
   credentials: string
 }
-type MCPModalFormActions = {
+
+export type MCPModalFormActions = {
   setUrl: (url: string) => void
   setName: (name: string) => void
   setAppIcon: (icon: AppIconSelection) => void
@@ -71,6 +78,7 @@ type MCPModalFormActions = {
   handleUrlBlur: (url: string) => Promise<void>
   resetIcon: () => void
 }
+
 /**
  * Custom hook for MCP Modal form state management.
  *
@@ -82,8 +90,10 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const isCreate = !data
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
+
   // Form key for resetting state - changes when data changes
   const formKey = useMemo(() => data?.id ?? 'create', [data?.id])
+
   // Form state - initialized from data
   const [url, setUrl] = useState(() => data?.server_url || '')
   const [name, setName] = useState(() => data?.name || '')
@@ -95,11 +105,13 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
   const [headers, setHeaders] = useState<HeaderItem[]>(() => getInitialHeaders(data))
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
   const appIconRef = useRef<HTMLDivElement>(null)
+
   // Auth state
   const [authMethod, setAuthMethod] = useState(MCPAuthMethod.authentication)
   const [isDynamicRegistration, setIsDynamicRegistration] = useState(() => isCreate ? true : (data?.is_dynamic_registration ?? true))
   const [clientID, setClientID] = useState(() => data?.authentication?.client_id || '')
   const [credentials, setCredentials] = useState(() => data?.authentication?.client_secret || '')
+
   const handleUrlBlur = useCallback(async (urlValue: string) => {
     if (data)
       return
@@ -128,26 +140,31 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
         errorMessage = e.message
       }
       console.error('Failed to fetch remote icon:', e)
-      toast.warning(errorMessage)
+      Toast.notify({ type: 'warning', message: errorMessage })
     }
     finally {
       setIsFetchingIcon(false)
     }
   }, [data])
+
   const resetIcon = useCallback(() => {
     setAppIcon(getIcon(data))
   }, [data])
+
   const handleAuthMethodChange = useCallback((value: string) => {
     setAuthMethod(value as MCPAuthMethod)
   }, [])
+
   return {
     // Key for form reset (use as React key on parent)
     formKey,
+
     // Metadata
     isCreate,
     originalServerUrl,
     originalServerID,
     appIconRef,
+
     // State
     state: {
       url,
@@ -164,6 +181,7 @@ export const useMCPModalForm = (data?: ToolWithProvider) => {
       clientID,
       credentials,
     } satisfies MCPModalFormState,
+
     // Actions
     actions: {
       setUrl,

@@ -30,7 +30,7 @@ export const VisualEditorContextProvider = ({ children }: VisualEditorProviderPr
   )
 }
 
-const MittContext = createContext<ReturnType<typeof useMitt>>({
+export const MittContext = createContext<ReturnType<typeof useMitt>>({
   emit: noop,
   useSubscribe: noop,
 })

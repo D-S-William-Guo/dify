@@ -66,6 +66,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
 
 This repository includes an enterprise customization workflow and offline release overlay.
 For first-time local repository normalization, long-term upstream sync, multi-computer usage, and offline release/versioning rules, see [README.enterprise-maintenance.md](./README.enterprise-maintenance.md).
+For the route-two performance governance rationale, retained rules, and merge-focused maintenance notes, see [README.performance-route2.md](./README.performance-route2.md).
 
 ## Quick start
 

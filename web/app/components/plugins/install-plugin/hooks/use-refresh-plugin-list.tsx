@@ -1,20 +1,19 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
+import { useQueryClient } from '@tanstack/react-query'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useInvalidateStrategyProviders } from '@/service/use-strategy'
+import { commonQueryKeys } from '@/service/use-common'
 import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalidateRAGRecommendedPlugins } from '@/service/use-tools'
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
 const useRefreshPluginList = () => {
+  const queryClient = useQueryClient()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
-  const { mutate: refetchLLMModelList } = useModelList(ModelTypeEnum.textGeneration)
-  const { mutate: refetchEmbeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const { mutate: refetchRerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { refreshModelProviders } = useProviderContext()
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
@@ -52,9 +51,9 @@ const useRefreshPluginList = () => {
       // model select
       if ((manifest && PluginCategoryEnum.model.includes(manifest.category)) || refreshAllType) {
         refreshModelProviders()
-        refetchLLMModelList()
-        refetchEmbeddingModelList()
-        refetchRerankModelList()
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(ModelTypeEnum.textGeneration) })
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(ModelTypeEnum.textEmbedding) })
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(ModelTypeEnum.rerank) })
       }
 
       // agent select

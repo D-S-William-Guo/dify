@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { toast } from '@/app/components/base/ui/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
@@ -51,6 +51,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const { notify } = useToastContext()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
   const { setShowAccountSettingModal } = useModalContext()
@@ -95,7 +96,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     if (loading)
       return
     if (!localeCurrentDataset.name?.trim()) {
-      toast.error(t('form.nameError', { ns: 'datasetSettings' }))
+      notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
       return
     }
     if (
@@ -105,7 +106,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         indexMethod,
       })
     ) {
-      toast.error(t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }))
+      notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
       return
     }
     try {
@@ -145,7 +146,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         })
       }
       await updateDatasetSetting(requestParams)
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod,
@@ -153,7 +154,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       })
     }
     catch {
-      toast.error(t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }))
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
     finally {
       setLoading(false)
@@ -323,7 +324,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       />
 
       <div
-        className="sticky bottom-0 z-5 flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
+        className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
       >
         <Button
           onClick={onCancel}

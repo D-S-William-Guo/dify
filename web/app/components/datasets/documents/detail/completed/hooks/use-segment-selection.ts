@@ -1,7 +1,7 @@
 import type { SegmentDetailModel } from '@/models/datasets'
 import { useCallback, useMemo, useState } from 'react'
 
-type UseSegmentSelectionReturn = {
+export type UseSegmentSelectionReturn = {
   selectedSegmentIds: string[]
   isAllSelected: boolean
   isSomeSelected: boolean

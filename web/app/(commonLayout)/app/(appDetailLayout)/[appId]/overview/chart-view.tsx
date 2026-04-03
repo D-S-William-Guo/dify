@@ -27,7 +27,7 @@ const TIME_PERIOD_MAPPING: { value: number, name: TimePeriodName }[] = [
 
 const queryDateFormat = 'YYYY-MM-DD HH:mm'
 
-type IChartViewProps = {
+export type IChartViewProps = {
   appId: string
   headerRight: React.ReactNode
 }

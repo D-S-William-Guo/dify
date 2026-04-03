@@ -2,19 +2,24 @@ import type { PluginStatus } from '@/app/components/plugins/types'
 import {
   useCallback,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { TaskStatus } from '@/app/components/plugins/types'
 import {
+  pluginTaskListQueryKey,
   useMutationClearTaskPlugin,
   usePluginTaskList,
 } from '@/service/use-plugins'
 
-export const usePluginTaskStatus = () => {
+export const usePluginTaskStatus = (enabled = true) => {
+  const queryClient = useQueryClient()
   const {
     pluginTasks,
     handleRefetch,
-  } = usePluginTaskList()
+  } = usePluginTaskList(undefined, enabled)
   const { mutateAsync } = useMutationClearTaskPlugin()
-  const allPlugins = pluginTasks.map(task => task.plugins.map((plugin) => {
+  const cachedTaskList = queryClient.getQueryData<{ tasks: Array<{ id: string, plugins: PluginStatus[] }> }>(pluginTaskListQueryKey)
+  const activePluginTasks = enabled ? pluginTasks : (cachedTaskList?.tasks || [])
+  const allPlugins = activePluginTasks.map(task => task.plugins.map((plugin) => {
     return {
       ...plugin,
       taskId: task.id,

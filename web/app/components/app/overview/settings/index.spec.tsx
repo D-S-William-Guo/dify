@@ -29,24 +29,7 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-const toastMocks = vi.hoisted(() => ({
-  call: vi.fn(),
-  dismiss: vi.fn(),
-  update: vi.fn(),
-  promise: vi.fn(),
-}))
-
-vi.mock('@/app/components/base/ui/toast', () => ({
-  toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
-    dismiss: toastMocks.dismiss,
-    update: toastMocks.update,
-    promise: toastMocks.promise,
-  }),
-}))
+const mockNotify = vi.fn()
 const mockOnClose = vi.fn()
 const mockOnSave = vi.fn()
 const mockSetShowPricingModal = vi.fn()
@@ -71,6 +54,13 @@ const buildModalContext = (): ModalContextState => ({
 
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => buildModalContext(),
+}))
+
+vi.mock('@/app/components/base/toast/context', () => ({
+  useToastContext: () => ({
+    notify: mockNotify,
+    close: vi.fn(),
+  }),
 }))
 
 vi.mock('@/context/i18n', async () => {
@@ -122,7 +112,7 @@ const renderSettingsModal = () => render(
 
 describe('SettingsModal', () => {
   beforeEach(() => {
-    toastMocks.call.mockClear()
+    mockNotify.mockClear()
     mockOnClose.mockClear()
     mockOnSave.mockClear()
     mockSetShowPricingModal.mockClear()
@@ -162,7 +152,7 @@ describe('SettingsModal', () => {
     fireEvent.click(screen.getByText('common.operation.save'))
 
     await waitFor(() => {
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({ message: 'app.newApp.nameNotEmpty' }))
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ message: 'app.newApp.nameNotEmpty' }))
     })
     expect(mockOnSave).not.toHaveBeenCalled()
   })
@@ -174,7 +164,7 @@ describe('SettingsModal', () => {
 
     fireEvent.click(screen.getByText('common.operation.save'))
     await waitFor(() => {
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
         message: 'appOverview.overview.appInfo.settings.invalidHexMessage',
       }))
     })
@@ -190,7 +180,7 @@ describe('SettingsModal', () => {
 
     fireEvent.click(screen.getByText('common.operation.save'))
     await waitFor(() => {
-      expect(toastMocks.call).toHaveBeenCalledWith(expect.objectContaining({
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
         message: 'appOverview.overview.appInfo.settings.invalidPrivacyPolicy',
       }))
     })

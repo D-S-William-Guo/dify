@@ -30,7 +30,7 @@ export const createFileStore = (
 }
 
 type FileStore = ReturnType<typeof createFileStore>
-const FileContext = createContext<FileStore | null>(null)
+export const FileContext = createContext<FileStore | null>(null)
 
 export function useFileStoreWithSelector<T>(selector: (state: Shape) => T): T {
   const store = useContext(FileContext)

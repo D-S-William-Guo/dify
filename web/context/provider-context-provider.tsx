@@ -22,6 +22,7 @@ import {
   useSupportRetrievalMethods,
 } from '@/service/use-common'
 import { useEducationStatus } from '@/service/use-education'
+import { usePathname, useSearchParams } from '@/next/navigation'
 import { ProviderContext } from './provider-context'
 
 type ProviderContextProviderProps = {
@@ -31,10 +32,20 @@ type ProviderContextProviderProps = {
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
-  const { data: providersData } = useModelProviders()
-  const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
-  const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
+  const isSettingsProviderTab = searchParams.get('action') === 'showSettings' && searchParams.get('tab') === 'provider'
+  const needsProviderData = pathname.startsWith('/app/')
+    || pathname.startsWith('/datasets')
+    || pathname.startsWith('/plugins')
+    || pathname.startsWith('/tools')
+    || isSettingsProviderTab
+  const needsRetrievalMethods = pathname.startsWith('/app/')
+    || pathname.startsWith('/datasets')
+  const { data: providersData } = useModelProviders(needsProviderData)
+  const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration, needsProviderData)
+  const { data: supportRetrievalMethods } = useSupportRetrievalMethods(needsRetrievalMethods)
 
   const [plan, setPlan] = useState(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)

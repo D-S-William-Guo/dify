@@ -41,7 +41,7 @@ export type Strategy = {
   meta?: PluginMeta
 }
 
-type AgentStrategyProps = {
+export type AgentStrategyProps = {
   strategy?: Strategy
   onStrategyChange: (strategy?: Strategy) => void
   formSchema: CredentialFormSchema[]

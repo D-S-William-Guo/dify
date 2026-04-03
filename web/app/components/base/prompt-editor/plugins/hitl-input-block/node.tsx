@@ -21,7 +21,7 @@ export type HITLNodeProps = {
   readonly?: boolean
 }
 
-type SerializedNode = SerializedLexicalNode & HITLNodeProps
+export type SerializedNode = SerializedLexicalNode & HITLNodeProps
 
 export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   __variableName: string

@@ -3,7 +3,7 @@ import type { PluginStatus } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
 import PluginItem from './plugin-item'
 
-type PluginSectionProps = {
+export type PluginSectionProps = {
   title: string
   count: number
   plugins: PluginStatus[]

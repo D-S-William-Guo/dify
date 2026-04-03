@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import WarningMask from '.'
 
-type IFormattingChangedProps = {
+export type IFormattingChangedProps = {
   onConfirm: () => void
   onCancel: () => void
 }

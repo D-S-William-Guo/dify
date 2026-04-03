@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypeAlias
 
 from graphon.file import helpers as file_helpers
 from pydantic import BaseModel, ConfigDict, computed_field
 
 from models.model import IconType
 
-type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
-type JSONObject = dict[str, Any]
+JSONValue: TypeAlias = str | int | float | bool | None | dict[str, Any] | list[Any]
+JSONObject: TypeAlias = dict[str, Any]
 
 
 class SystemParameters(BaseModel):

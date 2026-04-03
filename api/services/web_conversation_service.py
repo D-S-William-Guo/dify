@@ -1,3 +1,5 @@
+from typing import Union
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -18,7 +20,7 @@ class WebConversationService:
         *,
         session: Session,
         app_model: App,
-        user: Account | EndUser | None,
+        user: Union[Account, EndUser] | None,
         last_id: str | None,
         limit: int,
         invoke_from: InvokeFrom,
@@ -59,7 +61,7 @@ class WebConversationService:
         )
 
     @classmethod
-    def pin(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
+    def pin(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         if not user:
             return
         pinned_conversation = db.session.scalar(
@@ -91,7 +93,7 @@ class WebConversationService:
         db.session.commit()
 
     @classmethod
-    def unpin(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
+    def unpin(cls, app_model: App, conversation_id: str, user: Union[Account, EndUser] | None):
         if not user:
             return
         pinned_conversation = db.session.scalar(

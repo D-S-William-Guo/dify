@@ -26,7 +26,7 @@ const defaultState: IPagination = {
 
 const PaginationContext: React.Context<IPagination> = React.createContext<IPagination>(defaultState)
 
-const PrevButton = ({
+export const PrevButton = ({
   className,
   children,
   dataTestId,
@@ -61,7 +61,7 @@ const PrevButton = ({
   )
 }
 
-const NextButton = ({
+export const NextButton = ({
   className,
   children,
   dataTestId,
@@ -117,7 +117,7 @@ const TruncableElement = ({ prev }: ITruncableElementProps) => {
     : null
 }
 
-const PageButton = ({
+export const PageButton = ({
   as = <a />,
   className,
   dataTestIdActive,

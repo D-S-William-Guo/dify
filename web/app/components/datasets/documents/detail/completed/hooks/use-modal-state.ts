@@ -1,18 +1,18 @@
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import { useCallback, useState } from 'react'
 
-type CurrSegmentType = {
+export type CurrSegmentType = {
   segInfo?: SegmentDetailModel
   showModal: boolean
   isEditMode?: boolean
 }
 
-type CurrChildChunkType = {
+export type CurrChildChunkType = {
   childChunkInfo?: ChildChunkDetail
   showModal: boolean
 }
 
-type UseModalStateReturn = {
+export type UseModalStateReturn = {
   // Segment detail modal
   currSegment: CurrSegmentType
   onClickCard: (detail: SegmentDetailModel, isEditMode?: boolean) => void

@@ -1,8 +1,9 @@
 import json
 import time
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, NotRequired, cast
 
 import httpx
+from typing_extensions import TypedDict
 
 from extensions.ext_storage import storage
 

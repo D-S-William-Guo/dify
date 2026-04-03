@@ -7,7 +7,7 @@ import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
+from typing import Any, TypeVar, Union
 
 import psycopg2.errors
 from graphon.entities import WorkflowNodeExecution
@@ -63,7 +63,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def __init__(
         self,
         session_factory: sessionmaker | Engine,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         app_id: str | None,
         triggered_from: WorkflowNodeExecutionTriggeredFrom | None,
     ):
@@ -551,7 +551,10 @@ def _deterministic_json_dump(value: Mapping[str, Any]) -> str:
     return json.dumps(value, sort_keys=True)
 
 
-def _find_first[T](seq: Sequence[T], pred: Callable[[T], bool]) -> T | None:
+_T = TypeVar("_T")
+
+
+def _find_first(seq: Sequence[_T], pred: Callable[[_T], bool]) -> _T | None:
     filtered = [i for i in seq if pred(i)]
     if filtered:
         return filtered[0]

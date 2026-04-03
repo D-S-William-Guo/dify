@@ -19,7 +19,7 @@ import useConfig from './use-config'
 
 const i18nPrefix = 'nodes.agent'
 
-function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
+export function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
   return {
     ...param as any,
     variable: param.name,

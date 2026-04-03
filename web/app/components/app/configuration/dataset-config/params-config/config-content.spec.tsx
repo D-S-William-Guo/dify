@@ -5,7 +5,7 @@ import type { DatasetConfigs } from '@/models/debug'
 import type { RetrievalConfig } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -46,7 +46,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
 const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
 
-let toastErrorSpy: MockInstance
+let toastNotifySpy: MockInstance
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -172,7 +172,7 @@ const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetC
 describe('ConfigContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
+    toastNotifySpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
     mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       modelList: [],
       defaultModel: undefined,
@@ -186,7 +186,7 @@ describe('ConfigContent', () => {
   })
 
   afterEach(() => {
-    toastErrorSpy.mockRestore()
+    toastNotifySpy.mockRestore()
   })
 
   // State management
@@ -331,7 +331,10 @@ describe('ConfigContent', () => {
       await user.click(screen.getByText('common.modelProvider.rerankModel.key'))
 
       // Assert
-      expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
+      expect(toastNotifySpy).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'workflow.errorMsg.rerankModelRequired',
+      })
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
           reranking_mode: RerankingModeEnum.RerankingModel,
@@ -370,7 +373,10 @@ describe('ConfigContent', () => {
       await user.click(screen.getByRole('switch'))
 
       // Assert
-      expect(toastErrorSpy).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
+      expect(toastNotifySpy).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'workflow.errorMsg.rerankModelRequired',
+      })
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({
           reranking_enable: true,

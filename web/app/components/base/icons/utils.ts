@@ -8,7 +8,7 @@ export type AbstractNode = {
   children?: AbstractNode[]
 }
 
-type Attrs = {
+export type Attrs = {
   [key: string]: string | undefined
 }
 

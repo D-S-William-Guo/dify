@@ -1,27 +1,35 @@
 'use client'
 import type { FC } from 'react'
 import type { FileItem } from '@/models/datasets'
-import { RiDeleteBinLine } from '@remixicon/react'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import { toast } from '@/app/components/base/ui/toast'
+import { ToastContext } from '@/app/components/base/toast/context'
 import useTheme from '@/hooks/use-theme'
 import { upload } from '@/service/base'
 import { useFileUploadConfig } from '@/service/use-common'
 import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
 
-type Props = {
+export type Props = {
   file: FileItem | undefined
   updateFile: (file?: FileItem) => void
 }
-const CSVUploader: FC<Props> = ({ file, updateFile }) => {
+
+const CSVUploader: FC<Props> = ({
+  file,
+  updateFile,
+}) => {
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -30,9 +38,12 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
   }, [fileUploadConfigResponse])
+
   type UploadResult = Awaited<ReturnType<typeof upload>>
+
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     fileItem.progress = 0
+
     const formData = new FormData()
     formData.append('file', fileItem.file)
     const onProgress = (e: ProgressEvent) => {
@@ -44,6 +55,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
         })
       }
     }
+
     return upload({
       xhr: new XMLHttpRequest(),
       data: formData,
@@ -64,7 +76,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
       })
       .catch((e) => {
         const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
-        toast.error(errorMessage)
+        notify({ type: 'error', message: errorMessage })
         const errorFile = {
           ...fileItem,
           progress: -2,
@@ -73,13 +85,16 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
         return Promise.resolve({ ...errorFile })
       })
       .finally()
-  }, [t, updateFile])
+  }, [notify, t, updateFile])
+
   const uploadFile = useCallback(async (fileItem: FileItem) => {
     await fileUpload(fileItem)
   }, [fileUpload])
+
   const initialUpload = useCallback((file?: File) => {
     if (!file)
       return false
+
     const newFile: FileItem = {
       fileID: `file0-${Date.now()}`,
       file,
@@ -88,6 +103,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
     updateFile(newFile)
     uploadFile(newFile)
   }, [updateFile, uploadFile])
+
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -112,7 +128,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
       return
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 1) {
-      toast.error(t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }))
+      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
     }
     initialUpload(files[0])
@@ -126,33 +142,43 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
       fileUploader.current.value = ''
     updateFile()
   }
+
   const getFileType = (currentFile: File) => {
     if (!currentFile)
       return ''
+
     const arr = currentFile.name.split('.')
     return arr[arr.length - 1]
   }
+
   const isValid = useCallback((file?: File) => {
     if (!file)
       return false
+
     const { size } = file
     const ext = `.${getFileType(file)}`
     const isValidType = ext.toLowerCase() === '.csv'
     if (!isValidType)
-      toast.error(t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }))
+      notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
+
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      toast.error(t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }))
+      notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
+
     return isValidType && isValidSize
-  }, [fileUploadConfig, t])
+  }, [fileUploadConfig, notify, t])
+
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const currentFile = e.target.files?.[0]
     if (!isValid(currentFile))
       return
+
     initialUpload(currentFile)
   }
+
   const { theme } = useTheme()
   const chartColor = useMemo(() => theme === Theme.dark ? '#5289ff' : '#296dff', [theme])
+
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
     dropRef.current?.addEventListener('dragover', handleDragOver)
@@ -165,9 +191,17 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
       dropRef.current?.removeEventListener('drop', handleDrop)
     }
   }, [])
+
   return (
     <div className="mt-6">
-      <input ref={fileUploader} style={{ display: 'none' }} type="file" id="fileUploader" accept=".csv" onChange={fileChangeHandle} />
+      <input
+        ref={fileUploader}
+        style={{ display: 'none' }}
+        type="file"
+        id="fileUploader"
+        accept=".csv"
+        onChange={fileChangeHandle}
+      />
       <div ref={dropRef}>
         {!file && (
           <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-panel-border bg-components-panel-bg-blur text-sm font-normal', dragging && 'border border-divider-subtle bg-components-panel-on-panel-item-bg-hover')}>
@@ -185,7 +219,7 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
           <div className={cn('group flex h-20 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur px-6 text-sm font-normal', 'hover:border-divider-subtle hover:bg-components-panel-on-panel-item-bg-hover')}>
             <CSVIcon className="shrink-0" />
             <div className="ml-2 flex w-0 grow">
-              <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.file.name.replace(/.csv$/, '')}</span>
+              <span className="max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.file.name.replace(/.csv$/, '')}</span>
               <span className="shrink-0 text-text-secondary">.csv</span>
             </div>
             <div className="hidden items-center group-hover:flex">
@@ -207,4 +241,5 @@ const CSVUploader: FC<Props> = ({ file, updateFile }) => {
     </div>
   )
 }
+
 export default React.memo(CSVUploader)

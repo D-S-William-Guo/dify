@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 
-type InlineDeleteConfirmProps = {
+export type InlineDeleteConfirmProps = {
   title?: string
   confirmText?: string
   cancelText?: string
@@ -35,7 +35,7 @@ const InlineDeleteConfirm: FC<InlineDeleteConfirmProps> = ({
       aria-describedby="inline-delete-confirm-description"
       className={cn(
         'flex w-[120px] flex-col justify-center gap-1.5',
-        'radius-lg border-[0.5px] border-components-panel-border-subtle',
+        'rounded-[10px] border-[0.5px] border-components-panel-border-subtle',
         'bg-components-panel-bg-blur px-2 pb-2 pt-1.5',
         'backdrop-blur-[10px]',
         'shadow-lg',

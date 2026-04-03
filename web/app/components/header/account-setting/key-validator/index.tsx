@@ -6,7 +6,7 @@ import { useValidate } from './hooks'
 import KeyInput from './KeyInput'
 import Operate from './Operate'
 
-type KeyValidatorProps = {
+export type KeyValidatorProps = {
   type: string
   title: React.ReactNode
   status: Status

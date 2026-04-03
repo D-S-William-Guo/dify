@@ -35,7 +35,7 @@ import { DELETE_QUERY_BLOCK_COMMAND } from './plugins/query-block'
 import { $isQueryBlockNode } from './plugins/query-block/node'
 import { registerLexicalTextEntity } from './utils'
 
-type UseSelectOrDeleteHandler = (nodeKey: string, command?: LexicalCommand<undefined>) => [RefObject<HTMLDivElement | null>, boolean]
+export type UseSelectOrDeleteHandler = (nodeKey: string, command?: LexicalCommand<undefined>) => [RefObject<HTMLDivElement | null>, boolean]
 export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, command?: LexicalCommand<undefined>) => {
   const ref = useRef<HTMLDivElement>(null)
   const [editor] = useLexicalComposerContext()
@@ -110,7 +110,7 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
   return [ref, isSelected]
 }
 
-type UseTriggerHandler = () => [RefObject<HTMLDivElement | null>, boolean, Dispatch<SetStateAction<boolean>>]
+export type UseTriggerHandler = () => [RefObject<HTMLDivElement | null>, boolean, Dispatch<SetStateAction<boolean>>]
 export const useTrigger: UseTriggerHandler = () => {
   const triggerRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -145,16 +145,16 @@ export function useLexicalTextEntity<T extends TextNode>(
   }, [createNode, editor, getMatch, targetNode])
 }
 
-type MenuTextMatch = {
+export type MenuTextMatch = {
   leadOffset: number
   matchingString: string
   replaceableString: string
 }
-type TriggerFn = (
+export type TriggerFn = (
   text: string,
   editor: LexicalEditor,
 ) => MenuTextMatch | null
-const PUNCTUATION = '\\.,\\+\\*\\?\\$\\@\\|#{}\\(\\)\\^\\-\\[\\]\\\\/!%\'"~=<>_:;'
+export const PUNCTUATION = '\\.,\\+\\*\\?\\$\\@\\|#{}\\(\\)\\^\\-\\[\\]\\\\/!%\'"~=<>_:;'
 export function useBasicTypeaheadTriggerMatch(
   trigger: string,
   { minLength = 1, maxLength = 75 }: { minLength?: number, maxLength?: number },

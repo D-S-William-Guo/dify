@@ -29,6 +29,8 @@ export type SubmitAnnotationFunc = (
   content: string,
 ) => Promise<any>
 
+export type DisplayScene = 'web' | 'console'
+
 export type ToolInfoInThought = {
   name: string
   label: string
@@ -147,6 +149,15 @@ export type MessageReplace = {
   task_id: string
   answer: string
   conversation_id: string
+}
+
+export type AnnotationReply = {
+  id: string
+  task_id: string
+  answer: string
+  conversation_id: string
+  annotation_id: string
+  annotation_author_name: string
 }
 
 export type InputForm = {

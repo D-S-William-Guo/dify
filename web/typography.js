@@ -47,7 +47,7 @@ export default ({ theme }) => ({
         'maxWidth': theme('maxWidth.2xl'),
         'marginLeft': 'auto',
         'marginRight': 'auto',
-        '@media (min-width: 1024px)': {
+        '@screen lg': {
           maxWidth: theme('maxWidth.3xl'),
           marginLeft: `calc(50% - min(50%, ${theme('maxWidth.lg')}))`,
           marginRight: `calc(50% - min(50%, ${theme('maxWidth.lg')}))`,
@@ -148,11 +148,11 @@ export default ({ theme }) => ({
         'maxWidth': 'none',
         'marginLeft': `calc(-1 * ${theme('spacing.4')})`,
         'marginRight': `calc(-1 * ${theme('spacing.4')})`,
-        '@media (min-width: 640px)': {
+        '@screen sm': {
           marginLeft: `calc(-1 * ${theme('spacing.6')})`,
           marginRight: `calc(-1 * ${theme('spacing.6')})`,
         },
-        '@media (min-width: 1024px)': {
+        '@screen lg': {
           marginLeft: `calc(-1 * ${theme('spacing.8')})`,
           marginRight: `calc(-1 * ${theme('spacing.8')})`,
         },

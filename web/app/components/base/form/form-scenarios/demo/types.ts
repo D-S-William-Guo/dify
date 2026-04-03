@@ -30,3 +30,5 @@ export const UserSchema = z.object({
     preferredContactMethod: ContactMethod,
   }),
 })
+
+export type User = z.infer<typeof UserSchema>

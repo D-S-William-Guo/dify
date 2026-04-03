@@ -1,7 +1,7 @@
 import type { Form, ValidateValue } from '../key-validator/declarations'
 import type { PluginProvider } from '@/models/common'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
+import { useToastContext } from '@/app/components/base/toast/context'
 import { useAppContext } from '@/context/app-context'
 import SerpapiLogo from '../../assets/serpapi.png'
 import KeyValidator from '../key-validator'
@@ -11,9 +11,14 @@ type SerpapiPluginProps = {
   plugin: PluginProvider
   onUpdate: () => void
 }
-const SerpapiPlugin = ({ plugin, onUpdate }: SerpapiPluginProps) => {
+const SerpapiPlugin = ({
+  plugin,
+  onUpdate,
+}: SerpapiPluginProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
+  const { notify } = useToastContext()
+
   const forms: Form[] = [{
     key: 'api_key',
     title: t('plugin.serpapi.apiKey', { ns: 'common' }),
@@ -37,20 +42,24 @@ const SerpapiPlugin = ({ plugin, onUpdate }: SerpapiPluginProps) => {
         dispatch({ ...v, api_key: '' })
     },
   }]
+
   const handleSave = async (v: ValidateValue) => {
     if (!v?.api_key || v?.api_key === plugin.credentials?.api_key)
       return
+
     const res = await updatePluginKey('serpapi', {
       credentials: {
         api_key: v?.api_key,
       },
     })
+
     if (res.status === 'success') {
-      toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onUpdate()
       return true
     }
   }
+
   return (
     <KeyValidator
       type="serpapi"
@@ -66,4 +75,5 @@ const SerpapiPlugin = ({ plugin, onUpdate }: SerpapiPluginProps) => {
     />
   )
 }
+
 export default SerpapiPlugin

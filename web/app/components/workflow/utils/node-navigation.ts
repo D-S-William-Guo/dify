@@ -6,7 +6,7 @@
 /**
  * Interface for node selection event detail
  */
-type NodeSelectionDetail = {
+export type NodeSelectionDetail = {
   nodeId: string
   focus?: boolean
 }

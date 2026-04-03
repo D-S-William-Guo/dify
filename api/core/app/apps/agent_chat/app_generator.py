@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any, Literal, overload
+from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -37,7 +37,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         self,
         *,
         app_model: App,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[False],
@@ -48,7 +48,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         self,
         *,
         app_model: App,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: Literal[True],
@@ -59,21 +59,21 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         self,
         *,
         app_model: App,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool,
-    ) -> Mapping | Generator[Mapping | str, None, None]: ...
+    ) -> Union[Mapping, Generator[Mapping | str, None, None]]: ...
 
     def generate(
         self,
         *,
         app_model: App,
-        user: Account | EndUser,
+        user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ) -> Mapping | Generator[Mapping | str, None, None]:
+    ) -> Union[Mapping, Generator[Mapping | str, None, None]]:
         """
         Generate App response.
 

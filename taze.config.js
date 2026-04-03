@@ -8,8 +8,13 @@ export default defineConfig({
     '@types/react-window',
 
     // We can not upgrade these yet
+    'tailwind-merge',
+    'tailwindcss',
     'typescript',
   ],
 
-  maturityPeriod: 2,
+  write: true,
+  install: false,
+  recursive: true,
+  interactive: true,
 })

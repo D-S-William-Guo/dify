@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Generic, Literal, TypeAlias, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, FileUrl, RootModel
 from pydantic.networks import AnyUrl, UrlConstraints
@@ -31,7 +31,7 @@ ProgressToken = str | int
 Cursor = str
 Role = Literal["user", "assistant"]
 RequestId = Annotated[int | str, Field(union_mode="left_to_right")]
-type AnyFunction = Callable[..., Any]
+AnyFunction: TypeAlias = Callable[..., Any]
 
 
 class RequestParams(BaseModel):
@@ -68,7 +68,12 @@ class NotificationParams(BaseModel):
     """
 
 
-class Request[RequestParamsT: RequestParams | dict[str, Any] | None, MethodT: str](BaseModel):
+RequestParamsT = TypeVar("RequestParamsT", bound=RequestParams | dict[str, Any] | None)
+NotificationParamsT = TypeVar("NotificationParamsT", bound=NotificationParams | dict[str, Any] | None)
+MethodT = TypeVar("MethodT", bound=str)
+
+
+class Request(BaseModel, Generic[RequestParamsT, MethodT]):
     """Base class for JSON-RPC requests."""
 
     method: MethodT
@@ -76,14 +81,14 @@ class Request[RequestParamsT: RequestParams | dict[str, Any] | None, MethodT: st
     model_config = ConfigDict(extra="allow")
 
 
-class PaginatedRequest[T: str](Request[PaginatedRequestParams | None, T]):
+class PaginatedRequest(Request[PaginatedRequestParams | None, MethodT], Generic[MethodT]):
     """Base class for paginated requests,
     matching the schema's PaginatedRequest interface."""
 
     params: PaginatedRequestParams | None = None
 
 
-class Notification[NotificationParamsT: NotificationParams | dict[str, Any] | None, MethodT: str](BaseModel):
+class Notification(BaseModel, Generic[NotificationParamsT, MethodT]):
     """Base class for JSON-RPC notifications."""
 
     method: MethodT
@@ -731,7 +736,7 @@ class ResourceLink(Resource):
 ContentBlock = TextContent | ImageContent | AudioContent | ResourceLink | EmbeddedResource
 """A content block that can be used in prompts and tool results."""
 
-type Content = ContentBlock
+Content: TypeAlias = ContentBlock
 # """DEPRECATED: Content is deprecated, you should use ContentBlock directly."""
 
 

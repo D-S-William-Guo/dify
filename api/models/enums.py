@@ -113,7 +113,6 @@ class DataSourceType(StrEnum):
     WEBSITE_CRAWL = "website_crawl"
     LOCAL_FILE = "local_file"
     ONLINE_DOCUMENT = "online_document"
-    ONLINE_DRIVE = "online_drive"
 
 
 class ProcessRuleMode(StrEnum):

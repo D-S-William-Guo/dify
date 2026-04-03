@@ -4,9 +4,9 @@ import type { FC } from 'react'
 import type { ActionItem } from '../actions/types'
 import { useTranslation } from 'react-i18next'
 
-type EmptyStateVariant = 'no-results' | 'error' | 'default' | 'loading'
+export type EmptyStateVariant = 'no-results' | 'error' | 'default' | 'loading'
 
-type EmptyStateProps = {
+export type EmptyStateProps = {
   variant: EmptyStateVariant
   searchMode?: string
   error?: Error | null

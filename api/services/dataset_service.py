@@ -45,8 +45,10 @@ from models.dataset import (
     DatasetPermissionEnum,
     DatasetProcessRule,
     DatasetQuery,
+    DatasetMetadata,
     Document,
     DocumentSegment,
+    ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
     Pipeline,
     SegmentAttachmentBinding,
@@ -64,6 +66,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from models.model import Tag, TagBinding
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -108,6 +111,155 @@ logger = logging.getLogger(__name__)
 
 
 class DatasetService:
+    @staticmethod
+    def prefetch_list_dependencies(datasets: list[Dataset]) -> None:
+        """
+        Batch attach frequently serialized dataset fields for list endpoints.
+
+        Dataset list responses expose several model properties that each perform their own queries
+        (`author_name`, `app_count`, `document_count`, `word_count`, `tags`, `doc_metadata`,
+        `external_knowledge_info`, `is_published`, etc.). On paginated pages this creates a large
+        hidden query fan-out. This helper makes those dependencies explicit while preserving the
+        existing marshaling contract.
+        """
+        if not datasets:
+            return
+
+        dataset_ids = [dataset.id for dataset in datasets]
+        author_ids = {dataset.created_by for dataset in datasets if dataset.created_by}
+        pipeline_ids = {dataset.pipeline_id for dataset in datasets if dataset.pipeline_id}
+        external_dataset_ids = [dataset.id for dataset in datasets if dataset.provider == "external"]
+
+        author_names_by_id: dict[str, str] = {}
+        if author_ids:
+            authors = db.session.scalars(select(Account).where(Account.id.in_(author_ids))).all()
+            author_names_by_id = {author.id: author.name for author in authors}
+
+        app_count_by_dataset_id = {
+            dataset_id: count
+            for dataset_id, count in db.session.execute(
+                select(AppDatasetJoin.dataset_id, func.count(AppDatasetJoin.id))
+                .where(AppDatasetJoin.dataset_id.in_(dataset_ids))
+                .group_by(AppDatasetJoin.dataset_id)
+            ).all()
+        }
+
+        document_stats_by_dataset_id = {
+            dataset_id: {
+                "document_count": int(document_count or 0),
+                "word_count": int(word_count or 0),
+                "total_available_documents": int(total_available_documents or 0),
+                "doc_form": doc_form,
+            }
+            for dataset_id, document_count, word_count, total_available_documents, doc_form in db.session.execute(
+                select(
+                    Document.dataset_id,
+                    func.count(Document.id),
+                    func.coalesce(func.sum(Document.word_count), 0),
+                    func.coalesce(
+                        func.sum(
+                            sa.case(
+                                (
+                                    sa.and_(
+                                        Document.indexing_status == "completed",
+                                        Document.enabled == True,
+                                        Document.archived == False,
+                                    ),
+                                    1,
+                                ),
+                                else_=0,
+                            )
+                        ),
+                        0,
+                    ),
+                    func.min(Document.doc_form),
+                )
+                .where(Document.dataset_id.in_(dataset_ids))
+                .group_by(Document.dataset_id)
+            ).all()
+        }
+
+        tags_by_dataset_id: dict[str, list[Tag]] = {dataset_id: [] for dataset_id in dataset_ids}
+        dataset_tags = (
+            db.session.execute(
+                select(TagBinding.target_id, Tag)
+                .join(Tag, Tag.id == TagBinding.tag_id)
+                .where(
+                    TagBinding.target_id.in_(dataset_ids),
+                    Tag.type == "knowledge",
+                )
+            )
+            .all()
+        )
+        for target_id, tag in dataset_tags:
+            if target_id:
+                tags_by_dataset_id.setdefault(target_id, []).append(tag)
+
+        is_published_by_pipeline_id: dict[str, bool] = {}
+        if pipeline_ids:
+            pipelines = db.session.scalars(select(Pipeline).where(Pipeline.id.in_(pipeline_ids))).all()
+            is_published_by_pipeline_id = {pipeline.id: bool(pipeline.is_published) for pipeline in pipelines}
+
+        doc_metadata_by_dataset_id: dict[str, list[dict[str, Any]]] = {dataset_id: [] for dataset_id in dataset_ids}
+        dataset_metadatas = db.session.scalars(select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))).all()
+        for dataset_metadata in dataset_metadatas:
+            doc_metadata_by_dataset_id.setdefault(dataset_metadata.dataset_id, []).append(
+                {
+                    "id": dataset_metadata.id,
+                    "name": dataset_metadata.name,
+                    "type": dataset_metadata.type,
+                }
+            )
+
+        external_knowledge_info_by_dataset_id: dict[str, dict[str, Any] | None] = {}
+        if external_dataset_ids:
+            external_bindings = db.session.scalars(
+                select(ExternalKnowledgeBindings).where(ExternalKnowledgeBindings.dataset_id.in_(external_dataset_ids))
+            ).all()
+            api_ids = {binding.external_knowledge_api_id for binding in external_bindings if binding.external_knowledge_api_id}
+            apis_by_id = {}
+            if api_ids:
+                apis = db.session.scalars(select(ExternalKnowledgeApis).where(ExternalKnowledgeApis.id.in_(api_ids))).all()
+                apis_by_id = {api.id: api for api in apis}
+
+            for binding in external_bindings:
+                external_api = apis_by_id.get(binding.external_knowledge_api_id)
+                if external_api is None or external_api.settings is None:
+                    external_knowledge_info_by_dataset_id[binding.dataset_id] = None
+                    continue
+                settings = external_api.settings if isinstance(external_api.settings, dict) else json.loads(external_api.settings)
+                external_knowledge_info_by_dataset_id[binding.dataset_id] = {
+                    "external_knowledge_id": binding.external_knowledge_id,
+                    "external_knowledge_api_id": external_api.id,
+                    "external_knowledge_api_name": external_api.name,
+                    "external_knowledge_api_endpoint": settings.get("endpoint", ""),
+                }
+
+        for dataset in datasets:
+            document_stats = document_stats_by_dataset_id.get(dataset.id, {})
+            dataset._prefetched_author_name = author_names_by_id.get(dataset.created_by)  # type: ignore[attr-defined]
+            dataset._prefetched_app_count = app_count_by_dataset_id.get(dataset.id, 0)  # type: ignore[attr-defined]
+            dataset._prefetched_document_count = document_stats.get("document_count", 0)  # type: ignore[attr-defined]
+            dataset._prefetched_total_documents = document_stats.get("document_count", 0)  # type: ignore[attr-defined]
+            dataset._prefetched_word_count = document_stats.get("word_count", 0)  # type: ignore[attr-defined]
+            dataset._prefetched_total_available_documents = document_stats.get("total_available_documents", 0)  # type: ignore[attr-defined]
+            dataset._prefetched_doc_form = document_stats.get("doc_form")  # type: ignore[attr-defined]
+            dataset._prefetched_tags = tags_by_dataset_id.get(dataset.id, [])  # type: ignore[attr-defined]
+            dataset._prefetched_is_published = is_published_by_pipeline_id.get(dataset.pipeline_id, False)  # type: ignore[attr-defined]
+            prefetched_doc_metadata = list(doc_metadata_by_dataset_id.get(dataset.id, []))
+            if dataset.built_in_field_enabled:
+                prefetched_doc_metadata.extend(
+                    [
+                        {"id": "built-in", "name": BuiltInField.document_name, "type": "string"},
+                        {"id": "built-in", "name": BuiltInField.uploader, "type": "string"},
+                        {"id": "built-in", "name": BuiltInField.upload_date, "type": "time"},
+                        {"id": "built-in", "name": BuiltInField.last_update_date, "type": "time"},
+                        {"id": "built-in", "name": BuiltInField.source, "type": "string"},
+                    ]
+                )
+            dataset._prefetched_doc_metadata = prefetched_doc_metadata  # type: ignore[attr-defined]
+            dataset._prefetched_external_knowledge_info = external_knowledge_info_by_dataset_id.get(dataset.id)  # type: ignore[attr-defined]
+
     @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
@@ -177,6 +329,8 @@ class DatasetService:
 
         datasets = db.paginate(select=query, page=page, per_page=per_page, max_per_page=100, error_out=False)
 
+        DatasetService.prefetch_list_dependencies(list(datasets.items))
+
         return datasets.items, datasets.total
 
     @staticmethod
@@ -205,6 +359,8 @@ class DatasetService:
         stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
+
+        DatasetService.prefetch_list_dependencies(list(datasets.items))
 
         return datasets.items, datasets.total
 
@@ -274,9 +430,7 @@ class DatasetService:
         db.session.flush()
 
         if provider == "external" and external_knowledge_api_id:
-            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-                external_knowledge_api_id, tenant_id
-            )
+            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
             if external_knowledge_id is None:

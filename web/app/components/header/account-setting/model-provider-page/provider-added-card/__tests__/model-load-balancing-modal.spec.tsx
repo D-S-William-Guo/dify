@@ -1,6 +1,7 @@
 import type { ModelItem, ModelProvider } from '../../declarations'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ToastContext } from '@/app/components/base/toast/context'
 import { ConfigurationMethodEnum } from '../../declarations'
 import ModelLoadBalancingModal from '../model-load-balancing-modal'
 
@@ -52,19 +53,13 @@ let mockCredentialData: CredentialData | undefined = {
   current_credential_name: 'Default',
 }
 
-vi.mock('@/app/components/base/ui/toast', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/components/base/ui/toast')>()
+vi.mock('@/app/components/base/toast/context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/components/base/toast/context')>()
   return {
     ...actual,
-    default: {
-      notify: (args: unknown) => mockNotify(args),
-    },
-    toast: {
-      success: (message: string) => mockNotify({ type: 'success', message }),
-      error: (message: string) => mockNotify({ type: 'error', message }),
-      warning: (message: string) => mockNotify({ type: 'warning', message }),
-      info: (message: string) => mockNotify({ type: 'info', message }),
-    },
+    useToastContext: () => ({
+      notify: mockNotify,
+    }),
   }
 })
 
@@ -140,9 +135,9 @@ describe('ModelLoadBalancingModal', () => {
   } as unknown as ModelItem
 
   const renderModal = (node: Parameters<typeof render>[0]) => render(
-    <>
+    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
       {node}
-    </>,
+    </ToastContext.Provider>,
   )
 
   beforeEach(() => {

@@ -10,7 +10,7 @@ import { temporal } from 'zundo'
 import { create } from 'zustand'
 
 export const WorkflowHistoryStoreContext = createContext<WorkflowHistoryStoreContextType>({ store: null, shortcutsEnabled: true, setShortcutsEnabled: noop })
-const Provider = WorkflowHistoryStoreContext.Provider
+export const Provider = WorkflowHistoryStoreContext.Provider
 
 export function WorkflowHistoryProvider({
   nodes,
@@ -120,7 +120,7 @@ type WorkflowHistoryStoreContextType = {
 
 export type WorkflowHistoryStoreApi = StoreApi<WorkflowHistoryState> & { temporal: StoreApi<TemporalState<WorkflowHistoryState>> }
 
-type WorkflowWithHistoryProviderProps = {
+export type WorkflowWithHistoryProviderProps = {
   nodes: Node[]
   edges: Edge[]
   children: ReactNode

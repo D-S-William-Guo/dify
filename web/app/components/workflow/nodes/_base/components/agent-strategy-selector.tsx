@@ -89,7 +89,7 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
   })
 }
 
-type AgentStrategySelectorProps = {
+export type AgentStrategySelectorProps = {
   value?: Strategy
   onChange: (value?: Strategy) => void
 }

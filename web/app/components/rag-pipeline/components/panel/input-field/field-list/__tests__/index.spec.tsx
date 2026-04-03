@@ -2,7 +2,7 @@ import type { SortableItem } from '../types'
 import type { InputVar } from '@/models/pipeline'
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import { PipelineInputVarType } from '@/models/pipeline'
 import FieldItem from '../field-item'
 import FieldListContainer from '../field-list-container'
@@ -85,11 +85,9 @@ const createSortableItem = (
 })
 
 // Silence expected console.error from form submission handlers
-const toastErrorSpy = vi.spyOn(toast, 'error').mockReturnValue('toast-error')
-
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
-  toastErrorSpy.mockClear()
+  vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
 })
 
 describe('FieldItem', () => {
@@ -1858,7 +1856,9 @@ describe('Duplicate Variable Name Handling', () => {
     editorProps.onSubmit(duplicateFieldData)
 
     expect(handleInputFieldsChange).not.toHaveBeenCalled()
-    expect(toastErrorSpy).toHaveBeenCalledWith('datasetPipeline.inputFieldPanel.error.variableDuplicate')
+    expect(Toast.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' }),
+    )
   })
 
   it('should allow updating field to same variable name', () => {

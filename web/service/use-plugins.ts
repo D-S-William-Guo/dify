@@ -4,6 +4,7 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
+  PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import type {
   DebugInfo as DebugInfoTypes,
@@ -44,6 +45,9 @@ import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
 const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
+const pluginSessionQueryStaleTime = 30 * 1000
+const pluginConfigQueryStaleTime = 5 * 60 * 1000
+const pluginSessionQueryGcTime = 5 * 60 * 1000
 
 export const useCheckInstalled = ({
   pluginIds,
@@ -52,10 +56,14 @@ export const useCheckInstalled = ({
   pluginIds: string[]
   enabled: boolean
 }) => {
+  const normalizedPluginIds = [...pluginIds].sort()
   return useQuery(consoleQuery.plugins.checkInstalled.queryOptions({
-    input: { body: { plugin_ids: pluginIds } },
-    enabled,
-    staleTime: 0,
+    input: { body: { plugin_ids: normalizedPluginIds } },
+    enabled: enabled && normalizedPluginIds.length > 0,
+    staleTime: pluginConfigQueryStaleTime,
+    gcTime: pluginSessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   }))
 }
 
@@ -69,7 +77,7 @@ export const useInvalidateCheckInstalled = () => {
 }
 
 const useRecommendedMarketplacePluginsKey = [NAME_SPACE, 'recommendedMarketplacePlugins']
-const useRecommendedMarketplacePlugins = ({
+export const useRecommendedMarketplacePlugins = ({
   collection = '__recommended-plugins-tools',
   enabled = true,
   limit = 15,
@@ -148,6 +156,10 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
     enabled: !disable,
     queryKey: useInstalledPluginListKey,
     queryFn: fetchPlugins,
+    staleTime: pluginSessionQueryStaleTime,
+    gcTime: pluginSessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     getNextPageParam: (lastPage, pages) => {
       const totalItems = lastPage.total
       const currentPage = pages.length
@@ -228,7 +240,17 @@ export const useVersionListOfPlugin = (pluginID: string) => {
     enabled: !!pluginID,
     queryKey: [NAME_SPACE, 'versions', pluginID],
     queryFn: () => getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, { params: { page: 1, page_size: 100 } }),
+    staleTime: pluginConfigQueryStaleTime,
+    gcTime: pluginSessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
+}
+export const useInvalidateVersionListOfPlugin = () => {
+  const queryClient = useQueryClient()
+  return (pluginID: string) => {
+    queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'versions', pluginID] })
+  }
 }
 
 export const useInstallPackageFromLocal = () => {
@@ -427,10 +449,15 @@ export const useDebugKey = () => {
 }
 
 const useReferenceSettingKey = [NAME_SPACE, 'referenceSettings']
-export const useReferenceSettings = () => {
+export const useReferenceSettings = (enabled = true) => {
   return useQuery({
     queryKey: useReferenceSettingKey,
     queryFn: () => get<ReferenceSetting>('/workspaces/current/plugin/preferences/fetch'),
+    enabled,
+    staleTime: pluginConfigQueryStaleTime,
+    gcTime: pluginSessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -466,6 +493,38 @@ export const useRemoveAutoUpgrade = () => {
   })
 }
 
+export const useMutationPluginsFromMarketplace = () => {
+  return useMutation({
+    mutationFn: (pluginsSearchParams: PluginsSearchParams) => {
+      const {
+        query,
+        sort_by,
+        sort_order,
+        category,
+        tags,
+        exclude,
+        type,
+        page = 1,
+        page_size = 40,
+      } = pluginsSearchParams
+      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
+        body: {
+          page,
+          page_size,
+          query,
+          sort_by,
+          sort_order,
+          category: category !== 'all' ? category : '',
+          tags,
+          exclude,
+          type,
+        },
+      })
+    },
+  })
+}
+
 export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], options?: QueryOptions<{ data: PluginsFromMarketplaceResponse }>) => {
   return useQuery({
     ...options,
@@ -477,6 +536,39 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], 
     }),
     enabled: unique_identifiers?.filter(i => !!i).length > 0,
     retry: 0,
+  })
+}
+
+export const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearchParams) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'fetchPluginListOrBundleList', pluginsSearchParams],
+    queryFn: () => {
+      const {
+        query,
+        sort_by,
+        sort_order,
+        category,
+        tags,
+        exclude,
+        type,
+        page = 1,
+        page_size = 40,
+      } = pluginsSearchParams
+      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
+        body: {
+          page,
+          page_size,
+          query,
+          sort_by,
+          sort_order,
+          category: category !== 'all' ? category : '',
+          tags,
+          exclude,
+          type,
+        },
+      })
+    },
   })
 }
 
@@ -497,12 +589,12 @@ export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[])
   })
 }
 
-const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
-export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
+export const pluginTaskListQueryKey = [NAME_SPACE, 'pluginTaskList'] as const
+export const usePluginTaskList = (category?: PluginCategoryEnum | string, enabled = true) => {
   const [initialized, setInitialized] = useState(false)
   const {
     canManagement,
-  } = useReferenceSetting()
+  } = useReferenceSetting(enabled)
   const { refreshPluginList } = useRefreshPluginList()
   const {
     data,
@@ -511,9 +603,13 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     refetch,
     ...rest
   } = useQuery({
-    enabled: canManagement,
-    queryKey: usePluginTaskListKey,
+    enabled: enabled && canManagement,
+    queryKey: pluginTaskListQueryKey,
     queryFn: () => get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100'),
+    staleTime: pluginSessionQueryStaleTime,
+    gcTime: pluginSessionQueryGcTime,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     refetchInterval: (lastQuery) => {
       const lastData = lastQuery.state.data
       const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
@@ -556,6 +652,14 @@ export const useMutationClearTaskPlugin = () => {
     mutationFn: ({ taskId, pluginId }: { taskId: string, pluginId: string }) => {
       const encodedPluginId = encodeURIComponent(pluginId)
       return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`)
+    },
+  })
+}
+
+export const useMutationClearAllTaskPlugin = () => {
+  return useMutation({
+    mutationFn: () => {
+      return post<{ success: boolean }>('/workspaces/current/plugin/tasks/delete_all')
     },
   })
 }

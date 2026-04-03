@@ -32,14 +32,8 @@ vi.mock('@/context/global-public-context', () => ({
   useSystemFeaturesQuery: () => ({ data: { trial_models: ['langgenius/openai/openai'] } }),
 }))
 
-vi.mock('@/app/components/base/ui/toast', () => ({
+vi.mock('@/app/components/base/toast', () => ({
   default: { notify: mockToastNotify },
-  toast: {
-    success: (message: string) => mockToastNotify({ type: 'success', message }),
-    error: (message: string) => mockToastNotify({ type: 'error', message }),
-    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-    info: (message: string) => mockToastNotify({ type: 'info', message }),
-  },
 }))
 
 vi.mock('@/service/client', () => ({

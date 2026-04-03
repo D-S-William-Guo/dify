@@ -23,7 +23,7 @@ const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   score_threshold: 0.5,
 }
 
-type UseIndexingConfigOptions = {
+export type UseIndexingConfigOptions = {
   initialIndexType?: IndexingType
   initialEmbeddingModel?: DefaultModel
   initialRetrievalConfig?: RetrievalConfig
@@ -139,3 +139,5 @@ export const useIndexingConfig = (options: UseIndexingConfigOptions) => {
     showMultiModalTip,
   }
 }
+
+export type IndexingConfig = ReturnType<typeof useIndexingConfig>

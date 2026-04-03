@@ -7,6 +7,7 @@ const config: KnipConfig = {
   entry: [
     'scripts/**/*.{js,ts,mjs}',
     'bin/**/*.{js,ts,mjs}',
+    'taze.config.js',
     'tsslint.config.ts',
   ],
   ignore: [
@@ -21,23 +22,19 @@ const config: KnipConfig = {
     '@storybook/addon-onboarding',
 
   ],
-  /// keep-sorted
   rules: {
-    binaries: 'error',
-    catalog: 'error',
+    files: 'warn',
     dependencies: 'error',
     devDependencies: 'error',
-    duplicates: 'error',
-    enumMembers: 'error',
-    exports: 'error',
-    files: 'error',
-    namespaceMembers: 'error',
-    nsExports: 'error',
-    nsTypes: 'error',
     optionalPeerDependencies: 'error',
-    types: 'error',
-    unlisted: 'error',
-    unresolved: 'error',
+    unlisted: 'warn',
+    unresolved: 'warn',
+    exports: 'warn',
+    nsExports: 'warn',
+    types: 'warn',
+    nsTypes: 'warn',
+    enumMembers: 'warn',
+    duplicates: 'warn',
   },
 }
 

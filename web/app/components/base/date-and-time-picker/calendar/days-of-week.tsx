@@ -17,3 +17,5 @@ export const DaysOfWeek = () => {
     </div>
   )
 }
+
+export default React.memo(DaysOfWeek)

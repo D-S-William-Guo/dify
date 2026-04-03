@@ -8,7 +8,7 @@ import { ReactSortable } from 'react-sortablejs'
 import { cn } from '@/utils/classnames'
 
 export type Options = string[]
-type IConfigSelectProps = {
+export type IConfigSelectProps = {
   options: Options
   onChange: (options: Options) => void
 }
@@ -63,7 +63,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                       return item
                     }))
                   }}
-                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-hidden"
+                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-none"
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />

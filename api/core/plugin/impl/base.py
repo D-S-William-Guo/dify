@@ -2,7 +2,7 @@ import inspect
 import json
 import logging
 from collections.abc import Callable, Generator
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 
 import httpx
 from graphon.model_runtime.errors.invoke import (
@@ -50,6 +50,8 @@ elif isinstance(_plugin_daemon_timeout_config, httpx.Timeout):
     plugin_daemon_request_timeout = _plugin_daemon_timeout_config
 else:
     plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
+
+T = TypeVar("T", bound=(BaseModel | dict[str, Any] | list[Any] | bool | str))
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +191,7 @@ class BasePluginClient:
             logger.exception("Stream request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 
-    def _stream_request_with_model[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
+    def _stream_request_with_model(
         self,
         method: str,
         path: str,
@@ -205,7 +207,7 @@ class BasePluginClient:
         for line in self._stream_request(method, path, params, headers, data, files):
             yield type_(**json.loads(line))  # type: ignore
 
-    def _request_with_model[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
+    def _request_with_model(
         self,
         method: str,
         path: str,
@@ -221,7 +223,7 @@ class BasePluginClient:
         response = self._request(method, path, headers, data, params, files)
         return type_(**response.json())  # type: ignore[return-value]
 
-    def _request_with_plugin_daemon_response[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
+    def _request_with_plugin_daemon_response(
         self,
         method: str,
         path: str,
@@ -276,7 +278,7 @@ class BasePluginClient:
 
         return rep.data
 
-    def _request_with_plugin_daemon_response_stream[T: BaseModel | dict[str, Any] | list[Any] | bool | str](
+    def _request_with_plugin_daemon_response_stream(
         self,
         method: str,
         path: str,
