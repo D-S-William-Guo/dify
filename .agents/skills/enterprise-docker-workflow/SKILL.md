@@ -7,6 +7,7 @@ description: Enterprise Docker development, validation, image rebuild, and proje
 
 ## Intent
 
+- Follow the repository maintenance priority from `README.enterprise-maintenance.md`: sync official upstream first, preserve enterprise features second, and handle route 2 or other phase-based optimizations after that.
 - Treat `Windows 11 + Docker Desktop + Git` as the default local enterprise development baseline.
 - Prefer `docker/docker-compose.yaml` plus `docker/docker-compose.enterprise.yaml` as the execution surface for enterprise work, and treat `docker/docker-compose-template.yaml` as the generated source template rather than the file to edit directly.
 - Validate enterprise changes against the current source tree, not against already-running old images.

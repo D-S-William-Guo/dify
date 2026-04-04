@@ -14,6 +14,14 @@
 - 想了解“当前性能治理为什么选路线二、以后如何沿用”，看 [README.performance-route2.md](/D:/CodexSpace/dify/README.performance-route2.md)
 - 想了解“这段时间做过哪些重大改动、踩过哪些坑”，看本文件
 
+阅读本文件时，仍以 [README.enterprise-maintenance.md](/D:/CodexSpace/dify/README.enterprise-maintenance.md) 中的维护优先级为总原则：
+
+- 第一优先级是同步官方代码
+- 第二优先级是保住企业多空间、平台管理员和智慧广场等企业功能
+- 第三优先级才是路线二性能治理等阶段性优化
+
+也就是说，本文件记录的阶段性治理成果不能反过来覆盖官方同步和企业功能维护的优先级。
+
 ---
 
 ## 2026-04-03 路线二性能治理第一阶段收敛

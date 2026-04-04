@@ -14,6 +14,13 @@
 - 企业重大改动与时间序列记录见 [CHANGELOG.enterprise.md](/D:/CodexSpace/dify/CHANGELOG.enterprise.md)
 - Docker 企业 overlay 见 [docker/README.enterprise.md](/D:/CodexSpace/dify/docker/README.enterprise.md)
 
+使用边界：
+
+- 本文档只回答“路线二性能治理怎么做、哪些结果值得保留”
+- 它不是企业版仓库的最高优先级文档
+- 真正的优先级顺序以 [README.enterprise-maintenance.md](/D:/CodexSpace/dify/README.enterprise-maintenance.md) 为准：先同步官方，再维护企业功能，最后才处理路线二这类阶段性治理
+- 如果以后出现新功能、新缺陷或新的官方同步冲突，需要先满足前两者，再判断本文件中的治理规则哪些继续沿用、哪些转入历史参考
+
 ---
 
 ## 为什么选择路线二
