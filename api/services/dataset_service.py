@@ -14,7 +14,7 @@ from graphon.file import helpers as file_helpers
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from graphon.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -266,9 +266,11 @@ class DatasetService:
 
         if user:
             # get permitted dataset ids
-            dataset_permission = (
-                db.session.query(DatasetPermission).filter_by(account_id=user.id, tenant_id=tenant_id).all()
-            )
+            dataset_permission = db.session.scalars(
+                select(DatasetPermission).where(
+                    DatasetPermission.account_id == user.id, DatasetPermission.tenant_id == tenant_id
+                )
+            ).all()
             permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else None
 
             if user.current_role == TenantAccountRole.DATASET_OPERATOR:
@@ -336,13 +338,12 @@ class DatasetService:
     @staticmethod
     def get_process_rules(dataset_id):
         # get the latest process rule
-        dataset_process_rule = (
-            db.session.query(DatasetProcessRule)
+        dataset_process_rule = db.session.execute(
+            select(DatasetProcessRule)
             .where(DatasetProcessRule.dataset_id == dataset_id)
             .order_by(DatasetProcessRule.created_at.desc())
             .limit(1)
-            .one_or_none()
-        )
+        ).scalar_one_or_none()
         if dataset_process_rule:
             mode = dataset_process_rule.mode
             rules = dataset_process_rule.rules_dict
@@ -381,7 +382,7 @@ class DatasetService:
         summary_index_setting: dict | None = None,
     ):
         # check if dataset name already exists
-        if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
+        if db.session.scalar(select(Dataset).where(Dataset.name == name, Dataset.tenant_id == tenant_id).limit(1)):
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
         embedding_model = None
         if indexing_technique == IndexTechniqueType.HIGH_QUALITY:
@@ -454,17 +455,17 @@ class DatasetService:
     ):
         if rag_pipeline_dataset_create_entity.name:
             # check if dataset name already exists
-            if (
-                db.session.query(Dataset)
-                .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
-                .first()
+            if db.session.scalar(
+                select(Dataset)
+                .where(Dataset.name == rag_pipeline_dataset_create_entity.name, Dataset.tenant_id == tenant_id)
+                .limit(1)
             ):
                 raise DatasetNameDuplicateError(
                     f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
                 )
         else:
             # generate a random name as Untitled 1 2 3 ...
-            datasets = db.session.query(Dataset).filter_by(tenant_id=tenant_id).all()
+            datasets = db.session.scalars(select(Dataset).where(Dataset.tenant_id == tenant_id)).all()
             names = [dataset.name for dataset in datasets]
             rag_pipeline_dataset_create_entity.name = generate_incremental_name(
                 names,
@@ -498,7 +499,7 @@ class DatasetService:
 
     @staticmethod
     def get_dataset(dataset_id) -> Dataset | None:
-        dataset: Dataset | None = db.session.query(Dataset).filter_by(id=dataset_id).first()
+        dataset: Dataset | None = db.session.get(Dataset, dataset_id)
         return dataset
 
     @staticmethod
@@ -620,14 +621,14 @@ class DatasetService:
 
     @staticmethod
     def _has_dataset_same_name(tenant_id: str, dataset_id: str, name: str):
-        dataset = (
-            db.session.query(Dataset)
+        dataset = db.session.scalar(
+            select(Dataset)
             .where(
                 Dataset.id != dataset_id,
                 Dataset.name == name,
                 Dataset.tenant_id == tenant_id,
             )
-            .first()
+            .limit(1)
         )
         return dataset is not None
 
@@ -750,7 +751,7 @@ class DatasetService:
             filtered_data["icon_info"] = data.get("icon_info")
 
         # Update dataset in database
-        db.session.query(Dataset).filter_by(id=dataset.id).update(filtered_data)
+        db.session.execute(update(Dataset).where(Dataset.id == dataset.id).values(**filtered_data))
         db.session.commit()
 
         # Reload dataset to get updated values
@@ -785,7 +786,7 @@ class DatasetService:
         if dataset.runtime_mode != DatasetRuntimeMode.RAG_PIPELINE:
             return
 
-        pipeline = db.session.query(Pipeline).filter_by(id=dataset.pipeline_id).first()
+        pipeline = db.session.get(Pipeline, dataset.pipeline_id)
         if not pipeline:
             return
 
@@ -1292,8 +1293,10 @@ class DatasetService:
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the creator
                 if dataset.created_by != user.id:
-                    user_permission = (
-                        db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
+                    user_permission = db.session.scalar(
+                        select(DatasetPermission)
+                        .where(DatasetPermission.dataset_id == dataset.id, DatasetPermission.account_id == user.id)
+                        .limit(1)
                     )
                     if not user_permission:
                         logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
@@ -1315,7 +1318,9 @@ class DatasetService:
             elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 if not any(
                     dp.dataset_id == dataset.id
-                    for dp in db.session.query(DatasetPermission).filter_by(account_id=user.id).all()
+                    for dp in db.session.scalars(
+                        select(DatasetPermission).where(DatasetPermission.account_id == user.id)
+                    ).all()
                 ):
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
@@ -1329,12 +1334,11 @@ class DatasetService:
 
     @staticmethod
     def get_related_apps(dataset_id: str):
-        return (
-            db.session.query(AppDatasetJoin)
+        return db.session.scalars(
+            select(AppDatasetJoin)
             .where(AppDatasetJoin.dataset_id == dataset_id)
-            .order_by(db.desc(AppDatasetJoin.created_at))
-            .all()
-        )
+            .order_by(AppDatasetJoin.created_at.desc())
+        ).all()
 
     @staticmethod
     def update_dataset_api_status(dataset_id: str, status: bool):
@@ -1550,8 +1554,8 @@ class DocumentService:
     @staticmethod
     def get_document(dataset_id: str, document_id: str | None = None) -> Document | None:
         if document_id:
-            document = (
-                db.session.query(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).first()
+            document = db.session.scalar(
+                select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
             )
             return document
         else:
@@ -1780,7 +1784,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Document | None:
-        document = db.session.query(Document).where(Document.id == document_id).first()
+        document = db.session.get(Document, document_id)
 
         return document
 
@@ -1845,7 +1849,7 @@ class DocumentService:
 
     @staticmethod
     def get_document_file_detail(file_id: str):
-        file_detail = db.session.query(UploadFile).where(UploadFile.id == file_id).one_or_none()
+        file_detail = db.session.get(UploadFile, file_id)
         return file_detail
 
     @staticmethod
@@ -1919,9 +1923,11 @@ class DocumentService:
         document.name = name
         db.session.add(document)
         if document.data_source_info_dict and "upload_file_id" in document.data_source_info_dict:
-            db.session.query(UploadFile).where(
-                UploadFile.id == document.data_source_info_dict["upload_file_id"]
-            ).update({UploadFile.name: name})
+            db.session.execute(
+                update(UploadFile)
+                .where(UploadFile.id == document.data_source_info_dict["upload_file_id"])
+                .values(name=name)
+            )
 
         db.session.commit()
 
@@ -2008,8 +2014,8 @@ class DocumentService:
 
     @staticmethod
     def get_documents_position(dataset_id):
-        document = (
-            db.session.query(Document).filter_by(dataset_id=dataset_id).order_by(Document.position.desc()).first()
+        document = db.session.scalar(
+            select(Document).where(Document.dataset_id == dataset_id).order_by(Document.position.desc()).limit(1)
         )
         if document:
             return document.position + 1
@@ -2166,28 +2172,28 @@ class DocumentService:
                         if not knowledge_config.data_source.info_list.file_info_list:
                             raise ValueError("File source info is required")
                         upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-                        files = (
-                            db.session.query(UploadFile)
-                            .where(
-                                UploadFile.tenant_id == dataset.tenant_id,
-                                UploadFile.id.in_(upload_file_list),
-                            )
-                            .all()
+                        files = list(
+                            db.session.scalars(
+                                select(UploadFile).where(
+                                    UploadFile.tenant_id == dataset.tenant_id,
+                                    UploadFile.id.in_(upload_file_list),
+                                )
+                            ).all()
                         )
                         if len(files) != len(set(upload_file_list)):
                             raise FileNotExistsError("One or more files not found.")
 
                         file_names = [file.name for file in files]
-                        db_documents = (
-                            db.session.query(Document)
-                            .where(
-                                Document.dataset_id == dataset.id,
-                                Document.tenant_id == current_user.current_tenant_id,
-                                Document.data_source_type == DataSourceType.UPLOAD_FILE,
-                                Document.enabled == True,
-                                Document.name.in_(file_names),
-                            )
-                            .all()
+                        db_documents = list(
+                            db.session.scalars(
+                                select(Document).where(
+                                    Document.dataset_id == dataset.id,
+                                    Document.tenant_id == current_user.current_tenant_id,
+                                    Document.data_source_type == DataSourceType.UPLOAD_FILE,
+                                    Document.enabled == True,
+                                    Document.name.in_(file_names),
+                                )
+                            ).all()
                         )
                         documents_map = {document.name: document for document in db_documents}
                         for file in files:
@@ -2233,15 +2239,15 @@ class DocumentService:
                             raise ValueError("No notion info list found.")
                         exist_page_ids = []
                         exist_document = {}
-                        documents = (
-                            db.session.query(Document)
-                            .filter_by(
-                                dataset_id=dataset.id,
-                                tenant_id=current_user.current_tenant_id,
-                                data_source_type=DataSourceType.NOTION_IMPORT,
-                                enabled=True,
-                            )
-                            .all()
+                        documents = list(
+                            db.session.scalars(
+                                select(Document).where(
+                                    Document.dataset_id == dataset.id,
+                                    Document.tenant_id == current_user.current_tenant_id,
+                                    Document.data_source_type == DataSourceType.NOTION_IMPORT,
+                                    Document.enabled == True,
+                                )
+                            ).all()
                         )
                         if documents:
                             for document in documents:
@@ -2672,14 +2678,15 @@ class DocumentService:
         assert isinstance(current_user, Account)
 
         documents_count = (
-            db.session.query(Document)
-            .where(
-                Document.completed_at.isnot(None),
-                Document.enabled == True,
-                Document.archived == False,
-                Document.tenant_id == current_user.current_tenant_id,
+            db.session.scalar(
+                select(func.count(Document.id)).where(
+                    Document.completed_at.isnot(None),
+                    Document.enabled == True,
+                    Document.archived == False,
+                    Document.tenant_id == current_user.current_tenant_id,
+                )
             )
-            .count()
+            or 0
         )
         return documents_count
 
@@ -2729,10 +2736,10 @@ class DocumentService:
                     raise ValueError("No file info list found.")
                 upload_file_list = document_data.data_source.info_list.file_info_list.file_ids
                 for file_id in upload_file_list:
-                    file = (
-                        db.session.query(UploadFile)
+                    file = db.session.scalar(
+                        select(UploadFile)
                         .where(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                        .first()
+                        .limit(1)
                     )
 
                     # raise error if file not found
@@ -2749,8 +2756,8 @@ class DocumentService:
                 notion_info_list = document_data.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
                     workspace_id = notion_info.workspace_id
-                    data_source_binding = (
-                        db.session.query(DataSourceOauthBinding)
+                    data_source_binding = db.session.scalar(
+                        select(DataSourceOauthBinding)
                         .where(
                             sa.and_(
                                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
@@ -2759,7 +2766,7 @@ class DocumentService:
                                 DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
                             )
                         )
-                        .first()
+                        .limit(1)
                     )
                     if not data_source_binding:
                         raise ValueError("Data source binding not found.")
@@ -2804,8 +2811,10 @@ class DocumentService:
         db.session.commit()
         # update document segment
 
-        db.session.query(DocumentSegment).filter_by(document_id=document.id).update(
-            {DocumentSegment.status: SegmentStatus.RE_SEGMENT}
+        db.session.execute(
+            update(DocumentSegment)
+            .where(DocumentSegment.document_id == document.id)
+            .values(status=SegmentStatus.RE_SEGMENT)
         )
         db.session.commit()
         # trigger async task

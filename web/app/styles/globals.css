@@ -700,20 +700,18 @@ a {
     display: none;
   }
 
-  /* Hide scrollbar for IE, Edge and Firefox */
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  /* Shiki code block line numbers */
+  .shiki-line-numbers code {
+    counter-reset: line;
   }
-
-  /* Hide arrows from number input */
-  .no-spinner::-webkit-outer-spin-button,
-  .no-spinner::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  .no-spinner {
-    -moz-appearance: textfield;
+  .shiki-line-numbers .line::before {
+    counter-increment: line;
+    content: counter(line);
+    display: inline-block;
+    width: 1rem;
+    margin-right: 0.75rem;
+    text-align: right;
+    color: var(--color-text-quaternary);
+    user-select: none;
   }
 }
