@@ -50,6 +50,32 @@ const SubmitEnterpriseMarketplaceModal = ({
     .map(tag => tag.trim())
     .filter(Boolean), [tags])
 
+  const handleSubmit = () => {
+    submitMarketplaceMutation.mutate(
+      {
+        title: title.trim(),
+        description: description.trim(),
+        category: category.trim() || 'General',
+        tags: normalizedTags,
+        scenario: scenario.trim(),
+        allow_show_workspace_name: allowShowWorkspaceName,
+      },
+      {
+        onSuccess: () => {
+          onClose()
+          toast.success(t('enterpriseMarketplace.submitSuccess', { ns: 'common' }))
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : t('enterpriseMarketplace.submitFailed', { ns: 'common' }),
+          )
+        },
+      },
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={nextOpen => !nextOpen && onClose()}>
       <DialogContent className="max-w-[640px] p-0">
@@ -125,29 +151,7 @@ const SubmitEnterpriseMarketplaceModal = ({
             variant="primary"
             loading={submitMarketplaceMutation.isPending}
             disabled={!title.trim()}
-            onClick={() => submitMarketplaceMutation.mutate(
-              {
-                title: title.trim(),
-                description: description.trim(),
-                category: category.trim() || 'General',
-                tags: normalizedTags,
-                scenario: scenario.trim(),
-                allow_show_workspace_name: allowShowWorkspaceName,
-              },
-              {
-                onSuccess: () => {
-                  onClose()
-                  toast.success(t('enterpriseMarketplace.submitSuccess', { ns: 'common' }))
-                },
-                onError: (error) => {
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : t('enterpriseMarketplace.submitFailed', { ns: 'common' }),
-                  )
-                },
-              },
-            )}
+            onClick={handleSubmit}
           >
             {t('enterpriseMarketplace.submitAction', { ns: 'common' })}
           </Button>

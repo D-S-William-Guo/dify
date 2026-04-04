@@ -91,6 +91,73 @@ Notes:
 - Use `Mode=reuse` when you want packaging to fail instead of rebuilding.
 - If you only want a local runtime check and do not need an offline bundle, you can skip the last step and run compose directly from `docker/`.
 
+## Development validation and image rebuild rules
+
+Use `Windows 11 + Docker Desktop + Git` as the default local enterprise development baseline. For route 2 and similar performance work, validate with browser clicks plus container logs, but only after confirming the running containers represent the code you just changed.
+
+Compose rules:
+
+- Treat `docker/docker-compose.yaml` as the runtime skeleton.
+- Treat `docker/docker-compose.enterprise.yaml` as the enterprise build and override layer.
+- Treat `docker/docker-compose-template.yaml` as the generator source for the main compose file, not as the file to edit casually for local enterprise verification.
+- Prefer `docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml ...` for `config`, `build`, `up`, `exec`, `ps`, and `logs`.
+
+Rules:
+
+- Do not assume the running `api` or `web` containers are source bind mounts. Inspect mounts first.
+- If `api` or `web` run from prebuilt images, treat them as old runtime snapshots until current-source validation succeeds.
+- After changing enterprise code, validate the current source tree through compose before trusting runtime behavior:
+  - frontend runtime changes: run `docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml build web`, because `web/Dockerfile` compiles the app during the image build
+  - backend runtime changes: rebuild the API enterprise image through compose, then use compose-owned containers for follow-up runtime or targeted checks
+  - if a standalone container is ever needed for a special case, treat it as an exception and keep the command aligned with the compose-defined image and environment
+- Rebuild `dify-api-enterprise:<official-version-enterprise>` when backend runtime code, backend dependencies, or API image build inputs change.
+- Rebuild `dify-web-enterprise:<official-version-enterprise>` when frontend runtime code, frontend dependencies, or web image build inputs change.
+- `worker` and `worker_beat` reuse the API enterprise image at runtime, so API image rebuild decisions also affect them.
+- After rebuilding `dify-api-enterprise:<official-version-enterprise>`, recreate `api`, `worker`, and `worker_beat` through the enterprise compose stack with `--force-recreate` so all three services switch to the same current image ID.
+- Otherwise, old `worker` or `worker_beat` containers may keep running on a previous image layer while the tag already points to a newer image, leaving the old layer as a dangling `<none>` image.
+- For packaging or release checks, verify both the version tag and the image-internal `COMMIT_SHA`.
+
+For enterprise-page route 2 work, the default service tiers are:
+
+- Minimal validation set:
+  - `api`
+  - `web`
+  - `db_postgres`
+  - `redis`
+  - `nginx`
+- Recommended realistic set:
+  - `worker`
+  - `worker_beat`
+- Non-essential for this route:
+  - `weaviate`
+  - `plugin_daemon`
+  - `sandbox`
+  - `ssrf_proxy`
+
+Project-scoped image cleanup rules:
+
+- Only analyze and clean images that belong to this repository, such as `dify-api-enterprise:*`, `dify-web-enterprise:*`, compose-owned local build layers, and explicit helper images used for this repo's validation.
+- Never clean unrelated local images from other projects or model stacks.
+- Identify compose-in-use images first and do not remove them.
+
+Runtime data protection rules:
+
+- Do not delete active runtime data under `docker/volumes/**` as part of routine development, route 2 work, image rebuilds, or compose recreates.
+- These directories can hold the local database, uploaded files, Redis state, plugin state, and vector-store state for the current environment.
+- Only remove them when the user explicitly asks to reset the environment, or after proposing the deletion and getting the user's approval.
+- Treat cleanup of images and cleanup of runtime data as different operations. Image cleanup can be routine; runtime-data cleanup requires explicit user permission.
+
+Compose restart granularity rules:
+
+- Do not default to restarting the entire compose stack after every enterprise build.
+- Prefer the smallest compose-owned recreate set that matches the changed runtime surface.
+- After rebuilding the web enterprise image, recreate `web` and `nginx` together:
+  - `docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --force-recreate web nginx`
+- After rebuilding the API enterprise image, recreate `api`, `worker`, `worker_beat`, and `nginx` together:
+  - `docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat nginx`
+- If only Nginx templates, proxy rules, or HTTPS assets changed, recreate only `nginx`.
+- Escalate to a broader compose restart only when service scope is unclear, dependency state is inconsistent, or network state appears stale.
+
 ## Fresh environment initialization
 
 If the target machine is meant to be a fresh deployment, do not copy your local runtime data directories.

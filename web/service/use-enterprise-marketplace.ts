@@ -5,7 +5,7 @@ import type {
   EnterpriseMarketplaceSubmissionListResponse,
   EnterpriseMarketplaceUseResponse,
 } from '@/models/common'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchEnterpriseMarketplaceAssets,
   fetchEnterpriseMarketplaceSubmissions,
@@ -33,9 +33,30 @@ type AdminAssetListParams = {
 
 export const enterpriseMarketplaceKeys = {
   all: ['enterprise-marketplace'] as const,
+  publicLists: () => [...enterpriseMarketplaceKeys.all, 'public-list'] as const,
   publicList: (params: PublicAssetListParams) => [...enterpriseMarketplaceKeys.all, 'public-list', params] as const,
   mySubmissions: () => [...enterpriseMarketplaceKeys.all, 'my-submissions'] as const,
+  adminLists: () => [...enterpriseMarketplaceKeys.all, 'admin-list'] as const,
   adminList: (params: AdminAssetListParams) => [...enterpriseMarketplaceKeys.all, 'admin-list', params] as const,
+}
+
+const invalidateEnterpriseMarketplacePublicLists = (queryClient: ReturnType<typeof useQueryClient>) => {
+  return queryClient.invalidateQueries({
+    queryKey: enterpriseMarketplaceKeys.publicLists(),
+  })
+}
+
+const invalidateEnterpriseMarketplaceAdminLists = (queryClient: ReturnType<typeof useQueryClient>) => {
+  return queryClient.invalidateQueries({
+    queryKey: enterpriseMarketplaceKeys.adminLists(),
+  })
+}
+
+const invalidateEnterpriseMarketplaceSubmissions = (queryClient: ReturnType<typeof useQueryClient>) => {
+  return queryClient.invalidateQueries({
+    queryKey: enterpriseMarketplaceKeys.mySubmissions(),
+    exact: true,
+  })
 }
 
 export const useEnterpriseMarketplacePublicAssets = (params: PublicAssetListParams) => {
@@ -50,6 +71,7 @@ export const useEnterpriseMarketplacePublicAssets = (params: PublicAssetListPara
         category: params.category,
       },
     }),
+    placeholderData: keepPreviousData,
     staleTime: enterpriseMarketplaceListStaleTime,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -82,9 +104,11 @@ export const useSubmitEnterpriseMarketplaceAsset = (appId: string) => {
       url: `/apps/${appId}/enterprise-marketplace/submissions`,
       body,
     }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.mySubmissions() })
-      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'admin-list'] })
+    onSuccess: async () => {
+      await Promise.all([
+        invalidateEnterpriseMarketplaceSubmissions(queryClient),
+        invalidateEnterpriseMarketplaceAdminLists(queryClient),
+      ])
     },
   })
 }
@@ -101,6 +125,7 @@ export const useAdminEnterpriseMarketplaceAssets = (params: AdminAssetListParams
         status: params.status,
       },
     }),
+    placeholderData: keepPreviousData,
     staleTime: enterpriseMarketplaceListStaleTime,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -116,10 +141,12 @@ export const useReviewEnterpriseMarketplaceAsset = () => {
         body: { status, review_note },
       })
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'admin-list'] })
-      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'public-list'] })
-      void queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.mySubmissions() })
+    onSuccess: async () => {
+      await Promise.all([
+        invalidateEnterpriseMarketplaceAdminLists(queryClient),
+        invalidateEnterpriseMarketplacePublicLists(queryClient),
+        invalidateEnterpriseMarketplaceSubmissions(queryClient),
+      ])
     },
   })
 }
@@ -130,10 +157,12 @@ export const useUnlistEnterpriseMarketplaceAsset = () => {
     mutationFn: (assetId: string) => unlistEnterpriseMarketplaceAsset({
       url: `/platform-admin/enterprise-marketplace/assets/${assetId}/unlist`,
     }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'admin-list'] })
-      void queryClient.invalidateQueries({ queryKey: [...enterpriseMarketplaceKeys.all, 'public-list'] })
-      void queryClient.invalidateQueries({ queryKey: enterpriseMarketplaceKeys.mySubmissions() })
+    onSuccess: async () => {
+      await Promise.all([
+        invalidateEnterpriseMarketplaceAdminLists(queryClient),
+        invalidateEnterpriseMarketplacePublicLists(queryClient),
+        invalidateEnterpriseMarketplaceSubmissions(queryClient),
+      ])
     },
   })
 }

@@ -135,6 +135,51 @@
 
 ---
 
+## 路线二阶段验收记录
+
+### 2026-04-04 企业页续做验收
+
+本轮验收基于以下本机环境完成：
+
+- Windows 11
+- Docker Desktop
+- `docker/docker-compose.yaml` + `docker/docker-compose.enterprise.yaml`
+- 浏览器点击 + `web / api / nginx` 容器日志联动核对
+
+本轮实际点击覆盖了以下主链路：
+
+- 平台管理员工作区列表、成员列表、创建工作区
+- 企业广场管理列表、审核
+- 企业广场公开列表、我的提交、提交到企业广场
+
+日志中确认出现且返回正常的关键请求包括：
+
+- `GET /console/api/platform-admin/workspaces?page=1&limit=200&keyword=`
+- `GET /console/api/platform-admin/workspaces/<workspace-id>/members`
+- `POST /console/api/platform-admin/workspaces`，返回 `201`
+- `GET /console/api/platform-admin/enterprise-marketplace/assets?...status=pending`
+- `POST /console/api/platform-admin/enterprise-marketplace/assets/<asset-id>/review`，返回 `200`
+- `GET /console/api/enterprise-marketplace/assets?page=1&limit=24&keyword=`
+- `GET /console/api/enterprise-marketplace/submissions`
+- `POST /console/api/apps/<app-id>/enterprise-marketplace/submissions`，返回 `201`
+
+本轮验收结论：
+
+- 平台管理员页的请求节奏符合路线二目标：先拉工作区列表，再按当前选中的工作区拉成员列表
+- 企业广场审核后看到的是目标管理列表刷新，没有观察到明显的无关列表扩散刷新
+- 企业广场公开页主要维持为公开列表 + 我的提交两组请求，没有出现新的宽刷新爆发
+- `web`、`api`、`nginx` 在验收窗口内未出现与企业页主链路对应的新 `500` 或容器异常
+
+本轮同时观察到少量与插件或模型供应商链路相关的 `400` / `401` 日志，但这些请求来自插件管理或模型配置路径，不属于本轮企业页路线二治理回归。
+
+当前阶段判断：
+
+- 企业页路线二主链路已通过一轮真实浏览器点击和容器日志验收
+- 服务端日志没有显示出新的列表级 `N+1` 或明显宽刷新回退
+- 后续若继续收紧，应优先沿企业页剩余组件的 query / mutation 编排下沉推进，而不是扩大到无关公共模块
+
+---
+
 ## 合并官方代码时怎么判断影响
 
 路线二相对大重构更容易和上游合并，但仍有一些高频冲突区需要重点复查：

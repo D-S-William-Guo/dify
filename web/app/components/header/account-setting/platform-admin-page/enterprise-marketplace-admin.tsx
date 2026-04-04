@@ -99,6 +99,37 @@ const EnterpriseMarketplaceAdmin = () => {
   const items = assetQuery.data?.items || []
   const reviewableAssets = useMemo(() => items.filter(item => item.status === 'pending'), [items])
 
+  const handleUnlist = (assetId: string) => {
+    unlistMutation.mutate(assetId, {
+      onSuccess: () => toast.success(t('enterpriseMarketplace.unlistSuccess', { ns: 'common' })),
+      onError: (error) => toast.error(error instanceof Error ? error.message : t('api.actionFailed', { ns: 'common' })),
+    })
+  }
+
+  const handleReviewSubmit = (reviewNote: string) => {
+    if (!selectedAsset || !reviewAction)
+      return
+
+    reviewMutation.mutate({
+      assetId: selectedAsset.id,
+      status: reviewAction,
+      review_note: reviewNote || undefined,
+    }, {
+      onSuccess: () => {
+        toast.success(
+          reviewAction === 'approved'
+            ? t('enterpriseMarketplace.approveSuccess', { ns: 'common' })
+            : t('enterpriseMarketplace.rejectSuccess', { ns: 'common' }),
+        )
+        setSelectedAsset(null)
+        setReviewAction(null)
+      },
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : t('api.actionFailed', { ns: 'common' }))
+      },
+    })
+  }
+
   return (
     <>
       <div className="rounded-2xl border border-divider-subtle bg-components-panel-bg p-4">
@@ -200,12 +231,7 @@ const EnterpriseMarketplaceAdmin = () => {
                   {item.status === 'approved' && (
                     <Button
                       size="small"
-                      onClick={() => {
-                        unlistMutation.mutate(item.id, {
-                          onSuccess: () => toast.success(t('enterpriseMarketplace.unlistSuccess', { ns: 'common' })),
-                          onError: (error) => toast.error(error instanceof Error ? error.message : t('api.actionFailed', { ns: 'common' })),
-                        })
-                      }}
+                      onClick={() => handleUnlist(item.id)}
                     >
                       {t('enterpriseMarketplace.unlistAction', { ns: 'common' })}
                     </Button>
@@ -231,29 +257,7 @@ const EnterpriseMarketplaceAdmin = () => {
           setSelectedAsset(null)
           setReviewAction(null)
         }}
-        onSubmit={(reviewNote) => {
-          if (!selectedAsset || !reviewAction)
-            return
-
-          reviewMutation.mutate({
-            assetId: selectedAsset.id,
-            status: reviewAction,
-            review_note: reviewNote || undefined,
-          }, {
-            onSuccess: () => {
-              toast.success(
-                reviewAction === 'approved'
-                  ? t('enterpriseMarketplace.approveSuccess', { ns: 'common' })
-                  : t('enterpriseMarketplace.rejectSuccess', { ns: 'common' }),
-              )
-              setSelectedAsset(null)
-              setReviewAction(null)
-            },
-            onError: (error) => {
-              toast.error(error instanceof Error ? error.message : t('api.actionFailed', { ns: 'common' }))
-            },
-          })
-        }}
+        onSubmit={handleReviewSubmit}
       />
     </>
   )

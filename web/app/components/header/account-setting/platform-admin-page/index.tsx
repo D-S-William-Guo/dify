@@ -2,7 +2,6 @@
 
 import type { InvitationResult } from '@/models/common'
 import type { RoleKey } from '../members-page/invite-modal/role-selector'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
@@ -17,14 +16,14 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useLocale } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import {
-  createPlatformAdminWorkspace,
-  deleteMemberOrCancelInvitation,
-  fetchMembers,
-  fetchPlatformAdminWorkspaces,
-  inviteMember,
-  patchPlatformAdminWorkspace,
-  updateMemberRole,
-} from '@/service/common'
+  useCreatePlatformAdminWorkspace,
+  useDeletePlatformAdminWorkspaceMember,
+  useInvitePlatformAdminWorkspaceMembers,
+  usePlatformAdminWorkspaceMembers,
+  usePlatformAdminWorkspaces,
+  useRenamePlatformAdminWorkspace,
+  useUpdatePlatformAdminWorkspaceMemberRole,
+} from '@/service/use-platform-admin'
 import { cn } from '@/utils/classnames'
 import InvitedModal from '../members-page/invited-modal'
 import RoleSelector from '../members-page/invite-modal/role-selector'
@@ -296,7 +295,6 @@ const InviteMembersDialog = ({
 
 const PlatformAdminPage = () => {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { datasetOperatorEnabled } = useProviderContext()
   const [section, setSection] = useState<'workspaces' | 'marketplace'>('workspaces')
@@ -309,21 +307,10 @@ const PlatformAdminPage = () => {
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [showInvitedDialog, setShowInvitedDialog] = useState(false)
 
-  const workspaceQuery = useQuery({
-    queryKey: ['platform-admin', 'workspaces', deferredKeyword],
-    queryFn: () => fetchPlatformAdminWorkspaces({
-      url: '/platform-admin/workspaces',
-      params: {
-        page: 1,
-        limit: 200,
-        keyword: deferredKeyword,
-      },
-    }),
-    enabled: section === 'workspaces',
-    staleTime: 30 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
+  const workspaceQuery = usePlatformAdminWorkspaces(
+    { keyword: deferredKeyword },
+    section === 'workspaces',
+  )
 
   const workspaces = workspaceQuery.data?.items || []
   const selectedWorkspace = useMemo(
@@ -341,17 +328,10 @@ const PlatformAdminPage = () => {
       setSelectedWorkspaceId(workspaces[0].id)
   }, [selectedWorkspaceId, workspaces])
 
-  const membersQuery = useQuery({
-    queryKey: ['platform-admin', 'workspace-members', selectedWorkspaceId],
-    queryFn: () => fetchMembers({
-      url: `/platform-admin/workspaces/${selectedWorkspaceId}/members`,
-      params: {},
-    }),
-    enabled: section === 'workspaces' && !!selectedWorkspaceId,
-    staleTime: 15 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-  })
+  const membersQuery = usePlatformAdminWorkspaceMembers(
+    selectedWorkspaceId,
+    section === 'workspaces' && !!selectedWorkspaceId,
+  )
 
   const roleOptions = useMemo<RoleKey[]>(() => (
     datasetOperatorEnabled
@@ -359,76 +339,54 @@ const PlatformAdminPage = () => {
       : ['admin', 'editor', 'normal']
   ), [datasetOperatorEnabled])
 
-  const invalidateWorkspaceList = () => {
-    void queryClient.invalidateQueries({ queryKey: ['platform-admin', 'workspaces'] })
+  const createWorkspaceMutation = useCreatePlatformAdminWorkspace()
+  const renameWorkspaceMutation = useRenamePlatformAdminWorkspace(selectedWorkspaceId)
+  const inviteMembersMutation = useInvitePlatformAdminWorkspaceMembers(selectedWorkspaceId)
+  const updateRoleMutation = useUpdatePlatformAdminWorkspaceMemberRole(selectedWorkspaceId)
+  const removeMemberMutation = useDeletePlatformAdminWorkspaceMember(selectedWorkspaceId)
+
+  const handleCreateWorkspace = (payload: { name: string, owner_email?: string, owner_name?: string }) => {
+    createWorkspaceMutation.mutate(payload, {
+      onSuccess: (response) => {
+        setShowCreateDialog(false)
+        setSelectedWorkspaceId(response.workspace.id)
+        if (response.owner_invitation_url && response.workspace.owner?.email) {
+          setInvitationResults([{
+            status: 'success',
+            email: response.workspace.owner.email,
+            url: response.owner_invitation_url,
+          }])
+          setShowInvitedDialog(true)
+        }
+      },
+    })
   }
 
-  const invalidateWorkspaceMembers = () => {
-    void queryClient.invalidateQueries({ queryKey: ['platform-admin', 'workspace-members'] })
+  const handleRenameWorkspace = (name: string) => {
+    renameWorkspaceMutation.mutate(name, {
+      onSuccess: () => {
+        setShowRenameDialog(false)
+      },
+    })
   }
 
-  const createWorkspaceMutation = useMutation({
-    mutationFn: (body: { name: string, owner_email?: string, owner_name?: string }) => createPlatformAdminWorkspace({
-      url: '/platform-admin/workspaces',
-      body,
-    }),
-    onSuccess: (response) => {
-      setShowCreateDialog(false)
-      setSelectedWorkspaceId(response.workspace.id)
-      invalidateWorkspaceList()
-      if (response.owner_invitation_url && response.workspace.owner?.email) {
-        setInvitationResults([{
-          status: 'success',
-          email: response.workspace.owner.email,
-          url: response.owner_invitation_url,
-        }])
+  const handleInviteMembers = (payload: { emails: string[], role: RoleKey, language: string }) => {
+    inviteMembersMutation.mutate(payload, {
+      onSuccess: (response) => {
+        setShowInviteDialog(false)
+        setInvitationResults(response.invitation_results)
         setShowInvitedDialog(true)
-      }
-    },
-  })
+      },
+    })
+  }
 
-  const renameWorkspaceMutation = useMutation({
-    mutationFn: (name: string) => patchPlatformAdminWorkspace({
-      url: `/platform-admin/workspaces/${selectedWorkspaceId}`,
-      body: { name },
-    }),
-    onSuccess: () => {
-      setShowRenameDialog(false)
-      invalidateWorkspaceList()
-    },
-  })
+  const handleUpdateMemberRole = (payload: { memberId: string, role: RoleKey }) => {
+    updateRoleMutation.mutate(payload)
+  }
 
-  const inviteMembersMutation = useMutation({
-    mutationFn: (body: { emails: string[], role: RoleKey, language: string }) => inviteMember({
-      url: `/platform-admin/workspaces/${selectedWorkspaceId}/members/invite`,
-      body,
-    }),
-    onSuccess: (response) => {
-      setShowInviteDialog(false)
-      setInvitationResults(response.invitation_results)
-      setShowInvitedDialog(true)
-      invalidateWorkspaceList()
-      invalidateWorkspaceMembers()
-    },
-  })
-
-  const updateRoleMutation = useMutation({
-    mutationFn: ({ memberId, role }: { memberId: string, role: RoleKey }) => updateMemberRole({
-      url: `/platform-admin/workspaces/${selectedWorkspaceId}/members/${memberId}/role`,
-      body: { role },
-    }),
-    onSuccess: () => invalidateWorkspaceMembers(),
-  })
-
-  const removeMemberMutation = useMutation({
-    mutationFn: (memberId: string) => deleteMemberOrCancelInvitation({
-      url: `/platform-admin/workspaces/${selectedWorkspaceId}/members/${memberId}`,
-    }),
-    onSuccess: () => {
-      invalidateWorkspaceList()
-      invalidateWorkspaceMembers()
-    },
-  })
+  const handleRemoveMember = (memberId: string) => {
+    removeMemberMutation.mutate(memberId)
+  }
 
   const members = membersQuery.data?.accounts || []
 
@@ -568,7 +526,7 @@ const PlatformAdminPage = () => {
                                 <select
                                   className="h-9 w-full rounded-lg border border-divider-subtle bg-components-input-bg-normal px-3 text-sm text-text-secondary outline-none hover:bg-state-base-hover"
                                   value={member.role}
-                                  onChange={e => updateRoleMutation.mutate({ memberId: member.id, role: e.target.value as RoleKey })}
+                                  onChange={e => handleUpdateMemberRole({ memberId: member.id, role: e.target.value as RoleKey })}
                                   disabled={updateRoleMutation.isPending}
                                 >
                                   {roleOptions.map(role => (
@@ -583,7 +541,7 @@ const PlatformAdminPage = () => {
                             variant="tertiary"
                             destructive
                             loading={removeMemberMutation.isPending}
-                            onClick={() => removeMemberMutation.mutate(member.id)}
+                            onClick={() => handleRemoveMember(member.id)}
                           >
                             {t('operation.delete', { ns: 'common' })}
                           </Button>
@@ -609,7 +567,7 @@ const PlatformAdminPage = () => {
         show={showCreateDialog}
         loading={createWorkspaceMutation.isPending}
         onClose={() => setShowCreateDialog(false)}
-        onSubmit={payload => createWorkspaceMutation.mutate(payload)}
+        onSubmit={handleCreateWorkspace}
       />
 
       <RenameWorkspaceDialog
@@ -617,7 +575,7 @@ const PlatformAdminPage = () => {
         loading={renameWorkspaceMutation.isPending}
         name={selectedWorkspace?.name || ''}
         onClose={() => setShowRenameDialog(false)}
-        onSubmit={name => renameWorkspaceMutation.mutate(name)}
+        onSubmit={handleRenameWorkspace}
       />
 
       <InviteMembersDialog
@@ -625,7 +583,7 @@ const PlatformAdminPage = () => {
         isEmailSetup={systemFeatures.is_email_setup}
         loading={inviteMembersMutation.isPending}
         onClose={() => setShowInviteDialog(false)}
-        onSubmit={payload => inviteMembersMutation.mutate(payload)}
+        onSubmit={handleInviteMembers}
       />
 
       {showInvitedDialog && (

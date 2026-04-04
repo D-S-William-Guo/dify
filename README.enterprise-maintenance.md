@@ -299,6 +299,32 @@ git branch -vv
   - `local`
   - `enterprise-local`
 
+镜像一致性补充规则：
+
+- `worker` 与 `worker_beat` 不只是“逻辑上复用” `dify-api-enterprise:<官方版本-enterprise>`，运行中的容器也必须实际切到当前 tag 对应的同一镜像 ID
+- 如果重新 build 了 `dify-api-enterprise:<官方版本-enterprise>`，必须再执行一次双 compose 的服务重建，让 `api`、`worker`、`worker_beat` 一起切到新的镜像
+- 否则旧容器会继续引用旧镜像 ID，旧镜像失去 tag 后会变成 dangling `<none>`，造成“tag 是新的、运行还是旧的”这种假对齐状态
+- 最低验收动作：
+  - `docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat`
+  - 然后检查 `docker compose ... ps`
+  - 必要时再用 `docker inspect` 确认三者的 `Config.Image` 与实际 `Image` 已经对齐到当前企业镜像
+
+联动重建补充规则：
+
+- 不把“整套 compose 全量重启”作为默认动作
+- 默认按受影响服务做最小联动重建，避免把无关服务和数据面一起扰动
+- 如果重建了 `web` 运行镜像，默认同时重建 `nginx`：
+  - `docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate web nginx`
+- 如果重建了 `api` 运行镜像，默认同时重建 `api`、`worker`、`worker_beat`、`nginx`：
+  - `docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat nginx`
+- 如果只修改了 Nginx 配置、模板或 HTTPS 相关挂载，单独重建 `nginx`：
+  - `docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate nginx`
+- 只有在服务范围不清、依赖状态混乱、网络状态异常，或者需要做一轮完整环境回收时，才考虑更大范围的 compose 重启
+- 每次联动重建后，至少检查：
+  - `docker compose ... ps`
+  - `docker compose ... logs --tail=... nginx web api`
+  - 浏览器入口是否已经落到新容器
+
 ### 每次同步官方后如何确定企业镜像版本
 
 每次同步官方最新代码并合并到 `enterprise/main` 后，按下面顺序处理版本：
@@ -416,6 +442,16 @@ docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d
 - 配置类挂载跟着仓库目录一起带过去即可
 - 数据类挂载在目标机首次 `docker compose up -d` 时自动创建为空目录
 - 如果你的目标是“新环境初始化”而不是“旧环境迁移”，就不要复制本机旧数据目录
+
+开发态数据目录保护规则：
+
+- `docker/volumes/**` 里的数据库、存储、Redis、插件、向量库等运行数据目录，不得在日常开发、路线二治理、镜像重建、容器联动重建时擅自删除
+- 这些目录一旦被清空，本机环境就可能表现成“全新初始化”，已有用户、应用、提交记录和运行状态都会丢失
+- 只有两种情况允许删除：
+  - 你明确要求重置环境或删除这些数据目录
+  - 我先提出删除建议，并明确说明影响范围，得到你的同意后再执行
+- 没有得到你的明确许可时，`docker/volumes/db/data`、`docker/volumes/app/storage`、`docker/volumes/redis/data`、`docker/volumes/plugin_daemon`、`docker/volumes/weaviate` 等目录一律视为需要保留
+- “清理工作区残留”默认不包含这些正在使用的运行数据目录
 
 启动方式示例：
 

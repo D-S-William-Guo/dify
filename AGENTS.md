@@ -19,6 +19,7 @@ The codebase is split into:
 ## Frontend Workflow
 
 - Read `web/AGENTS.md` for details
+- For enterprise Docker validation, image builds, or project-scoped image cleanup, read `docker/README.enterprise.md` and use `.agents/skills/enterprise-docker-workflow/`.
 
 ## Testing & Quality Practices
 

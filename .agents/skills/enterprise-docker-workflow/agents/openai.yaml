@@ -1,0 +1,4 @@
+interface:
+  display_name: "Enterprise Docker Workflow"
+  short_description: "Project-scoped enterprise Docker validation and image rules"
+  default_prompt: "Use this skill when working on Dify enterprise Docker development, compose validation, image rebuild decisions, route 2 runtime verification, or project-only image cleanup."
