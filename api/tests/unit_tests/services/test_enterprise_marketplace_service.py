@@ -2,8 +2,9 @@ from types import SimpleNamespace
 from unittest.mock import call
 
 from pytest_mock import MockerFixture
+from sqlalchemy.sql import Select
 
-from services.enterprise_marketplace_service import EnterpriseMarketplaceService
+from services.enterprise_marketplace_service import EnterpriseMarketplaceAssetStatus, EnterpriseMarketplaceService
 
 
 def test_serialize_asset_list_should_pass_prefetched_models_to_serializer(
@@ -123,3 +124,83 @@ def test_serialize_asset_list_should_skip_assets_without_normal_source_apps(
     # Assert
     assert items == []
     serialize_asset.assert_not_called()
+
+
+def test_list_public_assets_should_filter_out_non_normal_source_apps_in_query(
+    mocker: MockerFixture,
+) -> None:
+    # Arrange
+    captured_select: Select | None = None
+    mocked_db = mocker.patch("services.enterprise_marketplace_service.db")
+    mocked_db.paginate.side_effect = lambda *, select, page, per_page, error_out: _capture_paginate_args(
+        select_statement=select,
+        page=page,
+        per_page=per_page,
+        error_out=error_out,
+    )
+    mocker.patch.object(
+        EnterpriseMarketplaceService,
+        "serialize_asset_list",
+        return_value=[],
+    )
+
+    # Act
+    result = EnterpriseMarketplaceService.list_public_assets(
+        page=2,
+        limit=24,
+        keyword="bot",
+        category="Support",
+    )
+
+    # Assert
+    assert result.total == 0
+    paginate_call = mocked_db.paginate.call_args.kwargs
+    captured_select = paginate_call["select"]
+    compiled_sql = str(captured_select.compile(compile_kwargs={"literal_binds": True}))
+    assert "JOIN apps" in compiled_sql
+    assert "enterprise_marketplace_assets.status = 'approved'" in compiled_sql
+    assert "apps.status = 'normal'" in compiled_sql
+    assert "enterprise_marketplace_assets.category = 'Support'" in compiled_sql
+    assert mocked_db.paginate.call_args.kwargs["page"] == 2
+    assert mocked_db.paginate.call_args.kwargs["per_page"] == 24
+
+
+def test_list_admin_assets_should_filter_out_non_normal_source_apps_in_query(
+    mocker: MockerFixture,
+) -> None:
+    # Arrange
+    mocked_db = mocker.patch("services.enterprise_marketplace_service.db")
+    mocked_db.paginate.side_effect = lambda *, select, page, per_page, error_out: _capture_paginate_args(
+        select_statement=select,
+        page=page,
+        per_page=per_page,
+        error_out=error_out,
+    )
+    mocker.patch.object(
+        EnterpriseMarketplaceService,
+        "serialize_asset_list",
+        return_value=[],
+    )
+
+    # Act
+    result = EnterpriseMarketplaceService.list_admin_assets(
+        page=1,
+        limit=50,
+        keyword="agent",
+        status=EnterpriseMarketplaceAssetStatus.PENDING,
+    )
+
+    # Assert
+    assert result.total == 0
+    captured_select = mocked_db.paginate.call_args.kwargs["select"]
+    compiled_sql = str(captured_select.compile(compile_kwargs={"literal_binds": True}))
+    assert "JOIN apps" in compiled_sql
+    assert "apps.status = 'normal'" in compiled_sql
+    assert "enterprise_marketplace_assets.status = 'pending'" in compiled_sql
+    assert "enterprise_marketplace_assets.title ILIKE '%%agent%%'" in compiled_sql
+
+
+def _capture_paginate_args(*, select_statement: Select, page: int, per_page: int, error_out: bool) -> SimpleNamespace:
+    assert isinstance(select_statement, Select)
+    assert error_out is False
+    return SimpleNamespace(items=[], total=0, page=page, per_page=per_page)

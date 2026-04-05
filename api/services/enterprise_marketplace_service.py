@@ -128,8 +128,13 @@ class EnterpriseMarketplaceService:
         keyword: str | None = None,
         category: str | None = None,
     ) -> EnterpriseMarketplaceListResult:
-        stmt = select(EnterpriseMarketplaceAsset).where(
-            EnterpriseMarketplaceAsset.status == EnterpriseMarketplaceAssetStatus.APPROVED
+        stmt = (
+            select(EnterpriseMarketplaceAsset)
+            .join(App, App.id == EnterpriseMarketplaceAsset.source_app_id)
+            .where(
+                EnterpriseMarketplaceAsset.status == EnterpriseMarketplaceAssetStatus.APPROVED,
+                App.status == "normal",
+            )
         )
         if keyword:
             stmt = stmt.where(EnterpriseMarketplaceAsset.title.ilike(f"%{keyword.strip()}%"))
@@ -163,7 +168,11 @@ class EnterpriseMarketplaceService:
         keyword: str | None = None,
         status: EnterpriseMarketplaceAssetStatus | None = None,
     ) -> EnterpriseMarketplaceListResult:
-        stmt = select(EnterpriseMarketplaceAsset)
+        stmt = (
+            select(EnterpriseMarketplaceAsset)
+            .join(App, App.id == EnterpriseMarketplaceAsset.source_app_id)
+            .where(App.status == "normal")
+        )
         if keyword:
             stmt = stmt.where(EnterpriseMarketplaceAsset.title.ilike(f"%{keyword.strip()}%"))
         if status:
