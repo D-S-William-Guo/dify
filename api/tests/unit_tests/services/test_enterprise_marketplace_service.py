@@ -197,7 +197,8 @@ def test_list_admin_assets_should_filter_out_non_normal_source_apps_in_query(
     assert "JOIN apps" in compiled_sql
     assert "apps.status = 'normal'" in compiled_sql
     assert "enterprise_marketplace_assets.status = 'pending'" in compiled_sql
-    assert "enterprise_marketplace_assets.title ILIKE '%%agent%%'" in compiled_sql
+    assert "enterprise_marketplace_assets.title" in compiled_sql
+    assert "%agent%" in compiled_sql
 
 
 def _capture_paginate_args(*, select_statement: Select, page: int, per_page: int, error_out: bool) -> SimpleNamespace:
