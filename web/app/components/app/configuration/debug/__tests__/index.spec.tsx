@@ -215,24 +215,20 @@ vi.mock('../debug-with-multiple-model', () => ({
   ),
 }))
 
-vi.mock('../debug-with-single-model', () => {
-  function DebugWithSingleModelMock({
-    checkCanSend,
-    ref,
-  }: {
-    checkCanSend: () => boolean
-    ref?: React.Ref<{ handleRestart: () => void }>
-  }) {
-    React.useImperativeHandle(ref, () => ({
-      handleRestart: mockState.mockHandleRestart,
-    }))
+vi.mock('../debug-with-single-model', () => ({
+  default: React.forwardRef<{ handleRestart: () => void }, { checkCanSend: () => boolean }>(
+    function DebugWithSingleModelMock({ checkCanSend }, ref) {
+      React.useImperativeHandle(ref, () => ({
+        handleRestart: mockState.mockHandleRestart,
+      }))
 
-    return (
-      <div data-testid="debug-with-single-model">
-        <button type="button" data-testid="single-check-can-send" onClick={() => props.checkCanSend()}>Check</button>
-      </div>
-    )
-  }),
+      return (
+        <div data-testid="debug-with-single-model">
+          <button type="button" data-testid="single-check-can-send" onClick={() => checkCanSend()}>Check</button>
+        </div>
+      )
+    },
+  ),
 }))
 
 const createContextValue = (overrides: Partial<DebugContextValue> = {}): DebugContextValue => ({
