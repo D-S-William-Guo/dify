@@ -84,9 +84,11 @@ docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise
 Notes:
 
 - Replace `1.13.3-enterprise` with the real release version for the current upstream sync.
-- `Mode=smart` is the recommended default:
+- `Mode=smart` is the recommended default only when this packaging run follows an already-completed current-source compose validation and image rebuild decision:
   - reuse existing enterprise images when the tag exists and the internal `COMMIT_SHA` matches
   - rebuild automatically only when the image is missing or the internal version does not match
+- If this round includes backend or frontend runtime code changes and the enterprise images have not yet been rebuilt from the current source tree, do not rely on `Mode=smart` to discover that drift for you.
+- After current-source compose validation has rebuilt the required enterprise images for this source tree, prefer `Mode=reuse` for packaging so the exported bundle is forced to use the just-validated images instead of rebuilding again with a different path.
 - Use `Mode=rebuild` when you want to force a clean rebuild.
 - Use `Mode=reuse` when you want packaging to fail instead of rebuilding.
 - If you only want a local runtime check and do not need an offline bundle, you can skip the last step and run compose directly from `docker/`.
@@ -106,16 +108,25 @@ Rules:
 
 - Do not assume the running `api` or `web` containers are source bind mounts. Inspect mounts first.
 - If `api` or `web` run from prebuilt images, treat them as old runtime snapshots until current-source validation succeeds.
+- Local regression checks such as `pytest`, `pnpm type-check`, or targeted frontend tests are the first gate only. They do not prove that the enterprise runtime images used by compose or offline packaging contain the current source tree.
 - After changing enterprise code, validate the current source tree through compose before trusting runtime behavior:
   - frontend runtime changes: run `docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml build web`, because `web/Dockerfile` compiles the app during the image build
   - backend runtime changes: rebuild the API enterprise image through compose, then use compose-owned containers for follow-up runtime or targeted checks
   - if a standalone container is ever needed for a special case, treat it as an exception and keep the command aligned with the compose-defined image and environment
+- Treat the following as frontend runtime changes that require enterprise web image rebuild before packaging:
+  - files under `web/app/**`, `web/components/**`, `web/context/**`, `web/service/**`, `web/utils/**`
+  - frontend i18n resources used at runtime
+  - frontend build helpers that affect bundled output, such as `web/tailwind-css-plugin.ts`
+- Treat the following as backend runtime changes that require enterprise API image rebuild before packaging:
+  - files under `api/**` except pure test-only changes
+  - backend dependency or Docker build-input changes
 - Rebuild `dify-api-enterprise:<official-version-enterprise>` when backend runtime code, backend dependencies, or API image build inputs change.
 - Rebuild `dify-web-enterprise:<official-version-enterprise>` when frontend runtime code, frontend dependencies, or web image build inputs change.
 - `worker` and `worker_beat` reuse the API enterprise image at runtime, so API image rebuild decisions also affect them.
 - After rebuilding `dify-api-enterprise:<official-version-enterprise>`, recreate `api`, `worker`, and `worker_beat` through the enterprise compose stack with `--force-recreate` so all three services switch to the same current image ID.
 - Otherwise, old `worker` or `worker_beat` containers may keep running on a previous image layer while the tag already points to a newer image, leaving the old layer as a dangling `<none>` image.
 - For packaging or release checks, verify both the version tag and the image-internal `COMMIT_SHA`.
+- If runtime code changed in this round, the required compose image rebuild must happen before offline packaging. Do not package first and assume `smart` mode will catch stale runtime images.
 
 For enterprise-page route 2 work, the default service tiers are:
 
@@ -202,5 +213,9 @@ Notes:
 1. Run `docker/dify-env-sync.py` or `docker/dify-env-sync.sh` to align `docker/.env` with the latest `docker/.env.example`.
 1. Confirm the upstream Dify version included in this sync.
 1. Set `DIFY_ENTERPRISE_VERSION` to `official-version-enterprise`.
-1. Rebuild enterprise images with that version tag.
-1. Re-export the offline bundle and deliver it to the production server.
+1. Run local regression checks first, but treat them only as the first gate.
+1. Rebuild the required enterprise images through compose from the current source tree:
+   - frontend runtime changes: rebuild `web`
+   - backend runtime changes: rebuild `api`, `worker`, and `worker_beat`
+1. If runtime behavior needs verification, validate against the rebuilt compose services before packaging.
+1. Re-export the offline bundle from the rebuilt images, preferably with `Mode=reuse`, and deliver it to the production server.

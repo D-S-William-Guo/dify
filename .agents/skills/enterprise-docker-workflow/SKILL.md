@@ -39,13 +39,18 @@ description: Enterprise Docker development, validation, image rebuild, and proje
    - Backend runtime changes are validated by rebuilding the enterprise API image through compose and, when test tooling is needed, running it through compose-owned containers or another compose-aligned flow instead of bypassing the project definitions.
    - Use standalone `docker run` only as a fallback when compose cannot express the needed verification step, and call out that exception explicitly.
    - Do not claim enterprise code is verified if only old compose containers were observed.
+   - Do not treat local regression checks such as `pytest`, `pnpm type-check`, or targeted frontend tests as a substitute for compose image validation. They are the first gate only.
    - Keep runtime artifacts such as `docker/volumes/**`, `.venv/**`, `node_modules/**`, and `.codex/**` in the "build-context hygiene" bucket; do not confuse them with the frontend source baseline itself.
 5. Decide whether enterprise images must be rebuilt.
    - Rebuild `dify-api-enterprise:<official-version-enterprise>` when backend runtime logic, backend dependencies, or Docker build inputs affecting the API image change.
    - Rebuild `dify-web-enterprise:<official-version-enterprise>` when frontend runtime logic, frontend dependencies, or Docker build inputs affecting the web image change.
+   - Treat files under `web/app/**`, `web/components/**`, `web/context/**`, `web/service/**`, `web/utils/**`, frontend i18n resources, and frontend build helpers such as `web/tailwind-css-plugin.ts` as frontend runtime/build-output inputs.
+   - Treat files under `api/**` except pure test-only changes as backend runtime inputs.
    - Reuse `dify-api-enterprise` for `worker` and `worker_beat`.
    - After rebuilding the API enterprise image, run compose with `--force-recreate` for `api`, `worker`, and `worker_beat` together so they all land on the current tagged image instead of leaving old worker containers on a now-dangling layer.
    - For release or packaging work, check both the tag and the internal `COMMIT_SHA`; tag equality alone is not enough.
+   - If runtime code changed in this round, require the compose rebuild before packaging; do not package first and assume `smart` mode will detect stale images.
+   - After compose has rebuilt and, when needed, runtime-validated the required enterprise images for this exact source tree, prefer packaging with `Mode=reuse` so the offline bundle is forced to export the verified images.
 6. Run compose runtime verification only after current-source validation passes.
    - Use the enterprise overlay compose files.
    - For route 2 enterprise-page work, validate in the browser and correlate behavior with container logs.
