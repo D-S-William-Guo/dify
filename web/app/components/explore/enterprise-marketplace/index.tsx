@@ -1,7 +1,7 @@
 'use client'
 
 import type { EnterpriseMarketplaceAsset } from '@/models/common'
-import { useDeferredValue, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppIcon from '@/app/components/base/app-icon'
@@ -184,6 +184,7 @@ const EnterpriseMarketplace = () => {
   const [keyword, setKeyword] = useState('')
   const deferredKeyword = useDeferredValue(keyword)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [page, setPage] = useState(1)
   const [selectedAsset, setSelectedAsset] = useState<EnterpriseMarketplaceAsset | null>(null)
   const [showDSLConfirmModal, setShowDSLConfirmModal] = useState(false)
   const [pendingVersions, setPendingVersions] = useState<{ importedVersion: string, systemVersion: string }>()
@@ -191,21 +192,33 @@ const EnterpriseMarketplace = () => {
   const pendingImportIdRef = useRef('')
   const pendingAssetIdRef = useRef('')
 
-  const publicAssetQuery = useEnterpriseMarketplacePublicAssets({ keyword: deferredKeyword, limit: 24 })
+  const publicAssetQuery = useEnterpriseMarketplacePublicAssets({
+    keyword: deferredKeyword,
+    category: selectedCategory === 'all' ? undefined : selectedCategory,
+    page,
+    limit: 24,
+  })
   const mySubmissionQuery = useEnterpriseMarketplaceMySubmissions()
   const useAssetMutation = useUseEnterpriseMarketplaceAsset()
 
   const allAssets = publicAssetQuery.data?.items || []
   const categories = useMemo(() => Array.from(new Set(allAssets.map(item => item.category))), [allAssets])
-  const visibleAssets = useMemo(() => {
-    if (selectedCategory === 'all')
-      return allAssets
-    return allAssets.filter(item => item.category === selectedCategory)
-  }, [allAssets, selectedCategory])
+  const visibleAssets = allAssets
+  const total = publicAssetQuery.data?.total || 0
+  const totalPages = Math.max(1, Math.ceil(total / 24))
   const selectedAssetCopyState = selectedAsset && copyFlow.assetId === selectedAsset.id ? copyFlow.state : 'idle'
   const selectedAssetErrorMessage = selectedAsset && copyFlow.assetId === selectedAsset.id ? copyFlow.errorMessage : null
   const isCloseDisabled = selectedAssetCopyState === 'submitting' || selectedAssetCopyState === 'confirming'
   const isPrimaryDisabled = selectedAssetCopyState === 'submitting' || selectedAssetCopyState === 'confirming' || selectedAssetCopyState === 'completed'
+
+  useEffect(() => {
+    setPage(1)
+  }, [deferredKeyword, selectedCategory])
+
+  useEffect(() => {
+    if (page > totalPages)
+      setPage(totalPages)
+  }, [page, totalPages])
 
   return (
     <>
@@ -324,6 +337,22 @@ const EnterpriseMarketplace = () => {
               </button>
             ))}
           </div>
+
+          {!publicAssetQuery.isLoading && total > 0 && (
+            <div className="flex items-center justify-between gap-3 px-12 pb-10">
+              <div className="text-text-tertiary system-sm-regular">
+                {t('enterpriseMarketplace.pageInfo', { ns: 'common', current: page, total: totalPages })}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="small" disabled={page <= 1} onClick={() => setPage(current => current - 1)}>
+                  {t('enterpriseMarketplace.previousPage', { ns: 'common' })}
+                </Button>
+                <Button size="small" disabled={page >= totalPages} onClick={() => setPage(current => current + 1)}>
+                  {t('enterpriseMarketplace.nextPage', { ns: 'common' })}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {!publicAssetQuery.isLoading && !visibleAssets.length && (
             <div className="px-12 pb-10">
