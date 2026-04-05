@@ -7,7 +7,7 @@ trustPolicyExclude:
 blockExoticSubdeps: true
 strictDepBuilds: true
 allowBuilds:
-  '@parcel/watcher': false
+  "@parcel/watcher": false
   canvas: false
   esbuild: false
   sharp: false
@@ -15,6 +15,7 @@ packages:
   - web
   - e2e
   - sdks/nodejs-client
+  - packages/*
 overrides:
   "@lexical/code": npm:lexical-code-no-prism@0.41.0
   "@monaco-editor/loader": 1.7.0
@@ -84,7 +85,7 @@ catalog:
   "@egoist/tailwindcss-icons": 1.9.2
   "@emoji-mart/data": 1.2.1
   "@eslint-react/eslint-plugin": 3.0.0
-  "@eslint/js": ^10.0.1
+  "@eslint/js": 10.0.1
   "@floating-ui/react": 0.27.19
   "@formatjs/intl-localematcher": 0.8.2
   "@headlessui/react": 2.2.9
@@ -122,6 +123,7 @@ catalog:
   "@streamdown/math": 1.0.2
   "@svgdotjs/svg.js": 3.2.5
   "@t3-oss/env-nextjs": 0.13.11
+  "@tailwindcss/postcss": 4.2.2
   "@tailwindcss/typography": 0.5.19
   "@tailwindcss/vite": 4.2.2
   "@tanstack/eslint-plugin-query": 5.96.1
