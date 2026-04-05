@@ -242,3 +242,6 @@ scripts/stress-test/reports/
 
 # Code Agent Folder
 .qoder/*
+
+# Codex local automations and memory
+.codex/
