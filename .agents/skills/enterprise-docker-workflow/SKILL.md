@@ -40,6 +40,7 @@ description: Enterprise Docker development, validation, image rebuild, and proje
    - Use standalone `docker run` only as a fallback when compose cannot express the needed verification step, and call out that exception explicitly.
    - Do not claim enterprise code is verified if only old compose containers were observed.
    - Do not treat local regression checks such as `pytest`, `pnpm type-check`, or targeted frontend tests as a substitute for compose image validation. They are the first gate only.
+   - Do not treat browser-click verification against pre-existing enterprise containers as valid after local runtime code has changed. Rebuild first, recreate the affected services, then click and inspect logs against that rebuilt batch.
    - Keep runtime artifacts such as `docker/volumes/**`, `.venv/**`, `node_modules/**`, and `.codex/**` in the "build-context hygiene" bucket; do not confuse them with the frontend source baseline itself.
 5. Decide whether enterprise images must be rebuilt.
    - Rebuild `dify-api-enterprise:<official-version-enterprise>` when backend runtime logic, backend dependencies, or Docker build inputs affecting the API image change.
@@ -51,15 +52,23 @@ description: Enterprise Docker development, validation, image rebuild, and proje
    - For release or packaging work, check both the tag and the internal `COMMIT_SHA`; tag equality alone is not enough.
    - If runtime code changed in this round, require the compose rebuild before packaging; do not package first and assume `smart` mode will detect stale images.
    - After compose has rebuilt and, when needed, runtime-validated the required enterprise images for this exact source tree, prefer packaging with `Mode=reuse` so the offline bundle is forced to export the verified images.
+   - Treat rebuilt image batch identity as part of verification. Packaging is valid only when it exports the same rebuilt enterprise image IDs that already passed this round's compose runtime checks.
 6. Run compose runtime verification only after current-source validation passes.
    - Use the enterprise overlay compose files.
    - For route 2 enterprise-page work, validate in the browser and correlate behavior with container logs.
+   - If browser validation happened before the latest rebuild-and-recreate cycle, throw that validation away and rerun it against the rebuilt services.
 7. Apply compose restart granularity deliberately.
    - Do not restart the entire compose stack by default.
    - After rebuilding the web enterprise image, recreate `web` and `nginx` together with `--force-recreate`.
    - After rebuilding the API enterprise image, recreate `api`, `worker`, `worker_beat`, and `nginx` together with `--force-recreate`.
    - If only Nginx-facing config changed, recreate only `nginx`.
    - Use a broader compose restart only when the affected surface cannot be isolated cleanly.
+
+## Release rule
+
+- The release candidate is not "the current branch" and not "whatever image tag happens to exist". The release candidate is the specific rebuilt enterprise image batch that has already passed this round's compose runtime verification.
+- Do not export or deliver an offline bundle built from older validated images after newer runtime code was introduced locally.
+- When in doubt, rebuild, recreate, rerun browser-plus-log verification, and only then package with `Mode=reuse`.
 
 ## Service Tiers
 

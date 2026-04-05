@@ -93,6 +93,20 @@ Notes:
 - Use `Mode=reuse` when you want packaging to fail instead of rebuilding.
 - If you only want a local runtime check and do not need an offline bundle, you can skip the last step and run compose directly from `docker/`.
 
+## Verified-image rule
+
+For enterprise development, treat source verification, compose runtime verification, and offline packaging as one continuous chain. Do not switch validation targets in the middle.
+
+Hard rules:
+
+- Local regression checks such as `pytest`, `pnpm type-check`, and targeted frontend tests only prove the source tree is plausible. They do not prove that the running enterprise containers or the final offline package contain that source tree.
+- If runtime code changed in this round, rebuild the required enterprise images first, then recreate the affected compose services, then do browser clicks and log inspection against those rebuilt containers.
+- Treat browser clicks, compose `logs`, compose `exec`, and smoke checks against older enterprise containers as invalid for release decisions once newer source changes exist locally.
+- Offline packaging must export the same enterprise image IDs that already passed this round's compose-based runtime verification.
+- If the local source tree and the running enterprise containers are not on the same rebuilt image batch, stop and rebuild before continuing validation or packaging.
+- `Mode=reuse` is the preferred release mode after successful rebuild plus runtime verification, because it guarantees packaging reuses the exact verified images.
+- `Mode=smart` is only acceptable before runtime verification when deciding whether a rebuild is needed, or in low-risk local convenience flows that are not being treated as release validation.
+
 ## Development validation and image rebuild rules
 
 Use `Windows 11 + Docker Desktop + Git` as the default local enterprise development baseline. For route 2 and similar performance work, validate with browser clicks plus container logs, but only after confirming the running containers represent the code you just changed.
@@ -127,6 +141,8 @@ Rules:
 - Otherwise, old `worker` or `worker_beat` containers may keep running on a previous image layer while the tag already points to a newer image, leaving the old layer as a dangling `<none>` image.
 - For packaging or release checks, verify both the version tag and the image-internal `COMMIT_SHA`.
 - If runtime code changed in this round, the required compose image rebuild must happen before offline packaging. Do not package first and assume `smart` mode will catch stale runtime images.
+- After the required rebuild, recreate the affected compose services before browser validation so clicks and logs are taken from the same image batch that will later be packaged.
+- For release readiness, treat "latest rebuilt compose containers" as the only valid runtime verification target. Source-only checks or older still-running containers are not sufficient.
 
 For enterprise-page route 2 work, the default service tiers are:
 
@@ -217,5 +233,6 @@ Notes:
 1. Rebuild the required enterprise images through compose from the current source tree:
    - frontend runtime changes: rebuild `web`
    - backend runtime changes: rebuild `api`, `worker`, and `worker_beat`
-1. If runtime behavior needs verification, validate against the rebuilt compose services before packaging.
-1. Re-export the offline bundle from the rebuilt images, preferably with `Mode=reuse`, and deliver it to the production server.
+1. Recreate the affected compose services so runtime verification uses the same rebuilt images that are about to be packaged.
+1. If runtime behavior needs verification, validate against the rebuilt and recreated compose services before packaging.
+1. Re-export the offline bundle from the verified rebuilt images, preferably with `Mode=reuse`, and deliver it to the production server.
