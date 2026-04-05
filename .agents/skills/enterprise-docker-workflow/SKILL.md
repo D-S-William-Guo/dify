@@ -48,6 +48,7 @@ description: Enterprise Docker development, validation, image rebuild, and proje
    - Treat files under `web/app/**`, `web/components/**`, `web/context/**`, `web/service/**`, `web/utils/**`, frontend i18n resources, and frontend build helpers such as `web/tailwind-css-plugin.ts` as frontend runtime/build-output inputs.
    - Treat files under `api/**` except pure test-only changes as backend runtime inputs.
    - Reuse `dify-api-enterprise` for `worker` and `worker_beat`.
+   - When `api`, `worker`, and `worker_beat` share one enterprise image tag, rebuild that shared image from the `api` service path first. Then recreate all three services from the rebuilt tag instead of assuming a multi-target compose build has already converged them onto one validated image batch.
    - After rebuilding the API enterprise image, run compose with `--force-recreate` for `api`, `worker`, and `worker_beat` together so they all land on the current tagged image instead of leaving old worker containers on a now-dangling layer.
    - For release or packaging work, check both the tag and the internal `COMMIT_SHA`; tag equality alone is not enough.
    - If runtime code changed in this round, require the compose rebuild before packaging; do not package first and assume `smart` mode will detect stale images.

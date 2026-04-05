@@ -137,6 +137,8 @@ Rules:
 - Rebuild `dify-api-enterprise:<official-version-enterprise>` when backend runtime code, backend dependencies, or API image build inputs change.
 - Rebuild `dify-web-enterprise:<official-version-enterprise>` when frontend runtime code, frontend dependencies, or web image build inputs change.
 - `worker` and `worker_beat` reuse the API enterprise image at runtime, so API image rebuild decisions also affect them.
+- When `api`, `worker`, and `worker_beat` share the same enterprise image name, treat `api` as the single rebuild source. Rebuild the shared API image from the `api` service definition first, then recreate `api`, `worker`, and `worker_beat` from that rebuilt tag.
+- Do not assume that a multi-service `docker compose build api worker worker_beat` run proves the three services now point at one identical validated image batch. Confirm the rebuilt shared tag and the running container image IDs after recreate.
 - After rebuilding `dify-api-enterprise:<official-version-enterprise>`, recreate `api`, `worker`, and `worker_beat` through the enterprise compose stack with `--force-recreate` so all three services switch to the same current image ID.
 - Otherwise, old `worker` or `worker_beat` containers may keep running on a previous image layer while the tag already points to a newer image, leaving the old layer as a dangling `<none>` image.
 - For packaging or release checks, verify both the version tag and the image-internal `COMMIT_SHA`.
@@ -183,6 +185,7 @@ Compose restart granularity rules:
 - On Windows 11 + Docker Desktop, rebuild the web enterprise image through [`build-enterprise-web.ps1`](D:\CodexSpace\dify\docker\scripts\build-enterprise-web.ps1) so compose receives a prepared minimal build context instead of traversing local `node_modules` reparse points.
 - After rebuilding the API enterprise image, recreate `api`, `worker`, `worker_beat`, and `nginx` together:
   - `docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat nginx`
+- If the release only changes backend runtime code, you still package the full offline bundle, but only the API enterprise image needs rebuilding in this round. The rest of the bundle may be reused from the already-verified image batch.
 - If only Nginx templates, proxy rules, or HTTPS assets changed, recreate only `nginx`.
 - Escalate to a broader compose restart only when service scope is unclear, dependency state is inconsistent, or network state appears stale.
 
