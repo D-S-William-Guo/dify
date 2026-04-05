@@ -4,7 +4,7 @@ import copy from 'copy-to-clipboard'
 
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import SavedItems from '../index'
 
 vi.mock('copy-to-clipboard', () => ({

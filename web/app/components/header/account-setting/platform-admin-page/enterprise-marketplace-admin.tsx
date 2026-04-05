@@ -200,7 +200,7 @@ const EnterpriseMarketplaceAdmin = () => {
                     {' · '}
                     {item.submitter_name || t('account.account', { ns: 'common' })}
                     {' · '}
-                    {formatTime({ date: item.updated_at * 1000 })}
+                    {formatTime({ date: item.updated_at * 1000, dateFormat: t('segment.dateTimeFormat', { ns: 'datasetDocuments' }) })}
                   </div>
                   <div className="mt-3 text-text-secondary system-sm-regular">{item.description || item.app_description}</div>
                   {!!item.scenario && (

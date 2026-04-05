@@ -1,5 +1,6 @@
 import type { FileTypesRes } from './datasets'
 import type {
+  DefaultModelResponse,
   Model,
   ModelParameterRule,
   ModelProvider,
@@ -312,9 +313,9 @@ export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
 }
 
 export const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
-  return useQuery({
+  return useQuery<{ data: DefaultModelResponse }>({
     queryKey: commonQueryKeys.defaultModel(type),
-    queryFn: () => get(`/workspaces/current/default-model?model_type=${type}`),
+    queryFn: () => get<{ data: DefaultModelResponse }>(`/workspaces/current/default-model?model_type=${type}`),
     enabled,
     staleTime: configQueryStaleTime,
     gcTime: sessionQueryGcTime,

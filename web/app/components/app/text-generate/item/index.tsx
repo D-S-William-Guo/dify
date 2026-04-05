@@ -137,7 +137,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleMoreLikeThis = async () => {
     if (isQuerying || !messageId) {
-      Toast.notify({ type: 'warning', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      toast.warning(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return
     }
     startQuerying()

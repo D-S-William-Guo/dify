@@ -1,7 +1,7 @@
 import type { IToastProps, ToastHandle } from '@/app/components/base/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/components/base/ui/toast'
+import Toast from '@/app/components/base/toast'
 import EditAnnotationModal from '../index'
 
 const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({
@@ -64,8 +64,7 @@ describe('EditAnnotationModal', () => {
   })
 
   afterAll(() => {
-    toastSuccessSpy.mockRestore()
-    toastErrorSpy.mockRestore()
+    toastNotifySpy.mockRestore()
   })
 
   // Rendering tests (REQUIRED)

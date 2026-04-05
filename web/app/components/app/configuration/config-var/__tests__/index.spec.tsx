@@ -480,7 +480,7 @@ describe('ConfigVar', () => {
       })
 
       expect(isValid).toBe(false)
-      expect(toastErrorSpy).toHaveBeenCalled()
+      expect(notifySpy).toHaveBeenCalled()
     })
   })
 })

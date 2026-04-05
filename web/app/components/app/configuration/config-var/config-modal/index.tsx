@@ -61,10 +61,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const checkVariableName = useCallback((value: string, canBeEmpty?: boolean) => {
     const { isValid, errorMessageKey } = checkKeys([value], canBeEmpty)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }))
       return false
     }
     return true
@@ -118,10 +115,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const value = e.target.value
     const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
     if (!isValid) {
-      Toast.notify({
-        type: 'error',
-        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
-      })
+      toast.error(t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }))
       return
     }
     handlePayloadChange('variable')(e.target.value)

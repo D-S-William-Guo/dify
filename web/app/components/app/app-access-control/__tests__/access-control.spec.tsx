@@ -3,6 +3,7 @@ import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models
 import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import Toast from '@/app/components/base/toast'
 import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode, SubjectType } from '@/models/access-control'
 import AccessControlDialog from '../access-control-dialog'
@@ -23,7 +24,7 @@ const intersectionObserverMocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (value: { userProfile: { email: string, id?: string, name?: string, avatar?: string, avatar_url?: string, is_password_set?: boolean } }) => T) => selector({
+  useSelector: <T,>(selector: (value: { userProfile: { email: string, id?: string, name?: string, avatar?: string, avatar_url?: string, is_password_set?: boolean, is_platform_admin?: boolean } }) => T) => selector({
     userProfile: {
       id: 'current-user',
       name: 'Current User',
@@ -31,6 +32,7 @@ vi.mock('@/context/app-context', () => ({
       avatar: '',
       avatar_url: '',
       is_password_set: true,
+      is_platform_admin: false,
     },
   }),
 }))

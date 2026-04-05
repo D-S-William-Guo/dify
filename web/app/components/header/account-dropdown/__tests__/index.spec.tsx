@@ -97,6 +97,7 @@ const baseAppContextValue: AppContextValue = {
     email: 'test@example.com',
     avatar: '',
     avatar_url: 'avatar.png',
+    is_platform_admin: false,
     is_password_set: false,
   },
   mutateUserProfile: vi.fn(),

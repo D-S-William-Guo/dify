@@ -12,7 +12,7 @@ import FormGeneration from '@/app/components/base/features/new-feature-panel/mod
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import Modal from '@/app/components/base/modal'
 import { SimpleSelect } from '@/app/components/base/select'
-import { useToastContext } from '@/app/components/base/toast/context'
+import { toast } from '@/app/components/base/ui/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { useDocLink, useLocale } from '@/context/i18n'
 import { useCodeBasedExtensions } from '@/service/use-common'
@@ -37,7 +37,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { notify } = useToastContext()
   const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -226,31 +225,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           </div>
         )
       }
-      {
-        systemTypes.findIndex(t => t === localeData.type) < 0
-        && currentProvider?.form_schema
-        && (
-          <FormGeneration
-            forms={currentProvider?.form_schema}
-            value={localeData.config}
-            onChange={handleDataExtraChange}
-          />
-        )
-      }
-      <div className="mt-6 flex items-center justify-end">
-        <Button
-          onClick={onCancel}
-          className="mr-2"
-        >
-          {t('operation.cancel', { ns: 'common' })}
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleSave}
-        >
-          {t('operation.save', { ns: 'common' })}
-        </Button>
-      </div>
       {
         showEmojiPicker && (
           <EmojiPicker

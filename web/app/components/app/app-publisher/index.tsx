@@ -175,7 +175,7 @@ const AppPublisher = ({
       throw new Error('No app found in Explore')
     }, {
       onError: (err) => {
-        Toast.notify({ type: 'error', message: `${err.message || err}` })
+        toast.error(`${err.message || err}`)
       },
     })
   }, [appDetail?.id, openAsyncWindow])

@@ -92,6 +92,7 @@ const createUserProfile = (overrides: Partial<UserProfileResponse> = {}): UserPr
   email: 'test@example.com',
   avatar: '',
   avatar_url: null,
+  is_platform_admin: false,
   is_password_set: false,
   interface_language: 'en-US',
   timezone: 'Pacific/Niue',
