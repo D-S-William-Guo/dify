@@ -89,15 +89,27 @@ const EnterpriseMarketplaceAdmin = () => {
   const [keyword, setKeyword] = useState('')
   const deferredKeyword = useDeferredValue(keyword)
   const [status, setStatus] = useState<EnterpriseMarketplaceAssetStatus>('pending')
+  const [page, setPage] = useState(1)
   const [selectedAsset, setSelectedAsset] = useState<EnterpriseMarketplaceAsset | null>(null)
   const [reviewAction, setReviewAction] = useState<'approved' | 'rejected' | null>(null)
 
-  const assetQuery = useAdminEnterpriseMarketplaceAssets({ keyword: deferredKeyword, status })
+  const assetQuery = useAdminEnterpriseMarketplaceAssets({ keyword: deferredKeyword, status, page })
   const reviewMutation = useReviewEnterpriseMarketplaceAsset()
   const unlistMutation = useUnlistEnterpriseMarketplaceAsset()
 
   const items = assetQuery.data?.items || []
+  const total = assetQuery.data?.total || 0
+  const totalPages = Math.max(1, Math.ceil(total / 50))
   const reviewableAssets = useMemo(() => items.filter(item => item.status === 'pending'), [items])
+
+  useEffect(() => {
+    setPage(1)
+  }, [deferredKeyword, status])
+
+  useEffect(() => {
+    if (page > totalPages)
+      setPage(totalPages)
+  }, [page, totalPages])
 
   const handleUnlist = (assetId: string) => {
     unlistMutation.mutate(assetId, {
@@ -247,6 +259,22 @@ const EnterpriseMarketplaceAdmin = () => {
             </div>
           )}
         </div>
+
+        {!assetQuery.isLoading && total > 0 && (
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="text-text-tertiary system-sm-regular">
+              {t('enterpriseMarketplace.pageInfo', { ns: 'common', current: page, total: totalPages })}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="small" disabled={page <= 1} onClick={() => setPage(current => current - 1)}>
+                {t('enterpriseMarketplace.previousPage', { ns: 'common' })}
+              </Button>
+              <Button size="small" disabled={page >= totalPages} onClick={() => setPage(current => current + 1)}>
+                {t('enterpriseMarketplace.nextPage', { ns: 'common' })}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <ReviewDialog
