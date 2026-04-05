@@ -38,7 +38,7 @@ services:
   web:
     image: ${DIFY_ENTERPRISE_WEB_IMAGE:-dify-web-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
     build:
-      context: ..
+      context: ${DIFY_WEB_BUILD_CONTEXT:-..}
       dockerfile: web/Dockerfile
       args:
         COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}

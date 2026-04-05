@@ -11,8 +11,10 @@ description: Enterprise Docker development, validation, image rebuild, and proje
 - Treat `Windows 11 + Docker Desktop + Git` as the default local enterprise development baseline.
 - Prefer `docker/docker-compose.yaml` plus `docker/docker-compose.enterprise.yaml` as the execution surface for enterprise work, and treat `docker/docker-compose-template.yaml` as the generated source template rather than the file to edit directly.
 - Validate enterprise changes against the current source tree, not against already-running old images.
+- For frontend build issues, treat `upstream/main` as the current build baseline. Do not lock onto a specific historical toolchain; first analyze how `upstream/main` builds now, then bring `enterprise/main` back to the same direction before reapplying enterprise-only differences.
 - Keep enterprise image naming, version tags, and `COMMIT_SHA` checks aligned with `docker/README.enterprise.md`.
 - Restrict Docker image cleanup to this repository's enterprise images and explicitly project-owned helper images.
+- On Windows + Docker Desktop, prefer [`build-enterprise-web.ps1`](D:\CodexSpace\dify\docker\scripts\build-enterprise-web.ps1) for web image rebuilds when local `node_modules` reparse points would otherwise break compose build context loading.
 
 ## Workflow
 
@@ -29,12 +31,15 @@ description: Enterprise Docker development, validation, image rebuild, and proje
 3. Verify whether running containers represent the latest source.
    - Inspect mounts for `api` and `web`; do not assume they are bind mounts.
    - If `api` or `web` run from built images instead of source mounts, treat them as stale until current-source validation succeeds.
+   - If `web` fails to build after an upstream sync, first decide whether the failure comes from build-context hygiene or from `enterprise/main` drifting away from `upstream/main`'s current frontend build baseline.
 4. Run current-source validation with compose-first commands.
    - Prefer `docker compose ... build`, `up`, `exec`, `logs`, and `ps` against the enterprise overlay instead of ad hoc standalone containers.
    - Frontend runtime changes are validated by `docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build web`, because `web/Dockerfile` compiles the app during image build.
+   - On Windows, if local dependency trees make the root build context unreadable for Docker sender, prepare a minimal context through `docker/scripts/build-enterprise-web.ps1` rather than manually moving `node_modules`.
    - Backend runtime changes are validated by rebuilding the enterprise API image through compose and, when test tooling is needed, running it through compose-owned containers or another compose-aligned flow instead of bypassing the project definitions.
    - Use standalone `docker run` only as a fallback when compose cannot express the needed verification step, and call out that exception explicitly.
    - Do not claim enterprise code is verified if only old compose containers were observed.
+   - Keep runtime artifacts such as `docker/volumes/**`, `.venv/**`, `node_modules/**`, and `.codex/**` in the "build-context hygiene" bucket; do not confuse them with the frontend source baseline itself.
 5. Decide whether enterprise images must be rebuilt.
    - Rebuild `dify-api-enterprise:<official-version-enterprise>` when backend runtime logic, backend dependencies, or Docker build inputs affecting the API image change.
    - Rebuild `dify-web-enterprise:<official-version-enterprise>` when frontend runtime logic, frontend dependencies, or Docker build inputs affecting the web image change.

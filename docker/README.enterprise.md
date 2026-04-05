@@ -153,6 +153,7 @@ Compose restart granularity rules:
 - Prefer the smallest compose-owned recreate set that matches the changed runtime surface.
 - After rebuilding the web enterprise image, recreate `web` and `nginx` together:
   - `docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --force-recreate web nginx`
+- On Windows 11 + Docker Desktop, rebuild the web enterprise image through [`build-enterprise-web.ps1`](D:\CodexSpace\dify\docker\scripts\build-enterprise-web.ps1) so compose receives a prepared minimal build context instead of traversing local `node_modules` reparse points.
 - After rebuilding the API enterprise image, recreate `api`, `worker`, `worker_beat`, and `nginx` together:
   - `docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat nginx`
 - If only Nginx templates, proxy rules, or HTTPS assets changed, recreate only `nginx`.
