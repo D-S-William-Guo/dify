@@ -50,8 +50,20 @@ fi
 
 API_IMAGE="dify-api-enterprise:$VERSION"
 WEB_IMAGE="dify-web-enterprise:$VERSION"
+PREVIOUS_DIFY_ENTERPRISE_VERSION="${DIFY_ENTERPRISE_VERSION-__UNSET__}"
+export DIFY_ENTERPRISE_VERSION="$VERSION"
 
 mkdir -p "$OUTPUT_PATH"
+
+cleanup() {
+  if [[ "$PREVIOUS_DIFY_ENTERPRISE_VERSION" == "__UNSET__" ]]; then
+    unset DIFY_ENTERPRISE_VERSION
+  else
+    export DIFY_ENTERPRISE_VERSION="$PREVIOUS_DIFY_ENTERPRISE_VERSION"
+  fi
+}
+
+trap cleanup EXIT
 
 get_image_commit_sha() {
   local image="$1"

@@ -23,6 +23,8 @@ $apiImage = "dify-api-enterprise:$Version"
 $webImage = "dify-web-enterprise:$Version"
 $outputPath = Join-Path $repoRoot $OutputDir
 New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
+$previousEnterpriseVersion = $env:DIFY_ENTERPRISE_VERSION
+$env:DIFY_ENTERPRISE_VERSION = $Version
 
 function Get-ImageCommitSha {
   param(
@@ -110,38 +112,50 @@ Ensure-EnterpriseImage `
   -ExpectedCommitSha $Version `
   -BuildMode $Mode
 
-Write-Host "Resolving compose image list"
-$images = docker compose --env-file $envFile @composeFiles config --images `
-  | Where-Object { $_ -and $_.Trim() } `
-  | Sort-Object -Unique
+try {
+  Write-Host "Using DIFY_ENTERPRISE_VERSION=$Version"
 
-if (-not $images) {
-  throw "Unable to resolve images from docker compose configuration."
+  Write-Host "Resolving compose image list"
+  $images = docker compose --env-file $envFile @composeFiles config --images `
+    | Where-Object { $_ -and $_.Trim() } `
+    | Sort-Object -Unique
+
+  if (-not $images) {
+    throw "Unable to resolve images from docker compose configuration."
+  }
+
+  $remoteImages = $images | Where-Object { $_ -notin @($apiImage, $webImage) }
+  foreach ($image in $remoteImages) {
+    Write-Host "Pulling dependency image: $image"
+    docker pull $image
+  }
+
+  $manifestPath = Join-Path $outputPath "manifest-$Version.json"
+  $imagesPath = Join-Path $outputPath "images-$Version.txt"
+  $archivePath = Join-Path $outputPath "dify-enterprise-offline-$Version.tar"
+
+  $manifest = [ordered]@{
+    version = $Version
+    generated_at = [DateTime]::UtcNow.ToString("o")
+    images = $images
+  }
+
+  $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path $manifestPath -Encoding UTF8
+  $images | Set-Content -Path $imagesPath -Encoding UTF8
+
+  Write-Host "Saving offline image bundle to $archivePath"
+  docker save -o $archivePath $images
+
+  Write-Host "Offline bundle ready."
+  Write-Host "Manifest: $manifestPath"
+  Write-Host "Images : $imagesPath"
+  Write-Host "Archive: $archivePath"
 }
-
-$remoteImages = $images | Where-Object { $_ -notin @($apiImage, $webImage) }
-foreach ($image in $remoteImages) {
-  Write-Host "Pulling dependency image: $image"
-  docker pull $image
+finally {
+  if ($null -eq $previousEnterpriseVersion) {
+    Remove-Item Env:DIFY_ENTERPRISE_VERSION -ErrorAction SilentlyContinue
+  }
+  else {
+    $env:DIFY_ENTERPRISE_VERSION = $previousEnterpriseVersion
+  }
 }
-
-$manifestPath = Join-Path $outputPath "manifest-$Version.json"
-$imagesPath = Join-Path $outputPath "images-$Version.txt"
-$archivePath = Join-Path $outputPath "dify-enterprise-offline-$Version.tar"
-
-$manifest = [ordered]@{
-  version = $Version
-  generated_at = [DateTime]::UtcNow.ToString("o")
-  images = $images
-}
-
-$manifest | ConvertTo-Json -Depth 4 | Set-Content -Path $manifestPath -Encoding UTF8
-$images | Set-Content -Path $imagesPath -Encoding UTF8
-
-Write-Host "Saving offline image bundle to $archivePath"
-docker save -o $archivePath $images
-
-Write-Host "Offline bundle ready."
-Write-Host "Manifest: $manifestPath"
-Write-Host "Images : $imagesPath"
-Write-Host "Archive: $archivePath"
