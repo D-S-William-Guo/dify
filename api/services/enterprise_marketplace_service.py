@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from flask import abort
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import String, cast, select
 from sqlalchemy.orm import sessionmaker
 
 from extensions.ext_database import db
@@ -74,6 +74,13 @@ class EnterpriseMarketplaceUseResult(BaseModel):
 
 class EnterpriseMarketplaceService:
     @staticmethod
+    def _source_app_join_condition():
+        # `enterprise_marketplace_assets.source_app_id` is stored as varchar while
+        # `apps.id` is a UUID column in PostgreSQL. Cast the app id to string so
+        # pagination can stay in SQL without hitting `uuid = character varying`.
+        return cast(App.id, String) == EnterpriseMarketplaceAsset.source_app_id
+
+    @staticmethod
     def submit_asset(
         *,
         app: App,
@@ -130,7 +137,7 @@ class EnterpriseMarketplaceService:
     ) -> EnterpriseMarketplaceListResult:
         stmt = (
             select(EnterpriseMarketplaceAsset)
-            .join(App, App.id == EnterpriseMarketplaceAsset.source_app_id)
+            .join(App, EnterpriseMarketplaceService._source_app_join_condition())
             .where(
                 EnterpriseMarketplaceAsset.status == EnterpriseMarketplaceAssetStatus.APPROVED,
                 App.status == "normal",
@@ -170,7 +177,7 @@ class EnterpriseMarketplaceService:
     ) -> EnterpriseMarketplaceListResult:
         stmt = (
             select(EnterpriseMarketplaceAsset)
-            .join(App, App.id == EnterpriseMarketplaceAsset.source_app_id)
+            .join(App, EnterpriseMarketplaceService._source_app_join_condition())
             .where(App.status == "normal")
         )
         if keyword:

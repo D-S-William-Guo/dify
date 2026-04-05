@@ -158,6 +158,7 @@ def test_list_public_assets_should_filter_out_non_normal_source_apps_in_query(
     captured_select = paginate_call["select"]
     compiled_sql = str(captured_select.compile(compile_kwargs={"literal_binds": True}))
     assert "JOIN apps" in compiled_sql
+    assert "CAST(apps.id AS VARCHAR)" in compiled_sql
     assert "enterprise_marketplace_assets.status = 'approved'" in compiled_sql
     assert "apps.status = 'normal'" in compiled_sql
     assert "enterprise_marketplace_assets.category = 'Support'" in compiled_sql
@@ -195,6 +196,7 @@ def test_list_admin_assets_should_filter_out_non_normal_source_apps_in_query(
     captured_select = mocked_db.paginate.call_args.kwargs["select"]
     compiled_sql = str(captured_select.compile(compile_kwargs={"literal_binds": True}))
     assert "JOIN apps" in compiled_sql
+    assert "CAST(apps.id AS VARCHAR)" in compiled_sql
     assert "apps.status = 'normal'" in compiled_sql
     assert "enterprise_marketplace_assets.status = 'pending'" in compiled_sql
     assert "enterprise_marketplace_assets.title" in compiled_sql
