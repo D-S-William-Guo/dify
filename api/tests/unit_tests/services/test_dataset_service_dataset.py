@@ -51,9 +51,15 @@ class TestDatasetServiceQueries:
             }
 
     def test_get_datasets_returns_paginated_results_for_public_view(self, mock_dataset_query_dependencies):
+        mock_dataset_query_dependencies["db"].paginate.return_value = SimpleNamespace(
+            items=[DatasetServiceUnitDataFactory.create_dataset_mock()],
+            total=1,
+        )
+
         items, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1")
 
-        assert items == ["dataset"]
+        assert len(items) == 1
+        assert isinstance(items[0], Dataset)
         assert total == 1
         mock_dataset_query_dependencies["db"].paginate.assert_called_once()
         mock_dataset_query_dependencies["escape_like_pattern"].assert_not_called()
@@ -87,6 +93,10 @@ class TestDatasetServiceQueries:
 
     def test_get_datasets_search_and_tag_filters_call_collaborators(self, mock_dataset_query_dependencies):
         mock_dataset_query_dependencies["get_target_ids"].return_value = ["dataset-1"]
+        mock_dataset_query_dependencies["db"].paginate.return_value = SimpleNamespace(
+            items=[DatasetServiceUnitDataFactory.create_dataset_mock()],
+            total=1,
+        )
 
         items, total = DatasetService.get_datasets(
             page=2,
@@ -96,7 +106,8 @@ class TestDatasetServiceQueries:
             tag_ids=["tag-1"],
         )
 
-        assert items == ["dataset"]
+        assert len(items) == 1
+        assert isinstance(items[0], Dataset)
         assert total == 1
         mock_dataset_query_dependencies["escape_like_pattern"].assert_called_once_with("report")
         mock_dataset_query_dependencies["get_target_ids"].assert_called_once_with("knowledge", "tenant-1", ["tag-1"])
@@ -135,11 +146,12 @@ class TestDatasetServiceQueries:
 
     def test_get_datasets_by_ids_uses_paginate_for_non_empty_input(self):
         with patch("services.dataset_service.db") as mock_db:
-            mock_db.paginate.return_value = SimpleNamespace(items=["dataset-1"], total=1)
+            mock_db.paginate.return_value = SimpleNamespace(items=[DatasetServiceUnitDataFactory.create_dataset_mock()], total=1)
 
             items, total = DatasetService.get_datasets_by_ids(["dataset-1"], "tenant-1")
 
-        assert items == ["dataset-1"]
+        assert len(items) == 1
+        assert isinstance(items[0], Dataset)
         assert total == 1
         mock_db.paginate.assert_called_once()
 
