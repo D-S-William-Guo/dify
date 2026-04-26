@@ -308,6 +308,7 @@ docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d
 Notes:
 
 - Replace `1.13.3-enterprise` with the current release version.
+- Do not keep the placeholder or previous release value in `docker/.env`; derive and set the real value for every release.
 - If you already prepared a finalized `.env`, use it directly instead of copying `.env.example`.
 
 ## Upgrade workflow
