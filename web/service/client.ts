@@ -32,9 +32,10 @@ function isURL(path: string) {
 }
 
 export function getBaseURL(path: string) {
-  const url = new URL(path, isURL(path) ? undefined : isClient ? window.location.origin : 'http://localhost')
+  const serverBaseURL = process.env.DIFY_INTERNAL_API_URL || 'http://localhost'
+  const url = new URL(path, isURL(path) ? undefined : isClient ? window.location.origin : serverBaseURL)
 
-  if (!isClient && !isURL(path)) {
+  if (!isClient && !isURL(path) && !process.env.DIFY_INTERNAL_API_URL) {
     console.warn('Using localhost as base URL in server environment, please configure accordingly.')
   }
 

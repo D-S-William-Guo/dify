@@ -35,7 +35,12 @@ class PlatformAdminService:
         if keyword:
             stmt = stmt.where(Tenant.name.ilike(f"%{keyword.strip()}%"))
 
-        pagination = db.paginate(select=stmt.order_by(Tenant.created_at.desc()), page=page, per_page=limit, error_out=False)
+        pagination = db.paginate(
+            select=stmt.order_by(Tenant.created_at.desc()),
+            page=page,
+            per_page=limit,
+            error_out=False,
+        )
         tenants = list(pagination.items)
         tenant_ids = [tenant.id for tenant in tenants]
         owner_by_tenant: dict[str, dict] = {}
@@ -236,7 +241,11 @@ class PlatformAdminService:
             TenantService.create_tenant_member(tenant, account, role)
             TenantService.switch_tenant(account, tenant.id)
         else:
-            tenant_join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+            tenant_join = (
+                db.session.query(TenantAccountJoin)
+                .filter_by(tenant_id=tenant.id, account_id=account.id)
+                .first()
+            )
             if not tenant_join:
                 TenantService.create_tenant_member(tenant, account, role)
 
@@ -260,7 +269,11 @@ class PlatformAdminService:
 
     @staticmethod
     def update_member_role(*, tenant: Tenant, member: Account, new_role: str):
-        target_member_join = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=member.id).first()
+        target_member_join = (
+            db.session.query(TenantAccountJoin)
+            .filter_by(tenant_id=tenant.id, account_id=member.id)
+            .first()
+        )
         if not target_member_join:
             raise MemberNotInTenantError("Member not in tenant.")
 
@@ -302,7 +315,11 @@ class PlatformAdminService:
         if operator.current_tenant_id == tenant.id:
             abort(400, description="Cannot delete the current workspace.")
 
-        normal_workspace_count = db.session.query(func.count(Tenant.id)).where(Tenant.status == TenantStatus.NORMAL).scalar()
+        normal_workspace_count = (
+            db.session.query(func.count(Tenant.id))
+            .where(Tenant.status == TenantStatus.NORMAL)
+            .scalar()
+        )
         if int(normal_workspace_count or 0) <= 1:
             abort(400, description="Cannot delete the last workspace.")
 

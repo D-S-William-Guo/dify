@@ -45,3 +45,5 @@ services:
       dockerfile: web/Dockerfile
       args:
         COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
+    environment:
+      DIFY_INTERNAL_API_URL: ${DIFY_INTERNAL_API_URL:-http://api:5001}

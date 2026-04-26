@@ -256,7 +256,10 @@ class EnterpriseMarketplaceService:
                 if imported_app is not None:
                     dependency_result = import_service.check_dependencies(app_model=imported_app)
 
-        leaked_dependencies = [dependency.model_dump(mode="json") for dependency in dependency_result.leaked_dependencies]
+        leaked_dependencies = [
+            dependency.model_dump(mode="json")
+            for dependency in dependency_result.leaked_dependencies
+        ]
         return EnterpriseMarketplaceUseResult(import_result=import_result, leaked_dependencies=leaked_dependencies)
 
     @staticmethod

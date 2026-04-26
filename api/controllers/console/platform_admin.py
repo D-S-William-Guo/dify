@@ -124,7 +124,10 @@ class PlatformAdminWorkspaceListApi(Resource):
             inviter=current_user,
             language=current_user.interface_language,
         )
-        return {"workspace": PlatformAdminService.serialize_workspace(tenant), "owner_invitation_url": invitation_url}, 201
+        return {
+            "workspace": PlatformAdminService.serialize_workspace(tenant),
+            "owner_invitation_url": invitation_url,
+        }, 201
 
 
 @console_ns.route("/platform-admin/workspaces/<uuid:workspace_id>")
