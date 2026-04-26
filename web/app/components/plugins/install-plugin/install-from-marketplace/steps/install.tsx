@@ -4,7 +4,7 @@ import type { Plugin, PluginManifestInMarket } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { useAppContext } from '@/context/app-context'
@@ -51,6 +51,7 @@ const Installed: FC<Props> = ({
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
   const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
   const [isInstalling, setIsInstalling] = React.useState(false)
+  const installStartedRef = useRef(false)
   const {
     check,
     stop,
@@ -68,8 +69,9 @@ const Installed: FC<Props> = ({
   }
 
   const handleInstall = async () => {
-    if (isInstalling)
+    if (installStartedRef.current || isInstalling)
       return
+    installStartedRef.current = true
     onStartToInstall?.()
     setIsInstalling(true)
     try {
@@ -113,6 +115,8 @@ const Installed: FC<Props> = ({
       onInstalled(true)
     }
     catch (e) {
+      installStartedRef.current = false
+      setIsInstalling(false)
       if (typeof e === 'string') {
         onFailed(e)
         return

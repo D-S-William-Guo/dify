@@ -17,6 +17,9 @@ import type {
   CodeBasedExtension,
   CommonResponse,
   DataSourceNotion,
+  EnterpriseMarketplaceAssetListResponse,
+  EnterpriseMarketplaceSubmissionListResponse,
+  EnterpriseMarketplaceUseResponse,
   FileUploadConfigResponse,
   ICurrentWorkspace,
   InitValidateStatusResponse,
@@ -26,6 +29,8 @@ import type {
   Member,
   ModerateResponse,
   OauthResponse,
+  PlatformAdminWorkspaceCreateResponse,
+  PlatformAdminWorkspaceListResponse,
   PluginProvider,
   Provider,
   ProviderAnthropicToken,
@@ -113,6 +118,22 @@ export const inviteMember = ({ url, body }: { url: string, body: Record<string, 
   return post<InvitationResponse>(url, { body })
 }
 
+export const fetchPlatformAdminWorkspaces = ({ url, params }: { url: string, params: Record<string, any> }): Promise<PlatformAdminWorkspaceListResponse> => {
+  return get<PlatformAdminWorkspaceListResponse>(url, { params })
+}
+
+export const createPlatformAdminWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<PlatformAdminWorkspaceCreateResponse> => {
+  return post<PlatformAdminWorkspaceCreateResponse>(url, { body })
+}
+
+export const patchPlatformAdminWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse> => {
+  return patch<CommonResponse>(url, { body })
+}
+
+export const deletePlatformAdminWorkspace = ({ url }: { url: string }): Promise<CommonResponse> => {
+  return del<CommonResponse>(url)
+}
+
 export const updateMemberRole = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse> => {
   return put<CommonResponse>(url, { body })
 }
@@ -168,6 +189,30 @@ export const updateDataSourceNotionAction = ({ url }: { url: string }): Promise<
 
 export const fetchPluginProviders = (url: string): Promise<PluginProvider[] | null> => {
   return get<PluginProvider[] | null>(url)
+}
+
+export const fetchEnterpriseMarketplaceAssets = ({ url, params }: { url: string, params?: Record<string, any> }): Promise<EnterpriseMarketplaceAssetListResponse> => {
+  return get<EnterpriseMarketplaceAssetListResponse>(url, { params })
+}
+
+export const fetchEnterpriseMarketplaceSubmissions = ({ url }: { url: string }): Promise<EnterpriseMarketplaceSubmissionListResponse> => {
+  return get<EnterpriseMarketplaceSubmissionListResponse>(url)
+}
+
+export const submitEnterpriseMarketplaceAsset = ({ url, body }: { url: string, body: Record<string, any> }): Promise<EnterpriseMarketplaceAssetListResponse> => {
+  return post<EnterpriseMarketplaceAssetListResponse>(url, { body })
+}
+
+export const reviewEnterpriseMarketplaceAsset = ({ url, body }: { url: string, body: Record<string, any> }): Promise<EnterpriseMarketplaceAssetListResponse> => {
+  return post<EnterpriseMarketplaceAssetListResponse>(url, { body })
+}
+
+export const unlistEnterpriseMarketplaceAsset = ({ url }: { url: string }): Promise<EnterpriseMarketplaceAssetListResponse> => {
+  return post<EnterpriseMarketplaceAssetListResponse>(url)
+}
+
+export const requestEnterpriseMarketplaceAssetUse = ({ url }: { url: string }): Promise<EnterpriseMarketplaceUseResponse> => {
+  return post<EnterpriseMarketplaceUseResponse>(url)
 }
 
 export const validatePluginProviderKey = ({ url, body }: { url: string, body: { credentials: any } }): Promise<ValidateOpenAIKeyResponse> => {
