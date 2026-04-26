@@ -282,12 +282,25 @@ Do not copy these local data directories into the new machine:
 
 On the target machine, Docker Compose will create empty data directories and volumes on first startup.
 
+Required enterprise variables for a fresh target:
+
+- `DIFY_ENTERPRISE_VERSION`: must match the offline image bundle version, for example `1.13.3-enterprise`. If this is missing, compose falls back to `local` and the target may fail to find the loaded enterprise images.
+- `PLATFORM_ADMIN_EMAILS`: comma-separated platform administrator email addresses.
+- `ALLOW_REGISTER`: normally `false` for a locked-down enterprise deployment.
+- `ALLOW_CREATE_WORKSPACE`: normally `false` for a locked-down enterprise deployment.
+- `CONSOLE_API_URL` and `APP_API_URL`: leave empty for same-domain nginx deployment; set them only when API and web are served from different external domains.
+- `DIFY_INTERNAL_API_URL`: normally do not set it. The enterprise overlay defaults web SSR/API-internal calls to `http://api:5001` inside the compose network.
+
 ## First startup on the target machine
 
 ```bash
 cd ~/dify/docker
 cp .env.example .env
-# fill in the real deployment values in .env
+# fill in the real deployment values in .env:
+# DIFY_ENTERPRISE_VERSION=1.13.3-enterprise
+# PLATFORM_ADMIN_EMAILS=admin@example.com
+# ALLOW_REGISTER=false
+# ALLOW_CREATE_WORKSPACE=false
 docker load -i ../dist/offline/dify-enterprise-offline-1.13.3-enterprise.tar
 docker compose -f docker-compose.yaml -f docker-compose.enterprise.yaml up -d
 ```
