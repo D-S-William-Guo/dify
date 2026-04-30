@@ -41,6 +41,14 @@ Do not use old chat summaries, local memory, the previous dirty `enterprise/main
 - Future official releases, such as `1.15.0`, should start from the new official stable tag/tree and replay required enterprise patch groups, instead of mechanically merging official changes into an old enterprise tree.
 - The previous `enterprise/main`, `codex/enterprise-candidate-20260424`, and `D:\CodexSpace\dify-enterprise-candidate-20260424` are historical references only unless a specific patch is re-selected and validated.
 
+## Enterprise PR Safety
+
+- Never open pull requests against the official upstream repository `langgenius/dify` for enterprise candidate work.
+- GitHub may print or display an upstream "Create pull request" link after pushing a branch; do not use that link for enterprise work.
+- Enterprise PRs, if needed, must be created only inside the fork `D-S-William-Guo/dify`, with both base and head branches in that fork.
+- Before creating or updating any PR, explicitly verify the base repository is `D-S-William-Guo/dify`, not `langgenius/dify`.
+- If an upstream PR is opened by mistake, close it immediately with a short explanation and do not request review.
+
 ## Testing & Quality Practices
 
 - Follow TDD: red → green → refactor.

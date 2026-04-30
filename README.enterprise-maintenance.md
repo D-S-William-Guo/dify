@@ -15,6 +15,33 @@
 
 `main` 可以用于观察或同步官方开发态，但不再作为企业发布底座。企业发布底座必须是官方稳定发布 tag/tree。
 
+## PR 安全规则
+
+企业候选分支不得向官方仓库 `langgenius/dify` 开 Pull Request。
+
+硬规则：
+
+- 推送企业候选分支后，不要点击 GitHub 自动提示的 upstream "Create pull request" 链接。
+- 如需 PR，只允许在企业 fork `D-S-William-Guo/dify` 内部创建。
+- PR 的 base repository 必须是 `D-S-William-Guo/dify`，不能是 `langgenius/dify`。
+- PR 的 head branch 应来自 `D-S-William-Guo/dify` 内的企业候选或功能分支。
+- 创建或更新 PR 前，agent 必须先明确核对 base repo；不确定时不得创建 PR。
+- 如果误向官方仓库打开 PR，立即关闭并说明是企业 fork 工作流误开，不请求官方 review。
+
+安全示例：
+
+```text
+base: D-S-William-Guo/dify:enterprise/main
+head: D-S-William-Guo/dify:codex/enterprise-candidate-1.14.0-20260430
+```
+
+危险示例：
+
+```text
+base: langgenius/dify:main
+head: D-S-William-Guo/dify:codex/enterprise-candidate-1.14.0-20260430
+```
+
 ## 当前正确工作模式
 
 企业维护方式已经从“在旧企业分支上长期 merge 官方 main”切换为“以官方稳定 tag/tree 为底座，按能力重放企业补丁”。

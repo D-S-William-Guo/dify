@@ -21,6 +21,13 @@ Rebuild the enterprise branch from official stable `1.14.0`, replaying only the 
 
 Agents must not use the old `1.13.3` candidate or dirty enterprise history as implementation source of truth. Copy only a named patch group or a change that has been re-proven by current-source tests, rebuilt enterprise images, browser clicks, and logs.
 
+## Pull Request Safety
+
+- Do not open pull requests against `langgenius/dify` for this enterprise candidate.
+- Any PR must stay inside `D-S-William-Guo/dify`; both base and head repositories must be the enterprise fork.
+- Ignore GitHub's automatic upstream PR suggestion after pushing an enterprise branch.
+- If an upstream PR is created by mistake, close it immediately and leave a short mistake/withdrawal note.
+
 ## Replay Principles
 
 - Start from official stable tag/tree and add enterprise behavior surgically.
@@ -193,4 +200,4 @@ Before this candidate becomes the new `enterprise/main`:
 5. Force recreate `api`, `worker`, `worker_beat`, `web`, and `nginx` as required by changed runtime surfaces.
 6. Repeat the verified runtime flows and inspect logs for new 500s, tracebacks, and Next error boundaries.
 7. Export the offline image bundle with `Mode=reuse` from the same validated image IDs.
-8. Protect the previous `enterprise/main` and promote this candidate by PR, merge, or an explicitly approved branch reset.
+8. Protect the previous `enterprise/main` and promote this candidate by fork-internal PR, merge, or an explicitly approved branch reset. Never promote through an upstream `langgenius/dify` PR.

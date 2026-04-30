@@ -10,6 +10,7 @@ Current enterprise truth:
 - `codex/enterprise-candidate-1.14.0-20260430` is the clean candidate rebuilt from official `1.14.0`.
 - The previous `enterprise/main`, `codex/enterprise-candidate-20260424`, and `D:\CodexSpace\dify-enterprise-candidate-20260424` are historical `1.13.3` references only.
 - Do not revive old dirty-branch assumptions unless a patch is explicitly listed in the replay plan or re-proven by current-source tests and runtime validation.
+- Never open enterprise candidate pull requests against `langgenius/dify`; PRs, if needed, must stay inside `D-S-William-Guo/dify` with the fork as the base repository.
 
 Behavioral rules:
 
