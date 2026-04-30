@@ -32,6 +32,7 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import TagSelector from '@/app/components/base/tag-management/selector'
+// eslint-disable-next-line no-restricted-imports
 import Tooltip from '@/app/components/base/tooltip'
 import { UserAvatarList } from '@/app/components/base/user-avatar-list'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -68,6 +69,9 @@ const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/ds
 const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
   ssr: false,
 })
+const SubmitEnterpriseMarketplaceModal = dynamic(() => import('@/app/components/apps/submit-enterprise-marketplace-modal'), {
+  ssr: false,
+})
 
 type AppCardProps = {
   app: App
@@ -83,6 +87,7 @@ type AppCardOperationsMenuProps = {
   onEdit: () => void
   onDuplicate: () => void
   onExport: () => void
+  onSubmitMarketplace: () => void
   onSwitch: () => void
   onDelete: () => void
   onAccessControl: () => void
@@ -96,6 +101,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   onEdit,
   onDuplicate,
   onExport,
+  onSubmitMarketplace,
   onSwitch,
   onDelete,
   onAccessControl,
@@ -141,6 +147,9 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
       </DropdownMenuItem>
       <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onExport)}>
         <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onSubmitMarketplace)}>
+        <span className="system-sm-regular text-text-secondary">{t('enterpriseMarketplace.submitAction', { ns: 'common' })}</span>
       </DropdownMenuItem>
       {shouldShowSwitchOption && (
         <>
@@ -215,6 +224,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showSubmitMarketplaceModal, setShowSubmitMarketplaceModal] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
@@ -229,8 +239,9 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
       setShowConfirmDelete(false)
       setConfirmDeleteInput('')
     }
-    catch (e: any) {
-      toast.error(`${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`)
+    catch (e: unknown) {
+      const message = e instanceof Error ? e.message : ''
+      toast.error(`${t('appDeleteFailed', { ns: 'app' })}${message ? `: ${message}` : ''}`)
     }
   }, [app.id, mutateDeleteApp, onPlanInfoChanged, t])
 
@@ -281,6 +292,13 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
     })
   }, [])
 
+  const handleShowSubmitMarketplaceModal = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowSubmitMarketplaceModal(true)
+    })
+  }, [])
+
   const handleShowAccessControl = useCallback(() => {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
@@ -313,8 +331,8 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
       if (onRefresh)
         onRefresh()
     }
-    catch (e: any) {
-      toast.error(e.message || t('editFailed', { ns: 'app' }))
+    catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('editFailed', { ns: 'app' }))
     }
   }, [app.id, onRefresh, t])
 
@@ -393,6 +411,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
 
   const [tags, setTags] = useState<Tag[]>(app.tags)
   useEffect(() => {
+    // eslint-disable-next-line react/set-state-in-effect
     setTags(app.tags)
   }, [app.tags])
 
@@ -547,6 +566,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                               onEdit={handleShowEditModal}
                               onDuplicate={handleShowDuplicateModal}
                               onExport={exportCheck}
+                              onSubmitMarketplace={handleShowSubmitMarketplaceModal}
                               onSwitch={handleShowSwitchModal}
                               onDelete={handleShowDeleteConfirm}
                               onAccessControl={handleShowAccessControl}
@@ -561,6 +581,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
                               onEdit={handleShowEditModal}
                               onDuplicate={handleShowDuplicateModal}
                               onExport={exportCheck}
+                              onSubmitMarketplace={handleShowSubmitMarketplaceModal}
                               onSwitch={handleShowSwitchModal}
                               onDelete={handleShowDeleteConfirm}
                               onAccessControl={handleShowAccessControl}
@@ -665,6 +686,15 @@ const AppCard = ({ app, onlineUsers = [], onRefresh }: AppCardProps) => {
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
+        />
+      )}
+      {showSubmitMarketplaceModal && (
+        <SubmitEnterpriseMarketplaceModal
+          appId={app.id}
+          open={showSubmitMarketplaceModal}
+          defaultTitle={app.name}
+          defaultDescription={app.description}
+          onClose={() => setShowSubmitMarketplaceModal(false)}
         />
       )}
       {showAccessControl && (
