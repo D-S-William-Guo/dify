@@ -16,6 +16,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
 from libs.login import current_account_with_tenant
+from libs.platform_admin import is_platform_admin_email
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
@@ -492,6 +493,21 @@ def decrypt_code_field[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _decrypt_field(FIELD_NAME_CODE, EmailCodeError, ERROR_MSG_INVALID_ENCRYPTED_CODE)
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def platform_admin_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        current_user, _ = current_account_with_tenant()
+        if not is_platform_admin_email(current_user.email):
+            raise Forbidden()
+
+        current_user.is_platform_admin = True
         return view(*args, **kwargs)
 
     return decorated

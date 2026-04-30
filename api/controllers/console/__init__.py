@@ -35,6 +35,7 @@ for module_name in RESOURCE_MODULES:
 from . import (
     admin,
     apikey,
+    enterprise_marketplace,
     extension,
     feature,
     human_input_form,
@@ -169,6 +170,7 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "enterprise_marketplace",
     "extension",
     "external",
     "feature",
