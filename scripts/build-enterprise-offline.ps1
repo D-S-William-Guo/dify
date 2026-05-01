@@ -26,12 +26,26 @@ New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
 $previousEnterpriseVersion = $env:DIFY_ENTERPRISE_VERSION
 $previousDebug = $env:DEBUG
 $previousEnterpriseEnabled = $env:ENTERPRISE_ENABLED
+$previousComposeProfiles = $env:COMPOSE_PROFILES
 $env:DIFY_ENTERPRISE_VERSION = $Version
 if (-not $env:DEBUG) {
   $env:DEBUG = "false"
 }
 if (-not $env:ENTERPRISE_ENABLED) {
   $env:ENTERPRISE_ENABLED = "false"
+}
+if (-not $env:COMPOSE_PROFILES) {
+  $envValues = @{}
+  foreach ($line in Get-Content $envFile) {
+    if ($line -match '^\s*#' -or $line -notmatch '=') {
+      continue
+    }
+    $key, $value = $line -split '=', 2
+    $envValues[$key.Trim()] = $value.Trim()
+  }
+  $vectorStore = if ($envValues.ContainsKey("VECTOR_STORE") -and $envValues["VECTOR_STORE"]) { $envValues["VECTOR_STORE"] } else { "weaviate" }
+  $dbType = if ($envValues.ContainsKey("DB_TYPE") -and $envValues["DB_TYPE"]) { $envValues["DB_TYPE"] } else { "postgresql" }
+  $env:COMPOSE_PROFILES = "$vectorStore,$dbType"
 }
 
 function Get-ImageCommitSha {
@@ -183,5 +197,11 @@ finally {
   }
   else {
     $env:ENTERPRISE_ENABLED = $previousEnterpriseEnabled
+  }
+  if ($null -eq $previousComposeProfiles) {
+    Remove-Item Env:COMPOSE_PROFILES -ErrorAction SilentlyContinue
+  }
+  else {
+    $env:COMPOSE_PROFILES = $previousComposeProfiles
   }
 }

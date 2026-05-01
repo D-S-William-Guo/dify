@@ -114,6 +114,7 @@ Linux equivalent:
 ```bash
 python3 docker/dify-env-sync.py --dir docker --no-backup
 export DIFY_ENTERPRISE_VERSION=1.14.0-enterprise
+export COMPOSE_PROFILES=weaviate,postgresql
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
 ./scripts/build-enterprise-offline.sh -Version "$DIFY_ENTERPRISE_VERSION" -Mode reuse
 ```
