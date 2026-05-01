@@ -46,6 +46,8 @@ api/.venv
 api/.venv/**
 **/.venv
 **/.venv/**
+/docker/volumes
+/docker/volumes/**
 docker/volumes
 docker/volumes/**
 e2e/node_modules

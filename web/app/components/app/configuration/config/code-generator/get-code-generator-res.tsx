@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { CompletionParams, Model } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -29,6 +29,7 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
+import { AppModeEnum, ModelModeType } from '@/types/app'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import IdeaOutput from '../automatic/idea-output'
 import InstructionEditor from '../automatic/instruction-editor-in-workflow'
@@ -37,6 +38,7 @@ import Result from '../automatic/result'
 import s from '../automatic/style.module.css'
 import { GeneratorType } from '../automatic/types'
 import useGenData from '../automatic/use-gen-data'
+import { normalizeGeneratorModel } from '../normalize-generator-model'
 
 const i18nPrefix = 'generate'
 type IGetCodeGeneratorResProps = {
@@ -73,12 +75,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     frequency_penalty: 0,
   }
   const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
+    ? normalizeGeneratorModel(JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model)
     : null
   const [model, setModel] = React.useState<Model>(localModel || {
     name: '',
     provider: '',
-    mode: mode as unknown as ModelModeType.chat,
+    mode: mode === AppModeEnum.COMPLETION ? ModelModeType.completion : ModelModeType.chat,
     completion_params: defaultCompletionParams,
   })
   const {
@@ -146,7 +148,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         node_id: nodeId,
         current: currentCode,
         instruction,
-        model_config: model,
+        model_config: normalizeGeneratorModel(model),
         ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
@@ -173,7 +175,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   useEffect(() => {
     if (defaultModel) {
       const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
+        ? normalizeGeneratorModel(JSON.parse(localStorage.getItem('auto-gen-model') || '') as Model)
         : null
       if (localModel) {
         setModel({
