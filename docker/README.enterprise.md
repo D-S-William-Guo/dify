@@ -18,6 +18,7 @@ The enterprise overlay must follow the clean-candidate workflow described in `..
 - Replaces `api`, `worker`, and `worker_beat` with the self-built `dify-api-enterprise` image.
 - Replaces `web` with the self-built `dify-web-enterprise` image.
 - Injects enterprise defaults through environment variables:
+  - `ENTERPRISE_ENABLED=true`
   - `PLATFORM_ADMIN_EMAILS`
   - `ALLOW_REGISTER=false`
   - `ALLOW_CREATE_WORKSPACE=false`
