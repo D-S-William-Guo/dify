@@ -24,7 +24,15 @@ $webImage = "dify-web-enterprise:$Version"
 $outputPath = Join-Path $repoRoot $OutputDir
 New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
 $previousEnterpriseVersion = $env:DIFY_ENTERPRISE_VERSION
+$previousDebug = $env:DEBUG
+$previousEnterpriseEnabled = $env:ENTERPRISE_ENABLED
 $env:DIFY_ENTERPRISE_VERSION = $Version
+if (-not $env:DEBUG) {
+  $env:DEBUG = "false"
+}
+if (-not $env:ENTERPRISE_ENABLED) {
+  $env:ENTERPRISE_ENABLED = "false"
+}
 
 function Get-ImageCommitSha {
   param(
@@ -126,8 +134,14 @@ try {
 
   $remoteImages = $images | Where-Object { $_ -notin @($apiImage, $webImage) }
   foreach ($image in $remoteImages) {
-    Write-Host "Pulling dependency image: $image"
-    docker pull $image
+    docker image inspect $image *> $null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host "Reusing local dependency image: $image"
+    }
+    else {
+      Write-Host "Pulling dependency image: $image"
+      docker pull $image
+    }
   }
 
   $manifestPath = Join-Path $outputPath "manifest-$Version.json"
@@ -157,5 +171,17 @@ finally {
   }
   else {
     $env:DIFY_ENTERPRISE_VERSION = $previousEnterpriseVersion
+  }
+  if ($null -eq $previousDebug) {
+    Remove-Item Env:DEBUG -ErrorAction SilentlyContinue
+  }
+  else {
+    $env:DEBUG = $previousDebug
+  }
+  if ($null -eq $previousEnterpriseEnabled) {
+    Remove-Item Env:ENTERPRISE_ENABLED -ErrorAction SilentlyContinue
+  }
+  else {
+    $env:ENTERPRISE_ENABLED = $previousEnterpriseEnabled
   }
 }

@@ -51,7 +51,11 @@ fi
 API_IMAGE="dify-api-enterprise:$VERSION"
 WEB_IMAGE="dify-web-enterprise:$VERSION"
 PREVIOUS_DIFY_ENTERPRISE_VERSION="${DIFY_ENTERPRISE_VERSION-__UNSET__}"
+PREVIOUS_DEBUG="${DEBUG-__UNSET__}"
+PREVIOUS_ENTERPRISE_ENABLED="${ENTERPRISE_ENABLED-__UNSET__}"
 export DIFY_ENTERPRISE_VERSION="$VERSION"
+export DEBUG="${DEBUG:-false}"
+export ENTERPRISE_ENABLED="${ENTERPRISE_ENABLED:-false}"
 
 mkdir -p "$OUTPUT_PATH"
 
@@ -60,6 +64,16 @@ cleanup() {
     unset DIFY_ENTERPRISE_VERSION
   else
     export DIFY_ENTERPRISE_VERSION="$PREVIOUS_DIFY_ENTERPRISE_VERSION"
+  fi
+  if [[ "$PREVIOUS_DEBUG" == "__UNSET__" ]]; then
+    unset DEBUG
+  else
+    export DEBUG="$PREVIOUS_DEBUG"
+  fi
+  if [[ "$PREVIOUS_ENTERPRISE_ENABLED" == "__UNSET__" ]]; then
+    unset ENTERPRISE_ENABLED
+  else
+    export ENTERPRISE_ENABLED="$PREVIOUS_ENTERPRISE_ENABLED"
   fi
 }
 
@@ -126,8 +140,12 @@ fi
 
 for image in "${IMAGES[@]}"; do
   if [[ "$image" != "$API_IMAGE" && "$image" != "$WEB_IMAGE" ]]; then
-    echo "Pulling dependency image: $image"
-    docker pull "$image"
+    if docker image inspect "$image" >/dev/null 2>&1; then
+      echo "Reusing local dependency image: $image"
+    else
+      echo "Pulling dependency image: $image"
+      docker pull "$image"
+    fi
   fi
 done
 
