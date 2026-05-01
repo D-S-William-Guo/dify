@@ -64,6 +64,7 @@ Standard checks:
 ```powershell
 $env:DEBUG = "false"
 $env:ENTERPRISE_ENABLED = "false"
+$env:COMPOSE_PROFILES = "weaviate,postgresql"
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build api
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build web
@@ -77,7 +78,8 @@ Recreate rules:
 ```powershell
 $env:DEBUG = "false"
 $env:ENTERPRISE_ENABLED = "false"
-docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat plugin_daemon sandbox ssrf_proxy nginx
+$env:COMPOSE_PROFILES = "weaviate,postgresql"
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat plugin_daemon sandbox ssrf_proxy nginx weaviate
 ```
 
 - After rebuilding `dify-web-enterprise:1.14.0-enterprise`, recreate `web` and `nginx`:
@@ -91,6 +93,10 @@ docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise
 - If only Nginx templates, proxy rules, or HTTPS assets changed, recreate only `nginx`.
 
 Do not default to restarting the entire compose stack after every enterprise build. Prefer the smallest compose-owned recreate set that matches the changed runtime surface.
+
+Vector store note: `VECTOR_STORE=weaviate` requires the `weaviate` compose profile/service to be running. Do not rely on
+`COMPOSE_PROFILES` inside `docker/.env` alone for CLI profile activation; export `COMPOSE_PROFILES=weaviate,postgresql`
+in the shell or include the `weaviate` service explicitly in `docker compose up` commands.
 
 ## Final packaging commands
 
