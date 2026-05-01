@@ -18,7 +18,7 @@ The enterprise overlay must follow the clean-candidate workflow described in `..
 - Replaces `api`, `worker`, and `worker_beat` with the self-built `dify-api-enterprise` image.
 - Replaces `web` with the self-built `dify-web-enterprise` image.
 - Injects enterprise defaults through environment variables:
-  - `ENTERPRISE_ENABLED=true`
+  - `ENTERPRISE_ENABLED=false` by default, so the fork-local enterprise image does not call the official enterprise API unless a deployment explicitly supplies that service URL and secrets.
   - `PLATFORM_ADMIN_EMAILS`
   - `ALLOW_REGISTER=false`
   - `ALLOW_CREATE_WORKSPACE=false`
@@ -62,6 +62,8 @@ Use `docker/docker-compose.yaml` plus `docker/docker-compose.enterprise.yaml` as
 Standard checks:
 
 ```powershell
+$env:DEBUG = "false"
+$env:ENTERPRISE_ENABLED = "false"
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build api
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml build web
@@ -73,12 +75,16 @@ Recreate rules:
 - After rebuilding `dify-api-enterprise:1.14.0-enterprise`, recreate `api`, `worker`, `worker_beat`, and `nginx`:
 
 ```powershell
-docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat nginx
+$env:DEBUG = "false"
+$env:ENTERPRISE_ENABLED = "false"
+docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate api worker worker_beat plugin_daemon sandbox ssrf_proxy nginx
 ```
 
 - After rebuilding `dify-web-enterprise:1.14.0-enterprise`, recreate `web` and `nginx`:
 
 ```powershell
+$env:DEBUG = "false"
+$env:ENTERPRISE_ENABLED = "false"
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml up -d --force-recreate web nginx
 ```
 
