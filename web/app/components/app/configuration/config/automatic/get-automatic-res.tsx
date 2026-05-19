@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 // type
 import type { GenRes } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
+import type { CompletionParams, Model } from '@/types/app'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -39,6 +39,8 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
+import { AppModeEnum, ModelModeType } from '@/types/app'
+import { normalizeGeneratorModel } from '../normalize-generator-model'
 import IdeaOutput from './idea-output'
 import InstructionEditorInBasic from './instruction-editor'
 import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
@@ -91,12 +93,12 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 }) => {
   const { t } = useTranslation()
   const localModel = localStorage.getItem('auto-gen-model')
-    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
+    ? normalizeGeneratorModel(JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model)
     : null
   const [model, setModel] = React.useState<Model>(localModel || {
     name: '',
     provider: '',
-    mode: mode as unknown as ModelModeType.chat,
+    mode: mode === AppModeEnum.COMPLETION ? ModelModeType.completion : ModelModeType.chat,
     completion_params: {} as CompletionParams,
   })
   const {
@@ -183,7 +185,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   useEffect(() => {
     if (defaultModel) {
       const localModel = localStorage.getItem('auto-gen-model')
-        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
+        ? normalizeGeneratorModel(JSON.parse(localStorage.getItem('auto-gen-model') || '') as Model)
         : null
       if (localModel) {
         setModel(localModel)
@@ -237,7 +239,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       if (isBasicMode || !currentPrompt) {
         const { error, ...res } = await generateBasicAppFirstTimeRule({
           instruction,
-          model_config: model,
+          model_config: normalizeGeneratorModel(model),
           no_variable: false,
         })
         apiRes = {
@@ -256,7 +258,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           current: currentPrompt,
           instruction,
           ideal_output: ideaOutput,
-          model_config: model,
+          model_config: normalizeGeneratorModel(model),
         })
         apiRes = res
         if (error) {

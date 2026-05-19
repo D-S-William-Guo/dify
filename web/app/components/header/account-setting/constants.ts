@@ -3,6 +3,7 @@ export const ACCOUNT_SETTING_MODAL_ACTION = 'showSettings'
 export const ACCOUNT_SETTING_TAB = {
   PROVIDER: 'provider',
   MEMBERS: 'members',
+  PLATFORM_ADMIN: 'platform-admin',
   BILLING: 'billing',
   DATA_SOURCE: 'data-source',
   API_BASED_EXTENSION: 'api-based-extension',
