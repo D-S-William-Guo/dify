@@ -1,5 +1,6 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import type { UserProfileResponse } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -22,10 +23,15 @@ import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
+import PlatformAdminPage from './platform-admin-page'
 
 const iconClassName = `
   w-5 h-5 mr-2
 `
+
+type EnterpriseUserProfile = UserProfileResponse & {
+  is_platform_admin?: boolean
+}
 
 type IAccountSettingProps = {
   onCancelAction: () => void
@@ -50,7 +56,8 @@ export default function AccountSetting({
   const activeMenu = activeTab
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { isCurrentWorkspaceDatasetOperator, userProfile } = useAppContext()
+  const enterpriseUserProfile = userProfile as EnterpriseUserProfile
 
   const workplaceGroupItems: GroupItem[] = (() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -129,8 +136,22 @@ export default function AccountSetting({
         },
       ],
     },
+    ...(enterpriseUserProfile.is_platform_admin
+      ? [{
+          key: 'enterprise-group',
+          name: t('settings.enterpriseGroup', { ns: 'common' }),
+          items: [
+            {
+              key: ACCOUNT_SETTING_TAB.PLATFORM_ADMIN,
+              name: t('settings.platformAdmin', { ns: 'common' }),
+              icon: <span className={cn('i-ri-building-4-line', iconClassName)} />,
+              activeIcon: <span className={cn('i-ri-building-4-fill', iconClassName)} />,
+            },
+          ],
+        }]
+      : []),
   ]
-  const activeItem = [...menuItems[0]!.items, ...menuItems[1]!.items].find(item => item.key === activeMenu)
+  const activeItem = menuItems.flatMap(menuItem => menuItem.items).find(item => item.key === activeMenu)
 
   const [searchValue, setSearchValue] = useState<string>('')
 
@@ -228,6 +249,7 @@ export default function AccountSetting({
             <div className="px-4 pt-2 sm:px-8">
               {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && <ModelProviderPage searchText={searchValue} />}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PLATFORM_ADMIN && <PlatformAdminPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}

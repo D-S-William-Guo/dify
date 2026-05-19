@@ -71,6 +71,9 @@ const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/ds
 const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
   ssr: false,
 })
+const SubmitEnterpriseMarketplaceModal = dynamic(() => import('@/app/components/apps/submit-enterprise-marketplace-modal'), {
+  ssr: false,
+})
 
 type AppCardProps = {
   app: App
@@ -87,6 +90,7 @@ type AppCardOperationsMenuProps = {
   onEdit: () => void
   onDuplicate: () => void
   onExport: () => void
+  onSubmitMarketplace: () => void
   onSwitch: () => void
   onDelete: () => void
   onAccessControl: () => void
@@ -100,6 +104,7 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
   onEdit,
   onDuplicate,
   onExport,
+  onSubmitMarketplace,
   onSwitch,
   onDelete,
   onAccessControl,
@@ -145,6 +150,9 @@ const AppCardOperationsMenu: React.FC<AppCardOperationsMenuProps> = ({
       </DropdownMenuItem>
       <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onExport)}>
         <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
+      </DropdownMenuItem>
+      <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onSubmitMarketplace)}>
+        <span className="system-sm-regular text-text-secondary">{t('enterpriseMarketplace.submitAction', { ns: 'common' })}</span>
       </DropdownMenuItem>
       {shouldShowSwitchOption && (
         <>
@@ -219,6 +227,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showSubmitMarketplaceModal, setShowSubmitMarketplaceModal] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
@@ -283,6 +292,13 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowConfirmDelete(true)
+    })
+  }, [])
+
+  const handleShowSubmitMarketplaceModal = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowSubmitMarketplaceModal(true)
     })
   }, [])
 
@@ -559,6 +575,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                             onEdit={handleShowEditModal}
                             onDuplicate={handleShowDuplicateModal}
                             onExport={exportCheck}
+                            onSubmitMarketplace={handleShowSubmitMarketplaceModal}
                             onSwitch={handleShowSwitchModal}
                             onDelete={handleShowDeleteConfirm}
                             onAccessControl={handleShowAccessControl}
@@ -573,6 +590,7 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
                             onEdit={handleShowEditModal}
                             onDuplicate={handleShowDuplicateModal}
                             onExport={exportCheck}
+                            onSubmitMarketplace={handleShowSubmitMarketplaceModal}
                             onSwitch={handleShowSwitchModal}
                             onDelete={handleShowDeleteConfirm}
                             onAccessControl={handleShowAccessControl}
@@ -676,6 +694,15 @@ const AppCard = ({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () =>
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
+        />
+      )}
+      {showSubmitMarketplaceModal && (
+        <SubmitEnterpriseMarketplaceModal
+          appId={app.id}
+          open={showSubmitMarketplaceModal}
+          defaultTitle={app.name}
+          defaultDescription={app.description}
+          onClose={() => setShowSubmitMarketplaceModal(false)}
         />
       )}
       {showAccessControl && (
