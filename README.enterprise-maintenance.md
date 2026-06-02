@@ -15,6 +15,16 @@
 
 `main` 可以用于观察或同步官方开发态，但不再作为企业发布底座。企业发布底座必须是官方稳定发布 tag/tree。
 
+## 修订记录
+
+### 2026-06-02 — 候选分支清理 (PR #2)
+
+基于 `d41308166`（初次重建）的代码审查，针对 `codex/enterprise-candidate-1.14.2-20260519` 进行三项清理：
+
+1. **CLAUDE.md 版本引用修复**：文件仍指向 `1.14.0` 基线和 `codex/enterprise-candidate-1.14.0-20260430`。更新至 `1.14.2`，补全企业镜像标签和 Docker 验证规则，符号链接改为普通文件。
+2. **移除未翻译的 i18n 键**：初次重放将 85 个 `enterpriseMarketplace.*` 和 `platformAdmin.*` 键机械复制到全部 23 个语言文件。仅 `en-US` 和 `zh-Hans` 有真实翻译，其余 21 个文件共 1,785 行为英文回退文本，框架已自动处理。已移除。
+3. **补全缺失的补丁文档**：在 `ENTERPRISE_REPLAY_PLAN.md` 第 6 组中补充了 `system_oauth_encryption.py` 和 `normalize-generator-model.ts` 两个遗漏补丁的说明。
+
 ## PR 安全规则
 
 企业候选分支不得向官方仓库 `langgenius/dify` 开 Pull Request。

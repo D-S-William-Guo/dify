@@ -6,7 +6,17 @@ Candidate branch: `codex/enterprise-candidate-1.14.2-20260519`
 
 Enterprise version: `1.14.2-enterprise`
 
-Status: clean enterprise candidate rebuilt from the official stable release baseline. No business code should be changed before this plan and the enterprise maintenance documents are updated.
+Status: clean enterprise candidate rebuilt from the official stable release baseline. Post-rebuild cleanup completed (2026-06-02). No business code should be changed before this plan and the enterprise maintenance documents are updated.
+
+## Changelog
+
+### 2026-06-02 — Post-Rebuild Cleanup (PR #2)
+
+Three focused cleanups after code review of the initial `d41308166` rebuild:
+
+1. **Fix CLAUDE.md stale version references.** The file still claimed `1.14.0` as baseline and pointed agents to `codex/enterprise-candidate-1.14.0-20260430`. Updated to `1.14.2` and `codex/enterprise-candidate-1.14.2-20260519`. Added enterprise image tags and Docker validation rules. Converted from symlink hack to regular file.
+2. **Remove untranslated i18n keys from 21 language files.** The initial replay added 85 `enterpriseMarketplace.*` and `platformAdmin.*` keys to every language file, but only `en-US` and `zh-Hans` had real translations. The framework falls back to `en-US` automatically, so the other 21 files contained 1,785 lines of unnecessary English fallback text. Removed.
+3. **Document missing enterprise patches in the replay plan.** Added `system_oauth_encryption.py` (AES-CBC OAuth parameter encryption, replaces `system_encryption` imports in `builtin_tools_manage_service` and `trigger_provider_service`) and `normalize-generator-model.ts` (agent prompt generation mode fix) to patch group 6. Fixed AGENTS.md Enterprise Branch Strategy section (same stale-`1.14.0` pattern).
 
 ## Goal
 
