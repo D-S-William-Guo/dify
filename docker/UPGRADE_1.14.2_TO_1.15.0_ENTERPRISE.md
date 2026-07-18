@@ -1,18 +1,17 @@
-# Upgrade From 1.14.2-enterprise To 1.15.0-enterprise
+# 从 1.14.2-enterprise 升级到 1.15.0-enterprise
 
-This guide is for upgrading an existing `1.14.2-enterprise` Docker deployment to
-`1.15.0-enterprise`.
+本文档用于将已有的 `1.14.2-enterprise` Docker 部署升级到 `1.15.0-enterprise`。
 
-## Artifacts
+## 交付物
 
-Use the two release artifacts:
+升级需要使用两个发布产物：
 
 - `dify-enterprise-offline-1.15.0-enterprise.tar`
 - `dify-enterprise-config-1.15.0-enterprise.tar.gz`
 
-## 1. Backup First
+## 1. 先备份
 
-Run from the existing `1.14.2-enterprise` deployment directory:
+在现有 `1.14.2-enterprise` 部署目录下执行：
 
 ```bash
 export BACKUP_DIR=/data/backups/dify-1.14.2-$(date +%Y%m%d-%H%M%S)
@@ -23,16 +22,15 @@ cp -a docker/volumes "$BACKUP_DIR/volumes"
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml ps > "$BACKUP_DIR/compose-ps.txt"
 ```
 
-Stop the old stack before copying runtime data:
+复制运行数据前，先停止旧版本服务：
 
 ```bash
 docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml down
 ```
 
-## 2. Prepare The 1.15.0 Directory
+## 2. 准备 1.15.0 部署目录
 
-Create a new deployment directory for `1.15.0-enterprise`, then unpack the
-configuration bundle there:
+为 `1.15.0-enterprise` 创建新的部署目录，并在该目录中解压配置包：
 
 ```bash
 mkdir -p /opt/dify-enterprise-1.15.0
@@ -40,23 +38,22 @@ cd /opt/dify-enterprise-1.15.0
 tar -xzf /path/to/dify-enterprise-config-1.15.0-enterprise.tar.gz
 ```
 
-Load images if this is an offline deployment:
+如果是离线部署，加载离线镜像包：
 
 ```bash
 docker load -i /path/to/dify-enterprise-offline-1.15.0-enterprise.tar
 ```
 
-## 3. Migrate Runtime Data
+## 3. 迁移运行数据
 
-Copy the old `.env` and volumes into the new directory:
+把旧版本的 `.env` 和 `docker/volumes` 复制到新目录：
 
 ```bash
 cp -a /path/to/dify-enterprise-1.14.2/docker/.env docker/.env
 cp -a /path/to/dify-enterprise-1.14.2/docker/volumes docker/volumes
 ```
 
-If PostgreSQL files cannot be copied by the host user, copy with a temporary
-root container:
+如果 PostgreSQL 数据文件因为权限问题无法由当前宿主机用户复制，可使用临时 root 容器复制：
 
 ```bash
 docker run --rm \
@@ -66,22 +63,22 @@ docker run --rm \
   sh -c 'rm -rf /new/db && mkdir -p /new && cp -a /old/db /new/db'
 ```
 
-Edit `docker/.env` and update version/runtime values:
+编辑 `docker/.env`，更新版本和运行时配置：
 
 ```bash
 DIFY_ENTERPRISE_VERSION=1.15.0-enterprise
 COMPOSE_PROFILES=weaviate,postgresql,collaboration
 ```
 
-If plugins must install dependencies in a restricted network, set a PyPI mirror:
+如果插件需要在离线或受限网络环境中安装依赖，请配置 PyPI 镜像：
 
 ```bash
 PIP_MIRROR_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-## 4. Start 1.15.0
+## 4. 启动 1.15.0
 
-Run from `/opt/dify-enterprise-1.15.0`:
+在 `/opt/dify-enterprise-1.15.0` 目录下执行：
 
 ```bash
 export DIFY_ENTERPRISE_VERSION=1.15.0-enterprise
@@ -94,16 +91,16 @@ docker compose \
   config --images | sort -u
 ```
 
-The image list must include:
+镜像列表必须包含：
 
 ```text
 dify-api-enterprise:1.15.0-enterprise
 dify-web-enterprise:1.15.0-enterprise
 ```
 
-It must not show `1.14.2-enterprise` for API/Web/worker/websocket services.
+API、Web、worker、websocket 等服务不能再显示 `1.14.2-enterprise`。
 
-Start the stack:
+启动服务：
 
 ```bash
 docker compose \
@@ -113,9 +110,9 @@ docker compose \
   up -d --force-recreate --pull never
 ```
 
-## 5. Run Required Migrations
+## 5. 执行必要迁移
 
-Run database migration:
+执行数据库迁移：
 
 ```bash
 docker compose \
@@ -125,7 +122,7 @@ docker compose \
   exec api flask db upgrade
 ```
 
-Run the required official 1.15.0 plugin backfill:
+执行官方 `1.15.0` 必需的插件自动升级配置回填：
 
 ```bash
 docker compose \
@@ -135,26 +132,24 @@ docker compose \
   exec api flask backfill-plugin-auto-upgrade
 ```
 
-## 6. Verify Vector Indexes
+## 6. 校验向量索引
 
-This step prevents the common case where PostgreSQL data migrated but Weaviate
-started with an empty or wrong volume.
+这一步用于避免常见问题：PostgreSQL 里的知识库、文档、分段已经迁移成功，但 Weaviate 启动到了空 volume 或错误 volume。
 
 ```bash
 scripts/check-enterprise-vector-indexes.sh
 ```
 
-If missing classes are reported, rebuild only the missing vector indexes from
-existing Postgres documents and segments:
+如果脚本报告缺失 Weaviate class，只重建缺失的向量索引。重建数据来自现有 Postgres 文档和分段，不重新解析上传文件：
 
 ```bash
 scripts/check-enterprise-vector-indexes.sh --repair
 scripts/check-enterprise-vector-indexes.sh
 ```
 
-## 7. Verify Runtime
+## 7. 验证运行状态
 
-Check services:
+检查服务：
 
 ```bash
 docker compose \
@@ -164,34 +159,33 @@ docker compose \
   ps
 ```
 
-Confirm images:
+确认镜像：
 
 ```bash
 docker inspect docker-api-1 docker-api_websocket-1 docker-worker-1 docker-worker_beat-1 docker-web-1 \
   --format '{{.Name}} {{.Config.Image}}'
 ```
 
-Expected:
+期望看到：
 
 ```text
 dify-api-enterprise:1.15.0-enterprise
 dify-web-enterprise:1.15.0-enterprise
 ```
 
-Open the web UI and verify:
+打开 Web 页面并验证：
 
-- login with existing admin account
-- workspaces and users exist
-- apps and workflows open
-- plugins list opens
-- knowledge base hit testing returns right-side results
-- enterprise marketplace / 智慧广场 opens
+- 使用已有管理员账号登录
+- 空间和用户仍然存在
+- 应用和工作流可以打开
+- 插件列表可以打开
+- 知识库召回测试右侧能返回结果
+- 企业智慧广场可以打开
 
-## Rollback
+## 回滚
 
-If upgrade validation fails:
+如果升级验证失败：
 
-1. Stop the `1.15.0-enterprise` stack.
-2. Restart the old `1.14.2-enterprise` directory with the backed-up `.env` and
-   `docker/volumes`.
-3. Do not reuse partially migrated `1.15.0` runtime data as rollback source.
+1. 停止 `1.15.0-enterprise` 服务。
+2. 使用已备份的 `.env` 和 `docker/volumes`，回到旧的 `1.14.2-enterprise` 目录启动。
+3. 不要把部分迁移过的 `1.15.0` 运行数据当作回滚源。
