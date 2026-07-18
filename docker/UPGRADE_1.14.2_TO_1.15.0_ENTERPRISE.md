@@ -53,7 +53,7 @@ cp -a /path/to/dify-enterprise-1.14.2/docker/.env docker/.env
 cp -a /path/to/dify-enterprise-1.14.2/docker/volumes docker/volumes
 ```
 
-如果 PostgreSQL 数据文件因为权限问题无法由当前宿主机用户复制，可使用临时 root 容器复制：
+如果 PostgreSQL 数据文件因为权限问题无法由当前宿主机用户复制，可使用以 root 用户运行的临时容器复制：
 
 ```bash
 docker run --rm \
@@ -98,7 +98,7 @@ dify-api-enterprise:1.15.0-enterprise
 dify-web-enterprise:1.15.0-enterprise
 ```
 
-API、Web、worker、websocket 等服务不能再显示 `1.14.2-enterprise`。
+`api`、`web`、`worker`、`api_websocket`、`worker_beat` 等服务不能再显示 `1.14.2-enterprise`。
 
 启动服务：
 
@@ -134,13 +134,13 @@ docker compose \
 
 ## 6. 校验向量索引
 
-这一步用于避免常见问题：PostgreSQL 里的知识库、文档、分段已经迁移成功，但 Weaviate 启动到了空 volume 或错误 volume。
+这一步用于避免常见问题：PostgreSQL 里的知识库、文档、分段已经迁移成功，但 Weaviate 启动到了空数据卷或挂载错误的数据卷。
 
 ```bash
 scripts/check-enterprise-vector-indexes.sh
 ```
 
-如果脚本报告缺失 Weaviate class，只重建缺失的向量索引。重建数据来自现有 Postgres 文档和分段，不重新解析上传文件：
+如果脚本报告缺失 Weaviate 类（class），只重建缺失的向量索引。重建数据来自现有 PostgreSQL 文档和分段，不重新解析上传文件：
 
 ```bash
 scripts/check-enterprise-vector-indexes.sh --repair
