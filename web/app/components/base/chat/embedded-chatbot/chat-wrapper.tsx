@@ -68,6 +68,10 @@ const ChatWrapper = () => {
     return param !== 'false'
   }, [])
 
+  const timezone = appSourceType === AppSourceType.webApp
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : undefined
+
   const appConfig = useMemo(() => {
     const config = appParams || {}
 
@@ -98,6 +102,8 @@ const ChatWrapper = () => {
     taskId => stopChatMessageResponding('', taskId, appSourceType, appId),
     clearChatList,
     setClearChatList,
+    undefined,
+    { timezone },
   )
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {

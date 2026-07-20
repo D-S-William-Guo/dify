@@ -38,6 +38,7 @@ RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile --no-runtime
 FROM base AS builder
 WORKDIR /app
 COPY --from=packages /app/ .
+COPY --from=packages /root/.cache/node/corepack /root/.cache/node/corepack
 COPY . .
 
 WORKDIR /app/web
