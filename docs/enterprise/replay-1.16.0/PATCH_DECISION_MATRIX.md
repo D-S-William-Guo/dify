@@ -62,8 +62,8 @@
 - 去留结论：按 1.16 架构重实现；状态机和历史字段作为需求输入，不复制 controller/service。
 - 证据：旧 endpoint 覆盖 submit/list/get/use/review/unlist；`use_asset` 通过无 secret DSL export/import 复制。
 - 风险：source app 跨租户泄漏、TOCTOU、发布后源 app 变化、secret 泄漏、依赖泄漏、重复提交、已删除 app、审核越权。
-- 实施任务：定义不可变发布快照或明确“引用源 app”的产品语义；设计 owner-scoped 查询、状态机、审计、复制事务和依赖返回；进入 Console contract 生成。
-- 前置依赖：E03 授权、E15 schema、产品确认发布快照语义。
+- 实施任务：推荐采用发布时生成不可变快照，保存无 secret DSL、版本和冻结时间，使发布内容可审计、不随源 app 静默变化、跨 workspace 不依赖源权限且源 app 删除后仍可用；设计 owner-scoped 查询、状态机、审计、复制事务和依赖返回。任何图标、内容或依赖的外部 URL 获取必须使用 1.16 官方 SSRF proxy/helper，禁止原始 `httpx.get`/任意直连。该方向是 Builder 前人工 Design Gate；历史业务事实若冲突必须在启动前提出。
+- 前置依赖：E15 的历史兼容空 merge、E03 授权先合并、产品通过不可变快照 Design Gate。最终 schema/DDL 与 Console contract generation 均归 E04/B4。
 - 单元测试：tenant scope、状态迁移、并发提交、source app 状态、无 secret export、复制目标 tenant、rollback、依赖泄漏列表。
 - 集成验证：A workspace 提交→admin 审核→B workspace 查看/复制→新 app 可运行；拒绝/下架不可见。
 - volume 升级验证要求：旧 `enterprise_marketplace_assets` 行数、状态、source IDs 和时间戳保持；对缺失 source app 的历史记录只隐藏/报告，不删除。
@@ -91,7 +91,7 @@
 - 证据：旧候选搜索无专用 endpoint/model/UI；1.16 有 `api/controllers/openapi/account_sessions.py` 等官方路径。
 - 风险：误解范围会新增高危全局踢下线能力，或与 Agent session 生命周期冲突。
 - 实施任务：产品方给出 actor、对象、操作、审计、过期与验收用例；架构师再分类。
-- 前置依赖：明确需求。
+- 前置依赖：产品契约最迟在 B6 开始前给出。届时仍无契约则 1.16 范围保持 `DEFER`、不得加入代码；若产生新实现，作为 B10 经独立安全/架构评审，并在 B8 发布门禁前完成。
 - 单元测试：延后；需求确认后至少覆盖 owner scope、token revocation 和幂等。
 - 集成验证：延后；不得用 conversation 删除冒充账号 session 管理。
 - volume 升级验证要求：升级不得清空账号 token/session、conversation 或 Agent runtime session；具体迁移待契约确认。
@@ -213,12 +213,12 @@
 - 企业业务需求：官方 1.15、旧 1.15 企业候选和空库均能收敛到一个 1.16 企业 Alembic head，智慧广场数据保留。
 - 旧实现提交和文件：`5f6219a16d`；`c8f3d9d4a1be`、`f1a14e1e9b41`、`e2f0a9b7c6d5`。
 - 1.16 官方对应实现：官方 head `7a1c2d9e4b60`，从官方 1.15 实际新增 5 个 migration。
-- 去留结论：审计重建历史 revision 可解析性，并新增 1.16 merge revision；不能复用旧 merge 作为新 head。
+- 去留结论：B2 从旧候选恢复历史文件，保持 `revision`、`down_revision`、`branch_labels` 和 `upgrade()`/`downgrade()` 历史 DDL 语义，仅新增 1.16 空 merge；不得重建新 ID、修改历史语义或用 `alembic stamp` 伪造状态。B4 在空 merge 后追加独立 schema migration。
 - 证据：旧企业 DB 的 `alembic_version` 可为 `e2f0a9b7c6d5`；删除旧 revision 会触发 “Can't locate revision”。
 - 风险：多 head、重复建表、错误 stamp、三个 1.15 已存在 migration 在 1.16 被修改但不重跑。
-- 实施任务：migration graph test；三条路径 upgrade（空库、官方 1.15、企业 1.15）；单 head 断言；禁止数据删除。
-- 前置依赖：E04 最终 schema。
-- 单元测试：Alembic heads/history、upgrade/downgrade 边界、已有表/数据保留。
+- 实施任务：B2 恢复 `c8f3d9d4a1be`、`f1a14e1e9b41`、`e2f0a9b7c6d5`；创建空 merge `a71e16c0de01`（文件 `2026_07_21_1000-a71e16c0de01_merge_1_16_0_enterprise_heads.py`），parents 为 `e2f0a9b7c6d5`、`7a1c2d9e4b60`。B4 创建 `b416e5c4e702`（文件 `2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`，parent `a71e16c0de01`），独占 1.16 智慧广场列、索引、约束与数据迁移；它才是最终企业 head。merge revision 禁止业务 DDL。
+- 前置依赖：B2 先完成历史图和空 merge，B3 平台管理员基础鉴权随后合并，B4 最后确定 schema；顺序 `B2 → B3 → B4 → B5`。
+- 单元测试：Alembic heads/history、历史文件与旧候选逐字段/DDL 语义对比、空 merge 无 `op.*` 业务 DDL、最终 head `b416e5c4e702`、已有表/数据保留。
 - 集成验证：真实 PostgreSQL/MySQL 支持矩阵；升级后启动 API 并跑智慧广场/Agent/workflow smoke。
 - volume 升级验证要求：先由运维备份；在隔离副本升级，记录前后 head、表/索引、行数/抽样哈希；绝不在本任务访问 `docker/volumes`。
 
@@ -337,8 +337,8 @@
 - 业务/旧文件：新增 `e2f0a9b7c6d5` merge revision。
 - 官方对应/结论：保留历史 revision 身份以升级旧库，再新增 1.16 merge，见 E15。
 - 证据/风险：只复制旧 merge 会留下双 head；删除它会无法解析旧库。
-- 任务/依赖：E04 schema 确定后实现图测试。
-- 测试/集成/volume：三条数据库升级路径；隔离 volume 副本，不 stamp 跳迁移。
+- 任务/依赖：B2 先恢复历史 revision 并创建空 merge；B3 合并鉴权基础；B4 再追加最终 schema migration。
+- 测试/集成/volume：按 `VALIDATION_PLAN.md` 的数据库支持矩阵执行必须运行路径；隔离 volume 副本，不 stamp 跳迁移。
 
 ### C10 `d83e4bb351` fix: pass session to tenant member lookup — VERIFY_ONLY
 

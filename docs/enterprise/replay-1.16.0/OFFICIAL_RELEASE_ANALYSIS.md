@@ -40,6 +40,8 @@ Agent App 在 1.16.0 默认开启，`NEXT_PUBLIC_ENABLE_AGENT_V2=true` 取代 `E
 
 Compose 还将 `API_WEBSOCKET_WORKER_AMOUNT` 从硬编码 `1` 改为可配置。企业 overlay 必须继续让 `api_websocket` 使用企业 API 镜像，否则协作路径会绕过企业补丁。
 
+另有两个升级行为必须纳入验收：官方将 `CAN_REPLACE_LOGO` 默认值从 `true` 修正为 `false`，企业 overlay 未显式设置时会继承 `false`；OpenAI plugin 默认 API 类型转向 Responses API，保留自定义 OpenAI API key 的升级部署必须验证 provider 配置与目标兼容性。
+
 ## 4. Database migrations：9、8 与实际代码
 
 Release 的 “Database Migrations” 标题声称 9 个，实际只列出 8 个；Upgrade Guide 又写 8 个。标签差异给出第三个、更准确的事实：
@@ -51,12 +53,17 @@ Release 的 “Database Migrations” 标题声称 9 个，实际只列出 8 个
   4. `c3d4e5f6a7b8`：Agent active config published 标记。
   5. `7a1c2d9e4b60`：workflow run archive bundle 索引表。
 - Release 列表中的前三个 migration（`97e2e1a644e8`、`0b2f2c8a9d1e`、`b2515f9d4c2a`）已存在于 `1.15.0`，在 1.16 只修改了 migration 源码。
+- 此外，既有 uuidv7 migration `1c9ba48be8e4` 也在 1.16 被修改，以兼容 PostgreSQL 18 的原生 `uuidv7()`；因此标签差异是 5 个新增文件加 4 个修改文件，而不是只有 3 个修改文件。该修改不会在已执行过它的 1.15 数据库上自动重跑，必须分别验证 PostgreSQL 18 空库和升级路径。
 - 因此，从已经迁移到官方 1.15 head 的数据库升级时，Alembic 实际执行 5 个新增 revision；全新数据库会执行完整历史链，并使用上述三个文件的 1.16 最终内容。
 - 官方 1.16 静态迁移链 head 为 `7a1c2d9e4b60`。本次尝试运行 `uv run --project api flask db heads` 时因受限网络无法下载锁定的 Git 依赖 `flask-restx` 而未完成；Builder 必须在依赖完整环境中再次执行该命令。
 
 需要特别注意：三个已存在 migration 的 1.16 修改不会在已完成 1.15 migration 的数据库上重新执行。企业升级验证必须同时覆盖“旧企业数据升级”和“空库完整安装”，不能用其中一个替代另一个。
 
 旧企业候选的 Alembic head 是 `e2f0a9b7c6d5`，它合并 `f1a14e1e9b41` 与官方 1.15 head `d9e8f7a6b5c4`。1.16 重放必须保留旧 revision 可解析性，并增加一个合并 `e2f0a9b7c6d5` 与 `7a1c2d9e4b60` 的新 revision；不得直接把旧库 stamp 到官方 head。
+
+本轮预分配空 merge revision `a71e16c0de01`，文件名 `2026_07_21_1000-a71e16c0de01_merge_1_16_0_enterprise_heads.py`；其两个 parent 精确为 `e2f0a9b7c6d5` 和 `7a1c2d9e4b60`，且 `upgrade()`/`downgrade()` 不含业务 DDL。B4 随后使用独立 revision `b416e5c4e702`（`2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`）实现最终智慧广场 schema，因此最终企业 head 是 `b416e5c4e702`，不是空 merge。
+
+唯一性证据（2026-07-21）：使用 `git grep -n -e a71e16c0de01 -e b416e5c4e702 <ref> --` 检查了 `1.16.0`、全部 `refs/heads/*`、全部 `refs/remotes/origin/*`，其中明确包括旧企业候选 `origin/codex/enterprise-candidate-1.15.0-20260626`；所有引用均无匹配。本阶段只预分配 ID，不创建 migration 文件。
 
 ## 5. Console OpenAPI 合约与前端生成式路由/类型
 

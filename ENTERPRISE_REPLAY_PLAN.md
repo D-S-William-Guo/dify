@@ -6,9 +6,9 @@
 - 官方提交：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
 - 候选来源名：`codex/enterprise-candidate-1.16.0-20260718`
 - 当前架构工作树分支：`ctyun/replay-116-architect`
-- 当前 HEAD：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
+- 重放实现基线：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
 
-本地没有 `origin/codex/enterprise-candidate-1.16.0-20260718` 跟踪引用，不能用远端引用名复核；但当前 HEAD、用户指定基线与本地官方 `1.16.0` 标签完全一致。实施前由维护者确认目标候选分支已从该提交创建。
+本地没有 `origin/codex/enterprise-candidate-1.16.0-20260718` 跟踪引用，不能用远端引用名复核；但架构分析起点、用户指定基线与本地官方 `1.16.0` 标签完全一致。实施前由维护者确认目标候选分支已从该提交创建。
 
 官方 1.16.0 是实现真相。旧企业分支 `origin/codex/enterprise-candidate-1.15.0-20260626` 只提供需求、历史原因和验证样例，禁止机械 cherry-pick、复制目录或覆盖官方文件树。
 
@@ -22,6 +22,8 @@
 6. Release 的 migration 描述不一致：标题说 9、列表/upgrade guide 说 8；标签差异实际新增 5 个文件。升级自官方 1.15 时应执行这 5 个新 revision。
 7. 旧企业数据库可能停在 `e2f0a9b7c6d5`。实现必须保留历史 revision 可解析性并新增连接它与官方 `7a1c2d9e4b60` 的 merge；禁止直接 stamp。
 8. “企业会话管理”没有足够契约，当前 `DEFER`。若产品确认只指账号多设备 session，则官方已覆盖，转 `VERIFY_ONLY`。
+9. 智慧广场推荐采用“发布时生成不可变快照”：已发布内容可审计且不随源应用静默变化，跨 workspace 复制不依赖源权限，源应用删除后资产仍可用。该决定进入 Builder 前的人工 Design Gate；若历史业务事实冲突，必须在 Builder 启动前提出。
+10. migration 职责严格拆分：B2 只恢复历史 revision 并创建空 merge，B4 在 merge 后追加最终 schema migration；B2 不猜测 1.16 智慧广场 schema。
 
 详细证据：
 
@@ -55,11 +57,11 @@
 - 先移植需求测试，再按 1.16 TS/i18n 格式实现纯归一化函数和两个调用点。
 - 独立于其他企业能力，可最先合并。
 
-### B2 migration 兼容与智慧广场 schema
+### B2 migration 历史兼容与空 merge
 
-- 审计重建 `c8f3d9d4a1be`、`f1a14e1e9b41`、`e2f0a9b7c6d5` 的历史可解析性。
-- 定义最终智慧广场 schema；新增连接旧企业 head 与官方 `7a1c2d9e4b60` 的 merge。
-- 跑空库、官方 1.15、旧企业 1.15、官方 1.16 四路径测试。
+- 从旧企业候选恢复 `c8f3d9d4a1be`、`f1a14e1e9b41`、`e2f0a9b7c6d5`，保持 revision ID、`down_revision`、`branch_labels` 和 `upgrade()`/`downgrade()` 历史 DDL 语义；不得重新生成 ID，不得用 `alembic stamp` 伪造状态。
+- 新增空 merge revision `a71e16c0de01`（文件 `2026_07_21_1000-a71e16c0de01_merge_1_16_0_enterprise_heads.py`），parents 精确为 `e2f0a9b7c6d5` 和 `7a1c2d9e4b60`，其中不得包含业务 DDL。
+- 验证旧企业数据库能定位完整 revision 历史。B2 不定义 1.16 智慧广场新增列、索引、约束或数据迁移。
 
 ### B3 平台管理员授权与后端
 
@@ -69,8 +71,9 @@
 
 ### B4 智慧广场后端
 
-- 确认发布快照或源 app 引用语义。
-- 实现提交/审核/列表/复制状态机、owner scope、无 secret DSL copy 和生成 contract。
+- 以“发布时生成不可变快照”为推荐架构决定，通过人工 Design Gate 后定义 1.16 最终 schema。
+- 在 B2 的空 merge 后追加 schema migration `b416e5c4e702`（文件 `2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`，`down_revision = "a71e16c0de01"`）；它才是最终企业 head，并独占新增列、索引、约束和数据迁移。严禁把这些 DDL 塞入 merge revision。
+- 实现 marketplace service/controller、提交/审核/列表/复制状态机、owner scope、官方 SSRF 防护路径、无 secret DSL copy，以及最终 Console OpenAPI contract generation。
 
 ### B5 平台管理员与智慧广场前端
 
@@ -103,14 +106,14 @@
 
 ```text
 B0 ─┬─> B1
-    ├─> B2 ─> B4 ─┐
-    ├────────> B3 ─┼─> B5
-    └──────────────┴─> B6 ─> B7 ─> B8
+    └─> B2 ─> B3 ─> B4 ─> B5 ─> B6 ─> B7 ─> B8
 
-B9（澄清）独立，不阻塞 1.16 升级；若产生实现任务，必须在 B8 发布门禁前另行评审。
+B9（澄清）必须在 B6 开始前截止；若产生实现任务，追加为 B10，经独立安全/架构评审并在 B8 发布门禁前完成。
 ```
 
-推荐合并：`B0 → B1 → B2 → B3 → B4 → B5 → B6 → B7 → B8`。B3 与 B4 可在 B2 schema/contract 边界稳定后并行开发，但 B5 必须等待两者 contract。
+推荐合并：`B0 → B1 → B2 → B3 → B4 → B5 → B6 → B7 → B8`。同步点强制为 B3 合并后 B4 才开始，B4 完成最终 contract generation 并合并后 B5 才开始；B3、B4 不并行，B5 不自行重新生成 contract。
+
+每个工作包的 Allowed write paths、Read-only reference paths、Forbidden paths、generated artifacts owner、前置任务、合并顺序和验收命令，以及共享文件唯一所有者，见 `ARCHITECT_HANDOFF.md` 的“Builder 文件所有权与重叠矩阵”。未声明文件一旦出现在 Builder diff 中，必须暂停并重新审批范围。
 
 ## 6. 明确不重放
 
