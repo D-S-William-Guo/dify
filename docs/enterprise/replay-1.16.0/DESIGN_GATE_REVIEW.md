@@ -118,7 +118,7 @@ DESIGN_GATE.md §3 DG-09（第 74–78 行）明确记载：`api/configs/enterpr
 | 真实 `.env` 或 secret | 无变更 |
 | 版本号或构建产物 | 无变更 |
 
-变更范围严格限于本次允许修改的五份文档和新增的 DESIGN_GATE.md，无越界变更。
+变更范围严格限于本次允许修改的四份现有文档（ENTERPRISE_REPLAY_PLAN.md、ARCHITECT_HANDOFF.md、PATCH_DECISION_MATRIX.md、VALIDATION_PLAN.md）和新增的 DESIGN_GATE.md，共 5 份文件，无越界变更。
 
 ## 5. 矛盾与残留措辞检查
 
@@ -162,8 +162,40 @@ DG-05 明确 MySQL 为条件验证，VALIDATION_PLAN.md Phase D 兼容矩阵将 
 
 未发现残留的"推荐""建议""待产品确认""未决""Design Gate 待定"等不定措辞。所有原待定项已明确更新为已决。
 
-## 6. 最终结论
+## 6. 阻断项
 
-**PASS**
+### 阻断项 B1：文件范围记录歧义（DESIGN_GATE.md §9 第 122 行）
 
-本次变更范围 `ffdd19e523..e776629ef4` 严格限于五份允许修改文档和新增 DESIGN_GATE.md。DG-01～DG-09 在所有文档间一致、忠实记录人工批准决定。受保护文件逐字未变。无业务代码、Docker、migration、依赖、volume、真实 .env 或 secret 变更。无计划测试冒充已运行通过。所有原"未决/推荐/待定"措辞已正确替换为已决表述。状态一致为 `DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`，仅 B0/B1 获授权，B2 inventory 门禁完整。
+**严重级别：CHANGES_REQUIRED**
+
+DESIGN_GATE.md 第 122 行原文：
+
+> Gate Reviewer 仅复审本次允许修改的五份现有文档和新增 `DESIGN_GATE.md`
+
+按字面解读，"五份现有文档 + 新增 DESIGN_GATE.md"等于 6 份。但 `ffdd19e523..e776629ef4` 实际变更仅为：
+
+| 类型 | 文件 | 份数 |
+| --- | --- | --- |
+| 修改的现有文档 | `ENTERPRISE_REPLAY_PLAN.md`、`ARCHITECT_HANDOFF.md`、`PATCH_DECISION_MATRIX.md`、`VALIDATION_PLAN.md` | 4 |
+| 新增文档 | `DESIGN_GATE.md` | 1 |
+| **合计** | | **5** |
+
+实际为 4 份现有文档 + 1 份新增文档 = 共 5 份。DESIGN_GATE.md 第 122 行的"五份"应改为"四份"，或改写为"共计五份（其中四份为现有文档修改，一份为新增）"以避免歧义。
+
+该行属于 DESIGN_GATE.md，不在 Reviewer 可修改范围内。需由 Gate Recorder 整改后重新提交 Gate Reviewer 复审。
+
+> 注：本审查文件（DESIGN_GATE_REVIEW.md）初版第 121、169 行同样存在"五份现有文档"的错误表述，已在本次纠正提交中修正为"四份现有文档和新增 DESIGN_GATE.md，共 5 份文件"。这部分属于 Reviewer 自查自纠，不是阻断理由。
+
+## 7. 最终结论
+
+**CHANGES_REQUIRED**
+
+DG-01～DG-09 逐项审查全部通过，各项决定在所有文档间一致、忠实记录人工批准决定。受保护文件逐字未变。无业务代码、Docker、migration、依赖、volume、真实 .env 或 secret 变更。无计划测试冒充已运行通过。状态一致为 `DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`，仅 B0/B1 获授权，B2 inventory 门禁完整。
+
+唯一阻断项为 DESIGN_GATE.md 第 122 行"五份现有文档"与实际 4 份现有文档修改的数量歧义（§6 阻断项 B1），需 Gate Recorder 整改。DG-01～DG-09 内容决定本身无异议，整改不涉及重新批准 Gate 决定。
+
+**需 Gate Recorder 整改：**
+- **文件**：`docs/enterprise/replay-1.16.0/DESIGN_GATE.md`
+- **位置**：第 122 行
+- **问题**："五份现有文档"与实际 4 份现有文档修改不符
+- **建议**：改为"四份现有文档"或"共计五份（其中四份为现有文档修改，一份为新增）"
