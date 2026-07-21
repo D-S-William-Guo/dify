@@ -119,4 +119,4 @@ Gate Reviewer 通过本记录后，候选分支仅可推送到用户 fork `D-S-W
 
 ## 9. Gate Reviewer 复审范围
 
-Gate Reviewer 仅复审本次允许修改的五份现有文档和新增 `DESIGN_GATE.md` 是否忠实、一致地记录人工决定；确认 `ARCHITECT_REVIEW.md`、`ARCHITECT_REREVIEW.md` 与 `OFFICIAL_RELEASE_ANALYSIS.md` 逐字未变；确认未修改业务代码、Docker、migration、依赖、版本、volume、真实 `.env` 或 secret；确认状态为 `DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`、仅 B0/B1 获授权、B2 inventory 门禁完整，且没有把计划测试写成已经运行通过。
+Gate Reviewer 仅复审本次允许修改的四份现有文档和新增 `DESIGN_GATE.md`（共 5 份文件）是否忠实、一致地记录人工决定；确认 `ARCHITECT_REVIEW.md`、`ARCHITECT_REREVIEW.md` 与 `OFFICIAL_RELEASE_ANALYSIS.md` 逐字未变；确认未修改业务代码、Docker、migration、依赖、版本、volume、真实 `.env` 或 secret；确认状态为 `DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`、仅 B0/B1 获授权、B2 inventory 门禁完整，且没有把计划测试写成已经运行通过。
