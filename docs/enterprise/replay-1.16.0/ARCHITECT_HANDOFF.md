@@ -1,27 +1,29 @@
 # Dify Enterprise 1.16.0 Architect Handoff
 
+状态：`DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`
+
 ## 1. 工作树与提交身份
 
-- 当前工作树分支：`ctyun/replay-116-architect`
+- 当前 Design Gate 记录分支：`ctyun/replay-116-gate-recorder`
 - 用户指定候选来源：`codex/enterprise-candidate-1.16.0-20260718`
 - 官方基线标签：`1.16.0`
 - 基线提交：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
 - 架构工作开始时 HEAD：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
 - 原架构提交主题：`docs: plan enterprise replay for 1.16.0`。独立审查提交为 `caedca07e4938e8460c755b9ba37293d59417c8c`；本轮整改提交主题为 `docs: address enterprise 1.16.0 replay review`，最终 hash 在交付报告给出（Git 对象不能在自身内容中稳定自引用其最终 hash）。
 
-本地仓库未提供 `origin/codex/enterprise-candidate-1.16.0-20260718` 跟踪引用，因此只能证明架构工作起点与用户指定提交及官方标签完全一致，不能用远端引用名再次证明候选分支来源。当前文档分支已在该基线上追加架构、Reviewer 原始记录和本轮整改提交；Builder 开始前由维护者确认/创建目标候选分支，不要改变实现基线。
+本地候选分支 `codex/enterprise-candidate-1.16.0-20260718` 已确认从官方 1.16.0 / `5c6372d2f76d240265b92fd27c16bc772ffcb107` 开始。Design Gate 记录通过 Gate Reviewer 后，只推送到用户 fork `D-S-William-Guo/dify`；禁止向 `langgenius/dify` 创建企业 PR。
 
 ## 2. 本次交付范围
 
-本提交只应包含：
+本次 Design Gate 记录提交只应包含：
 
 1. `ENTERPRISE_REPLAY_PLAN.md`
-2. `docs/enterprise/replay-1.16.0/OFFICIAL_RELEASE_ANALYSIS.md`
+2. `docs/enterprise/replay-1.16.0/DESIGN_GATE.md`
 3. `docs/enterprise/replay-1.16.0/PATCH_DECISION_MATRIX.md`
 4. `docs/enterprise/replay-1.16.0/VALIDATION_PLAN.md`
 5. `docs/enterprise/replay-1.16.0/ARCHITECT_HANDOFF.md`
 
-未修改业务代码、Docker 配置、migration、版本号或运行数据；未启动 Docker；未访问、复制或修改 `docker/volumes`。
+`OFFICIAL_RELEASE_ANALYSIS.md`、`ARCHITECT_REVIEW.md` 和 `ARCHITECT_REREVIEW.md` 必须逐字未变。未修改业务代码、Docker 配置、migration、版本号或运行数据；未启动 Docker；未访问、复制或修改 `docker/volumes`。
 
 ## 3. 主要结论
 
@@ -53,20 +55,22 @@
 
 ### B2：历史 migration 图和空 merge
 
+- 启动门禁：先完成旧 1.15 数据库和 volume 的只读 inventory，至少记录实际 Alembic head、marketplace 表结构/行数/状态/`source_app_id`、来源 app 正常/删除/异常数量、核心对象计数、PostgreSQL 版本、Weaviate class/index 以及运行镜像/Compose 身份。该 inventory 不授权 migration、修复或修改 volume。
 - 交付：原样恢复 `c8f3d9d4a1be`、`f1a14e1e9b41`、`e2f0a9b7c6d5` 的 revision ID、`down_revision`、`branch_labels` 和历史 DDL 语义；增加空 merge `a71e16c0de01`。
 - 关键图：merge parents 为旧企业 `e2f0a9b7c6d5` 与官方 `7a1c2d9e4b60`；merge 不含业务 DDL。不得新生成历史 ID或使用 `alembic stamp`。
 - 完成标准：旧企业数据库可定位完整 history；B2 不设计 1.16 智慧广场新增字段。
 
 ### B3：平台管理员后端
 
-- 交付：授权/审计设计、session-injected service、DTO/controller、生成 contract、后端测试。
-- 先决决策：密码重置、workspace 归档是否首版交付；无审计则延后高风险操作。
+- 交付：平台管理员身份判断、全局 workspace/成员查询、基础邀请和成员管理、tenant/owner/最后 owner/最后 workspace/seat limit 保护、session-injected service、DTO/controller、允许操作的测试和日志。
+- 明确延期：密码重置、workspace 强制归档/删除、需要新审计表的高风险操作和 break-glass。B3 首版不新增 audit model；恢复高风险操作必须另建任务并重审 model、migration、权限、恢复和通知。
+- handoff：向 B4 列出 controller、route、DTO、schema 和测试；B4 在 B3 已合并代码上负责 import、注册和最终 contract generation。
 - 完成标准：admin/non-admin、跨 tenant scope、owner/last workspace/seat limit、rollback 全覆盖。
 
 ### B4：智慧广场后端
 
 - 交付：在 merge 后通过 `b416e5c4e702` 定义最终 schema，完成列/索引/约束/数据迁移、service/controller、提交/审核/发布/下架/复制状态机、最终 contract generation 和无 secret DSL copy。
-- 先决决策：推荐“发布时生成不可变快照”，因为它保证审计、发布后稳定、跨 workspace 权限独立和源 app 删除后可用；必须通过人工 Design Gate。外部 URL 一律走官方 SSRF 防护路径。
+- 最终决定：审核通过/正式发布时生成无 secret DSL 不可变快照，保存版本、内容哈希、冻结时间和来源；复制只使用已审核快照。保留 `source_app_id`；源 app 修改/删除不影响已发布版本；更新须重新提交、审核和版本化。旧数据仅对仍存在来源生成无密钥快照，丢失/异常来源标记待处理或下架；复杂回填必须独立、可重试、有 inventory 和失败恢复。外部 URL 一律走官方 SSRF 防护路径。
 - 完成标准：A 提交→admin 审核→B 复制的完整后端流程，非法状态/越权/并发有测试。
 
 ### B5：平台管理员和智慧广场前端
@@ -81,6 +85,7 @@
 - 交付：最小 Compose overlay、API/Web image/build metadata、WebSocket image 覆盖。
 - 禁止：修改官方 Compose；恢复 1.15 Dockerfile；覆盖 Agent depends_on/healthcheck/Landlock/key 关系。
 - 完成标准：Compose config 中五个 runtime identity 正确，Agent 新服务完整。
+- logo：官方源码默认 `CAN_REPLACE_LOGO=false` 保持不变；企业 overlay 显式设置为 `true`，分别验证普通官方配置和 overlay 展开值。
 
 ### B7：离线 plugin、镜像包与配置包
 
@@ -103,15 +108,17 @@
 
 本表是规范化 allowlist；不要求当前在业务目录创建 `ALLOWED_FILES.txt`。每个 Builder 开始前把基线 commit 固定到任务单，结束时按 Allowed write paths 审核 diff。任何未声明文件一旦出现，立即暂停合并并重新审批范围；“顺手修复”、格式化波及和跨任务生成都不例外。是否增加自动 diff-owner 检查由 B0 在 Builder 开始前形成独立工具决策，但没有自动检查不降低人工门禁。
 
+当前阶段仅授权 B0/B1；矩阵中的 B2～B9 是后续范围定义，不构成启动授权。B2 还必须先通过只读 inventory 门禁。
+
 | 任务 | Allowed write paths | Read-only reference paths | Forbidden paths | Generated artifacts owner | 前置任务 / 合并顺序 | 验收命令 |
 | --- | --- | --- | --- | --- | --- | --- |
-| B0 | `.github/workflows/enterprise-replay-*`、`scripts/ci/check-enterprise-replay-*`、经 Reviewer 批准的 guardrail tests | 全仓库、五份架构文档 | `api/**`、`web/**`、`docker/**`、`dify-agent/**`、`packages/**`、`docker/volumes/**` | B0 独占 scope-check 报告/CI 定义；不生成 contracts | 首个合并 | `git diff --check 1.16.0...HEAD`；`scripts/ci/check-enterprise-replay-scope.sh 1.16.0 HEAD`；OpenAPI/Compose 命令只做 dry-run |
+| B0 | `.github/workflows/enterprise-replay-*`、`scripts/ci/check-enterprise-replay-*`、经 Reviewer 批准的 guardrail tests | 全仓库、五份架构文档和 `DESIGN_GATE.md` | `api/**`、`web/**`、`docker/**`、`dify-agent/**`、`packages/**`、`docker/volumes/**` | B0 独占 scope-check 报告/CI 定义；不生成 contracts | 首个合并 | `git diff --check 1.16.0...HEAD`；`scripts/ci/check-enterprise-replay-scope.sh 1.16.0 HEAD`；OpenAPI/Compose 命令只做 dry-run |
 | B1 | `web/app/components/app/configuration/config/automatic/**`、`web/app/components/app/configuration/config/code-generator/**` 及同目录 focused specs | 当前 generator/types/i18n/test helpers | `api/**`、`docker/**`、`packages/contracts/**`、`web/i18n/**` | 无 | B0 后，可在 B2 前合并 | `pnpm --dir web vitest run app/components/app/configuration/config/automatic app/components/app/configuration/config/code-generator`；`pnpm --dir web type-check` |
 | B2 | 仅历史文件 `2026_04_30_2100-c8f3d9d4a1be_add_enterprise_marketplace_assets.py`、`2026_05_19_2000-f1a14e1e9b41_merge_1_14_2_enterprise_heads.py`、`2026_06_27_1145-e2f0a9b7c6d5_merge_1_15_0_enterprise_heads.py`、空 merge `2026_07_21_1000-a71e16c0de01_merge_1_16_0_enterprise_heads.py`，及 migration graph tests | 旧企业候选 migration、官方 migrations、models | 除上述文件外的 `api/**`；尤其 `api/models/**`、controller/service、contracts；全部 Web/Docker | B2 独占三个历史 revision 与空 merge | B0/B1 后；必须先于 B3、B4 | `uv run --project api flask db history`；`uv run --project api flask db heads`；历史文件语义 diff；四起点 graph tests |
-| B3 | `api/configs/feature/__init__.py`、`api/libs/platform_admin.py`、`api/services/platform_admin_service.py`、`api/controllers/console/platform_admin.py`、对应 unit/contract source tests | account/tenant/RBAC、Console schema guide、B2 graph | `api/controllers/console/__init__.py`、`api/models/__init__.py`、`api/models/model.py`、`api/migrations/versions/**`、`packages/contracts/**`、Web/Docker | 不生成/提交 `packages/contracts/**`；向 B4 提交 route/schema generation 需求 | B2 合并后开始并合并；B4 才开始 | `uv run --project api pytest api/tests/unit_tests/services/test_platform_admin_service.py api/tests/unit_tests/controllers/console/test_platform_admin.py`；diff-owner check |
+| B3 | `api/configs/feature/__init__.py`、`api/libs/platform_admin.py`、`api/services/platform_admin_service.py`、`api/controllers/console/platform_admin.py`、对应 unit/contract source tests | account/tenant/RBAC、Console schema guide、B2 graph、`api/configs/enterprise/__init__.py`（只读） | `api/controllers/console/__init__.py`、`api/models/__init__.py`、`api/models/model.py`、`api/migrations/versions/**`、`packages/contracts/**`、Web/Docker | 不新增 model，不生成/提交 `packages/contracts/**`；向 B4 提交 controller/route/DTO/schema/tests 清单 | B2 合并后开始并合并；B4 才开始 | `uv run --project api pytest api/tests/unit_tests/services/test_platform_admin_service.py api/tests/unit_tests/controllers/console/test_platform_admin.py`；diff-owner check |
 | B4 | `api/controllers/console/__init__.py`、`api/models/__init__.py`、`api/models/model.py`、`api/controllers/console/enterprise_marketplace.py`、`api/services/enterprise_marketplace_service.py`、相关 domain/DTO/tests、`2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`、`packages/contracts/generated/api/console/**` | B3 platform-admin API/auth、官方 DSL/SSRF helpers、B2 migrations、Web contract consumers | B2 四个 migration 文件、平台管理员独占实现文件、`web/**`、`docker/**` | B4 是最终 Console OpenAPI/contracts 唯一生成者，负责把 B3+B4 endpoint 一次性生成并提交 | B3 已合并后开始；B4 合并后才允许 B5 | `uv run --project api pytest api/tests/unit_tests/services/test_enterprise_marketplace_service.py api/tests/unit_tests/controllers/console/test_enterprise_marketplace.py`；`pnpm --dir packages/contracts gen-api-contract`；`uv run --project api flask db heads` 输出唯一 `b416e5c4e702` |
 | B5 | 企业前端组件/queries/tests：`web/app/components/header/account-setting/**`、`web/app/components/main-nav/**`、`web/app/components/explore/**`、`web/app/components/apps/**`、经批准的 `web/features/platform-admin/**`/`enterprise-marketplace/**`；`web/i18n/en-US/common.json`、`web/i18n/zh-Hans/common.json` | `packages/contracts/generated/api/console/**`、B3/B4 OpenAPI、现有 Jotai/query patterns | `api/**`、`docker/**`、`dify-agent/**`、`packages/contracts/**`；其他 locale 未批准范围 | B5 独占企业前端与两份 i18n；只消费、不重新生成 contracts | B4 最终 contracts 合并后开始 | `pnpm --dir web vitest run app/components/header/account-setting app/components/main-nav app/components/explore app/components/apps`；`pnpm --dir web type-check`；`pnpm check`；i18n namespace check |
-| B6 | `docker/docker-compose.enterprise.yaml`、经批准的新 enterprise API/Web Dockerfile/构建元数据文件 | 官方 `docker/docker-compose.yaml`、env examples、B3/B4 配置、B5 build | 官方 `docker/docker-compose.yaml`、`docker/volumes/**`、业务源码、offline/package scripts | B6 独占 enterprise compose overlay；Compose 展开结果仅作临时证据 | B5 后；B9 截止点；B7 必须等待 B6 | 两层 `docker compose config -q`、`config --images`、`--profile collaboration config --services`；key/Redis/profile 静态断言 |
+| B6 | `docker/docker-compose.enterprise.yaml`、经批准的新 enterprise API/Web Dockerfile/构建元数据文件 | 官方 `docker/docker-compose.yaml`、env examples、B3/B4 配置、B5 build、`api/configs/enterprise/__init__.py`（只读） | 官方 `docker/docker-compose.yaml`、`docker/volumes/**`、业务源码、offline/package scripts | B6 独占 enterprise compose overlay；Compose 展开结果仅作临时证据 | B5 后；B9 截止点；B7 必须等待 B6 | 两层 `docker compose config -q`、`config --images`、`--profile collaboration config --services`；key/Redis/profile/logo 静态断言 |
 | B7 | `scripts/build-enterprise-offline.*`、`scripts/*enterprise*config*`、离线 fixture/tests、必要的 `docker/envs/**.env.example` | B6 overlay、官方 Compose、image metadata、plugin mirror/signature配置 | `docker/docker-compose.enterprise.yaml`、业务源码、`packages/contracts/**`、`docker/volumes/**`、真实 `.env`/secret | B7 独占离线 image list、manifest、config archive 生成逻辑；只读取 B6 overlay | B6 合并后 | offline dry-run/fixture tests；`Mode=reuse`；archive/secret/default-key/volume scan；`--pull never` smoke |
 | B8 | `scripts/check-enterprise-vector-indexes.*`、对应 fixtures/tests、经批准的 `docs/enterprise/replay-1.16.0/evidence/**` | 全部已合并实现、B6/B7 artifacts、隔离升级环境 inventory | 业务源码、Compose/overlay、migration、contracts、`docker/volumes/**`；repair 实现未经另批不得写 | B8 独占最终验证报告和 read-only vector checker；不重新生成产品 artifact | B7 后，最终发布门禁 | 完整 `VALIDATION_PLAN.md`；checker read-only tests；数据库/runtime/offline evidence completeness check |
 | B9 | `docs/enterprise/replay-1.16.0/session-management-product-decision.md`（仅在产品方要求留档时） | 官方 account/Agent/conversation session 实现与本计划 | 所有业务代码、migration、Compose、contracts、volume | B9 仅产出产品契约，无 generated code | 最迟 B6 开始前结论；新实现只能成为另审 B10 | 文档包含 actor/object/actions/scope/audit/expiry/acceptance；架构签字 |
@@ -150,19 +157,20 @@ B9 的产品契约截止于 B6 开始前；若产生实现任务，新增 B10，
 
 B3/B4 不并行：B3 合并形成平台管理员鉴权基础后，B4 才开始并在其上实现审核、schema 和最终 contract generation；B4 合并后 B5 才消费 generated contracts。B6 不应在业务 contract 未稳定时提前定版镜像；B7 必须在 B6 后；B8 最后且不能跳过。
 
-## 8. 未决问题
+## 8. Design Gate 已决事项与剩余截止项
 
-1. 目标远端候选分支引用为何未在本地提供；维护者需确认它确实指向官方基线。
-2. 平台管理员是纯 email 配置，还是需要数据库角色、审计和 break-glass 流程？email 变更/大小写/禁用账号如何处理？
-3. 平台管理员首版是否必须支持密码重置和 workspace 归档？这两项需要高风险操作审计和恢复策略。
-4. 智慧广场推荐发布时形成不可变 DSL snapshot；产品/历史业务事实是否与此冲突？该项是 Builder 前 Design Gate。
-5. 智慧广场复制目标是否总是 current workspace？复制权限和 plugin/knowledge 依赖缺失如何向用户呈现？
-6. 旧企业 `enterprise_marketplace_assets` 是否存在真实生产数据、非标准 schema 或额外 revision？迁移实现前需要只读 inventory。
-7. “企业会话管理”精确定义是什么？产品契约截止到 B6 开始前；超时保持 DEFER，不进入本次代码范围。
-8. 离线目标支持哪些 CPU 架构和 vector stores？manifest 是否必须包含多架构 digest？
-9. 私有 `.difypkg` 的签名根/可信来源是什么？是否允许任何部署默认关闭签名验证（建议否）？
-10. Agent run retention 默认官方 3 天且可配置覆盖；local sandbox 默认不持久化且 overlay 不增加永久共享 volume。产品是否要求不同 retention（需在 B6 前明确）？
-11. `uv flask db heads` 在本工作区因受限网络无法获取锁定 Git 依赖；Builder 依赖环境必须补跑并保存输出。
+1. 候选分支已确认从官方基线开始；Gate Reviewer 通过后只推送到 `D-S-William-Guo/dify`，禁止向 `langgenius/dify` 创建企业 PR。
+2. 平台管理员首版范围已固定；不新增 audit model，不交付密码重置、强制归档/删除、高风险审计操作或 break-glass。
+3. 智慧广场不可变发布快照已批准，不再保留动态引用备选。
+4. 智慧广场复制权限和 plugin/knowledge 依赖缺失必须按已批准的无 secret、不可跨 workspace 资源边界处理。
+5. 旧企业 marketplace 数据必须在 B2 前通过只读 inventory 查明，不得猜测或修改。
+6. “企业会话管理”产品契约截止 B6 开始前；超时保持 `DEFER`，不进入本轮代码范围。
+7. 离线范围已固定为 Linux amd64、PostgreSQL + Weaviate 和 Compose；不承诺多架构或全部 vector store。
+8. 私有 `.difypkg` 继续沿用官方签名策略；任何放宽必须另行批准，不得设为默认。
+9. Agent run retention 初始采用官方 3 天；local sandbox 默认不持久化且 overlay 不增加永久共享 volume。
+10. `uv flask db heads` 在本工作区因受限网络无法获取锁定 Git 依赖；后续获授权 Builder 必须补跑并保存输出。
+
+产品契约仍仅剩 DG-03 的 B6 前截止项；若企业会话管理仅指账号多设备 session，则转 `VERIFY_ONLY`，否则超时继续 `DEFER`。Agent run retention 初始采用官方 3 天，local sandbox 默认不持久化，全面开放 Agent App 由运行验收后决定。
 
 ## 9. Review Disposition
 
@@ -170,7 +178,7 @@ Reviewer 结论段“2 个 P0”与发现数量/P0 章节/整改清单不一致�
 
 | Review ID | 严重级别 | 处理状态 | 是否接受 | 整改文档位置 | 采用的决定 | 证据 | 复审方法 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| FIX-01 | P0 | ADDRESSED_WITH_REFINEMENT | 接受 | Replay Plan §4–5；Decision Matrix E04/E15；本文件 B2/B4 | B2 只恢复历史+空 merge；B4 在 B3 后负责最终 schema/DDL/service/controller/contracts；推荐不可变快照并设 Design Gate | 明确 `a71e16c0de01` 无 DDL，`b416e5c4e702` 位于其后；依赖 `B2→B3→B4→B5` | 检查两个 migration 内容/parents/head；检查 B4 schema 与快照决定；确认 Builder 前 Gate 结论 |
+| FIX-01 | P0 | ADDRESSED_WITH_REFINEMENT | 接受 | Replay Plan §4–5；Decision Matrix E04/E15；本文件 B2/B4 | B2 只恢复历史+空 merge；B4 在 B3 后负责最终 schema/DDL/service/controller/contracts；人工 Gate 已批准不可变发布快照 | 明确 `a71e16c0de01` 无 DDL，`b416e5c4e702` 位于其后；依赖 `B2→B3→B4→B5` | 检查两个 migration 内容/parents/head；检查 B4 schema 与快照决定；确认仅 B0/B1 获启动授权 |
 | FIX-02 | P0 | ADDRESSED_WITH_REFINEMENT | 接受 | 本文件 §5 | B0–B9 全量规范化 allowlist/readonly/forbidden/owner/dependency/order/command；文档矩阵代替当前创建 `ALLOWED_FILES.txt`，自动检查由 B0 单独决定 | 共享 controller/model/migrations/contracts/i18n/overlay 均有唯一写入者或精确文件分区；未声明 diff 强制暂停 | Reviewer 按 Builder diff 逐行对表；检查 B0 工具决定，不以工具缺失绕过人工门禁 |
 | FIX-03 | P0 | ADDRESSED_WITH_REFINEMENT | 接受 | Release Analysis §4；Replay Plan B2/B4；Validation Phase D | 同时预分配空 merge `a71e16c0de01` 与最终 schema/head `b416e5c4e702`，消除“merge 已知但最终 head 未知” | 2026-07-21 `git grep` 覆盖 `1.16.0`、全部本地/`origin` refs、旧企业候选均 CLEAR；文件名/parents 固化 | 重跑同一 refs 集合 grep；检查 merge 双 parent、无 DDL、B4 parent 和唯一 head |
 | FIX-04 | P1 | ADDRESSED | 接受 | Replay Plan B2；Decision Matrix E15；Validation Phase D | 复制旧文件，保持 revision/down_revision/branch_labels/历史 DDL 语义；禁新 ID、禁 stamp | 三个历史 ID 和语义对比均列为门禁 | `git show` 旧候选逐文件对比；`flask db history`；旧库实际升级 |
@@ -186,8 +194,8 @@ Reviewer 结论段“2 个 P0”与发现数量/P0 章节/整改清单不一致�
 | FIX-14 | P2 | ADDRESSED | 接受 | Validation Phase E；本文件 B6 ownership | collaboration profile 必须保留 `api_websocket`；解析 Redis DB 并断言不冲突 | profile 命令、service 检查和 Redis 规则已明确 | 展开 Compose profiles；枚举所有 Redis URL database 编号 |
 | FIX-15 | P2 | ADDRESSED | 接受 | 本文件 B5/§5 | B5 独占 i18n，固定 `platformAdmin.*` 与 `enterpriseMarketplace.*` | 两份 common.json 只有 B5 可写 | diff key-prefix check；确认无第二 Builder 编辑 |
 | FIX-16 | P2 | ADDRESSED | 接受 | Decision Matrix E06；Replay Plan §5；本文件 B9 | B9 产品契约截止 B6 开始前；新实现为 B10，须安全/架构评审并在 B8 前完成 | 超时则 DEFER 且禁止代码的升级条件明确 | 查 B6 启动时间前的产品决定；若有 B10 查独立评审与 B8 门禁 |
-| FIX-17 | P2 | ADDRESSED | 接受 | Validation Phase D | MySQL 空库与企业升级均必须运行，检查 marketplace JSON、时间默认、索引/约束 | `SHOW CREATE TABLE` 明确列入证据 | 在声明支持的 MySQL 版本执行两路径并保存 DDL |
-| FIX-18 | P2 | ADDRESSED | 接受 | Release Analysis §3；Validation Phase E/G | 验证 `CAN_REPLACE_LOGO=false` 官方默认；升级自定义 OpenAI key 时检查 Responses API | Compose 展开值和 provider 实际请求均列门禁 | 配置默认/显式覆盖测试；升级 fixture 执行模型调用 |
+| FIX-17 | P2 | ADDRESSED | 接受 | Validation Phase D | MySQL 空库与企业升级改为条件验证；未来声明支持 MySQL 时检查 marketplace JSON、时间默认、索引/约束 | `SHOW CREATE TABLE` 保留为条件验证证据 | 仅在声明支持的 MySQL 版本执行两路径并保存 DDL，不得声称本轮已完成 |
+| FIX-18 | P2 | ADDRESSED | 接受 | Release Analysis §3；Validation Phase E/G | 保持 `CAN_REPLACE_LOGO=false` 官方默认，企业 overlay 显式 `true`；升级自定义 OpenAI key 时检查 Responses API | 普通配置/企业 overlay 展开值和 provider 实际请求均列门禁 | 分别验证普通配置为 `false`、overlay 为 `true`；升级 fixture 执行模型调用 |
 | FIX-19 | P1 | ADDRESSED | 接受 | Validation §3 “唯一受支持的回滚方法”及 retention 条款 | 只支持停止 1.16、隔离 migrated volume、完整备份恢复、1.15 配置/镜像重启验证；1.16 数据不自动回灌；run retention 3 天、sandbox 不持久化 | 明确禁 Alembic downgrade/原地复用，列出恢复对象和业务验证 | 在隔离演练恢复；核对账户/应用/workflow/knowledge/plugin/vector；检查 overlay/Redis/retention |
 
 ## 10. Reviewer-2 精确复审范围

@@ -1,14 +1,16 @@
 # Dify Enterprise 1.16.0 Replay Plan
 
+状态：`DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`
+
 ## 1. 唯一基线
 
 - 官方稳定标签：`1.16.0`
 - 官方提交：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
 - 候选来源名：`codex/enterprise-candidate-1.16.0-20260718`
-- 当前架构工作树分支：`ctyun/replay-116-architect`
+- Design Gate 记录分支：`ctyun/replay-116-gate-recorder`
 - 重放实现基线：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
 
-本地没有 `origin/codex/enterprise-candidate-1.16.0-20260718` 跟踪引用，不能用远端引用名复核；但架构分析起点、用户指定基线与本地官方 `1.16.0` 标签完全一致。实施前由维护者确认目标候选分支已从该提交创建。
+本地候选分支 `codex/enterprise-candidate-1.16.0-20260718` 已确认从官方 `1.16.0` / `5c6372d2f76d240265b92fd27c16bc772ffcb107` 开始。Design Gate 记录通过 Gate Reviewer 后，候选分支只推送到用户 fork `D-S-William-Guo/dify`；禁止向 `langgenius/dify` 创建企业 PR。
 
 官方 1.16.0 是实现真相。旧企业分支 `origin/codex/enterprise-candidate-1.15.0-20260626` 只提供需求、历史原因和验证样例，禁止机械 cherry-pick、复制目录或覆盖官方文件树。
 
@@ -22,11 +24,12 @@
 6. Release 的 migration 描述不一致：标题说 9、列表/upgrade guide 说 8；标签差异实际新增 5 个文件。升级自官方 1.15 时应执行这 5 个新 revision。
 7. 旧企业数据库可能停在 `e2f0a9b7c6d5`。实现必须保留历史 revision 可解析性并新增连接它与官方 `7a1c2d9e4b60` 的 merge；禁止直接 stamp。
 8. “企业会话管理”没有足够契约，当前 `DEFER`。若产品确认只指账号多设备 session，则官方已覆盖，转 `VERIFY_ONLY`。
-9. 智慧广场推荐采用“发布时生成不可变快照”：已发布内容可审计且不随源应用静默变化，跨 workspace 复制不依赖源权限，源应用删除后资产仍可用。该决定进入 Builder 前的人工 Design Gate；若历史业务事实冲突，必须在 Builder 启动前提出。
+9. 智慧广场采用“审核通过/正式发布时生成不可变快照”：提交保留 `source_app_id`，发布生成无 secret DSL 快照并保存版本、内容哈希、冻结时间与来源；复制只使用已审核快照，源应用修改/删除不影响已发布版本，内容更新必须重新提交、审核和版本化。旧数据仅对仍存在的源应用回填无密钥快照，丢失/异常来源标记待处理或下架；复杂回填必须是独立、可重试、有 inventory 和失败恢复的数据迁移步骤。
 10. migration 职责严格拆分：B2 只恢复历史 revision 并创建空 merge，B4 在 merge 后追加最终 schema migration；B2 不猜测 1.16 智慧广场 schema。
 
 详细证据：
 
+- [Design Gate 最终决定](docs/enterprise/replay-1.16.0/DESIGN_GATE.md)
 - [官方发布分析](docs/enterprise/replay-1.16.0/OFFICIAL_RELEASE_ANALYSIS.md)
 - [补丁决策矩阵](docs/enterprise/replay-1.16.0/PATCH_DECISION_MATRIX.md)
 - [验证计划](docs/enterprise/replay-1.16.0/VALIDATION_PLAN.md)
@@ -59,19 +62,21 @@
 
 ### B2 migration 历史兼容与空 merge
 
+- 启动前必须完成旧 1.15 数据库和 volume 的只读 inventory：实际 Alembic head；`enterprise_marketplace_assets` 表结构、行数、状态分布和 `source_app_id`；源应用正常/删除/异常数量；tenant/member/app/workflow/dataset/document/plugin 计数；PostgreSQL 版本；Weaviate class/index；运行镜像和 Compose 配置身份。inventory 不授权 migration、修复或修改 volume。
 - 从旧企业候选恢复 `c8f3d9d4a1be`、`f1a14e1e9b41`、`e2f0a9b7c6d5`，保持 revision ID、`down_revision`、`branch_labels` 和 `upgrade()`/`downgrade()` 历史 DDL 语义；不得重新生成 ID，不得用 `alembic stamp` 伪造状态。
 - 新增空 merge revision `a71e16c0de01`（文件 `2026_07_21_1000-a71e16c0de01_merge_1_16_0_enterprise_heads.py`），parents 精确为 `e2f0a9b7c6d5` 和 `7a1c2d9e4b60`，其中不得包含业务 DDL。
 - 验证旧企业数据库能定位完整 revision 历史。B2 不定义 1.16 智慧广场新增列、索引、约束或数据迁移。
 
 ### B3 平台管理员授权与后端
 
-- 明确平台管理员授权、审计和高风险操作范围。
+- 首版仅交付平台管理员身份判断、全局 workspace/成员查询、基础邀请和成员管理、tenant/owner/最后 owner/最后 workspace/seat limit 保护，以及允许操作的测试和日志。
+- 首版不交付密码重置、workspace 强制归档/删除、需要新审计表的高风险操作或 break-glass，且不新增 audit model。后续恢复高风险操作必须建立独立任务并重新审查 model、migration、权限、恢复和通知。
 - 实现 session-injected service、Pydantic DTO、Console endpoints 和 contract tests。
-- 密码重置/归档若无审计设计，单独延后，不与列表/邀请能力绑定。
+- B3 handoff 必须列出 controller、route、DTO、schema 和测试；B4 在 B3 已合并代码上负责 import、注册和最终 contract generation。`api/configs/enterprise/__init__.py` 对 B3/B6 均为只读参考。
 
 ### B4 智慧广场后端
 
-- 以“发布时生成不可变快照”为推荐架构决定，通过人工 Design Gate 后定义 1.16 最终 schema。
+- 按已批准的“审核通过/正式发布时生成不可变快照”决定定义 1.16 最终 schema 和独立回填流程。
 - 在 B2 的空 merge 后追加 schema migration `b416e5c4e702`（文件 `2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`，`down_revision = "a71e16c0de01"`）；它才是最终企业 head，并独占新增列、索引、约束和数据迁移。严禁把这些 DDL 塞入 merge revision。
 - 实现 marketplace service/controller、提交/审核/列表/复制状态机、owner scope、官方 SSRF 防护路径、无 secret DSL copy，以及最终 Console OpenAPI contract generation。
 
@@ -84,6 +89,7 @@
 
 - 以官方 Compose/Dockerfile 为基线，只覆盖企业 API/Web images、企业安全默认和 `api_websocket`。
 - 保留 agent_backend/local_sandbox 的官方依赖、安全和 healthcheck。
+- 不修改官方源码中 `CAN_REPLACE_LOGO=false` 的默认；企业 Compose overlay 显式设置 `CAN_REPLACE_LOGO=true`，并分别验证普通官方配置为 `false`、企业 overlay 展开为 `true`。
 
 ### B7 离线插件、离线镜像包与配置包
 
@@ -111,6 +117,8 @@ B0 ─┬─> B1
 B9（澄清）必须在 B6 开始前截止；若产生实现任务，追加为 B10，经独立安全/架构评审并在 B8 发布门禁前完成。
 ```
 
+当前阶段只授权 B0 和 B1。B2～B9 均不得启动；其中 B2 还受上述只读 inventory 前置门禁约束。
+
 推荐合并：`B0 → B1 → B2 → B3 → B4 → B5 → B6 → B7 → B8`。同步点强制为 B3 合并后 B4 才开始，B4 完成最终 contract generation 并合并后 B5 才开始；B3、B4 不并行，B5 不自行重新生成 contract。
 
 每个工作包的 Allowed write paths、Read-only reference paths、Forbidden paths、generated artifacts owner、前置任务、合并顺序和验收命令，以及共享文件唯一所有者，见 `ARCHITECT_HANDOFF.md` 的“Builder 文件所有权与重叠矩阵”。未声明文件一旦出现在 Builder diff 中，必须暂停并重新审批范围。
@@ -128,10 +136,13 @@ B9（澄清）必须在 B6 开始前截止；若产生实现任务，追加为 B
 ## 7. 发布验收摘要
 
 - 源码：目标测试、type-check、`pnpm check`、OpenAPI generation consistency、`git diff --check`。
-- 数据库：单 head；四起点 upgrade；智慧广场数据/tenant/member/dataset 不丢。
+- 当前发布阻断组合：PostgreSQL + Weaviate；验证旧企业 PostgreSQL 升级、单一 head、智慧广场数据/快照回填、用户/workspace/应用/工作流/知识库/插件、Weaviate class/index、hit testing 和完整备份恢复回滚。
+- PostgreSQL 18 验证保留，数据库大版本升级与 Dify 应用升级默认分开演练。MySQL 仅作条件验证，不是当前本地发布阻断项，不得声称本轮已完成 MySQL 兼容验证。
 - 运行：安装/登录/RBAC、平台管理员、智慧广场、Agent App、workflow/HITL/WebSocket、plugin、dataset/hit testing。
 - 安全：SQLi、SSRF、open redirect、sandbox plan、Landlock、secret 和 owner scope。
 - 镜像：五个企业 runtime identity 正确，Agent 两服务存在。
 - 离线：`Mode=reuse` 复用验证镜像；无外网启动；包内无 volumes/secret。
+
+首版离线支持限于 Linux amd64、PostgreSQL、Weaviate、Docker Compose、企业 API/Web、官方 Agent 两镜像、插件离线安装和 `Mode=reuse`。不承诺多 CPU 架构、全部 vector store、MySQL 发布阻断支持、Kubernetes、目标机器在线构建或 sandbox 永久共享存储。
 
 完整步骤与失败判定见 `docs/enterprise/replay-1.16.0/VALIDATION_PLAN.md`。

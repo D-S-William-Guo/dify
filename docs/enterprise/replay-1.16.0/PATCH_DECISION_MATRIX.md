@@ -42,14 +42,15 @@
 
 ### E03 平台管理员 — KEEP_REQUIREMENT_REIMPLEMENT
 
-- 企业业务需求：由 `PLATFORM_ADMIN_EMAILS` 授权跨 workspace 管理员，支持 workspace 列表/创建/重命名/归档、成员邀请/角色/移除、必要的密码重置和智慧广场审核。
+- 企业业务需求：由 `PLATFORM_ADMIN_EMAILS` 授权跨 workspace 管理员；首版仅支持身份判断、全局 workspace 查询、workspace 成员查询、基础邀请和成员管理，以及 tenant scope、owner、最后 owner/最后 workspace、seat limit 保护。
 - 旧实现提交和文件：`d70f1c3bbd`、`d83e4bb351`、`3f883e23b1`；`api/controllers/console/platform_admin.py`、`api/services/platform_admin_service.py`、`api/libs/platform_admin.py`、`web/.../platform-admin-page/`。
 - 1.16 官方对应实现：普通 workspace/RBAC/member API 和生成契约存在；无 fork-local `platform-admin` endpoint 或 `PLATFORM_ADMIN_EMAILS`。
 - 去留结论：保留需求，完全按 1.16 controller→service、显式 `Session`、Pydantic/生成契约、Jotai/bootstrap 重实现。
 - 证据：旧候选提供 8 组 endpoint 与 service 测试；1.16 搜索无平台管理员实现；官方成员/RBAC 在 1.16 有权限和邀请状态修复。
-- 风险：跨租户越权、owner/最后 workspace 破坏、密码重置缺审计、email 大小写授权、license seat 绕过、事务中途 commit。
-- 实施任务：先定义权限模型与审计事件；实现纯授权 helper、session-injected service、DTO/controller、生成 contract、前端入口；删除危险操作或在安全评审后单独交付。
-- 前置依赖：E15 migration 方案（若需审计表）、Console contract 生成链；Reviewer 先确认密码重置/归档需求。
+- 风险：跨租户越权、owner/最后 workspace 破坏、email 大小写授权、license seat 绕过、事务中途 commit。
+- 实施任务：实现纯授权 helper、session-injected service、DTO/controller、首版允许操作的测试和日志。B3 不新增 model；B3 handoff 列出 controller、route、DTO、schema 和测试，由 B4 在 B3 已合并代码上完成 import、注册和最终 contract generation。`api/configs/enterprise/__init__.py` 仅作只读参考。
+- 延期范围：密码重置、workspace 强制归档/删除、需要新审计表的高风险操作和 break-glass。后续恢复必须建立独立任务，重新设计并审查 audit model、migration、权限、恢复和通知。
+- 前置依赖：E15 migration 方案和 Console contract 生成链。
 - 单元测试：admin/non-admin、email 规范化、tenant scope、owner/last-workspace guard、seat limit、显式 session、rollback、DTO 错误码。
 - 集成验证：跨 workspace CRUD、邀请 pending/active 账号、角色变更、当前 workspace 防删除、导航权限。
 - volume 升级验证要求：已有 tenant/member/owner/current 标记不变；归档测试只用专用测试数据，禁止作用于迁移副本中的真实 workspace。
@@ -62,8 +63,8 @@
 - 去留结论：按 1.16 架构重实现；状态机和历史字段作为需求输入，不复制 controller/service。
 - 证据：旧 endpoint 覆盖 submit/list/get/use/review/unlist；`use_asset` 通过无 secret DSL export/import 复制。
 - 风险：source app 跨租户泄漏、TOCTOU、发布后源 app 变化、secret 泄漏、依赖泄漏、重复提交、已删除 app、审核越权。
-- 实施任务：推荐采用发布时生成不可变快照，保存无 secret DSL、版本和冻结时间，使发布内容可审计、不随源 app 静默变化、跨 workspace 不依赖源权限且源 app 删除后仍可用；设计 owner-scoped 查询、状态机、审计、复制事务和依赖返回。任何图标、内容或依赖的外部 URL 获取必须使用 1.16 官方 SSRF proxy/helper，禁止原始 `httpx.get`/任意直连。该方向是 Builder 前人工 Design Gate；历史业务事实若冲突必须在启动前提出。
-- 前置依赖：E15 的历史兼容空 merge、E03 授权先合并、产品通过不可变快照 Design Gate。最终 schema/DDL 与 Console contract generation 均归 E04/B4。
+- 实施任务：按已批准的“审核通过/正式发布时生成不可变快照”实现。提交保留 `source_app_id`；发布生成不含 secret 的 DSL 快照并保存版本、内容哈希、冻结时间和来源；复制只使用已审核快照；源 app 修改/删除不影响发布版本；更新必须重新提交、审核和版本化。快照禁止凭据、密钥、私有插件凭据和不可跨 workspace 资源。旧数据仅对仍存在的源 app 生成无密钥快照；来源丢失/异常时不得猜测，标记待处理或下架；旧 `source_app_id` 继续用于来源与审计。复杂回填作为独立、可重试、有 inventory 和失败恢复的数据迁移步骤，不塞入普通 schema migration。任何外部 URL 获取必须使用 1.16 官方 SSRF proxy/helper。
+- 前置依赖：E15 的历史兼容空 merge、E03 授权先合并，以及 B2 启动前只读 inventory。最终 schema/DDL 与 Console contract generation 均归 E04/B4。
 - 单元测试：tenant scope、状态迁移、并发提交、source app 状态、无 secret export、复制目标 tenant、rollback、依赖泄漏列表。
 - 集成验证：A workspace 提交→admin 审核→B workspace 查看/复制→新 app 可运行；拒绝/下架不可见。
 - volume 升级验证要求：旧 `enterprise_marketplace_assets` 行数、状态、source IDs 和时间戳保持；对缺失 source app 的历史记录只隐藏/报告，不删除。
@@ -92,6 +93,7 @@
 - 风险：误解范围会新增高危全局踢下线能力，或与 Agent session 生命周期冲突。
 - 实施任务：产品方给出 actor、对象、操作、审计、过期与验收用例；架构师再分类。
 - 前置依赖：产品契约最迟在 B6 开始前给出。届时仍无契约则 1.16 范围保持 `DEFER`、不得加入代码；若产生新实现，作为 B10 经独立安全/架构评审，并在 B8 发布门禁前完成。
+- 概念边界：账号登录 session、conversation、Agent shell/runtime session 不得混用。若需求仅为账号多设备 session，沿用官方 1.16 实现并转为 `VERIFY_ONLY`。
 - 单元测试：延后；需求确认后至少覆盖 owner scope、token revocation 和幂等。
 - 集成验证：延后；不得用 conversation 删除冒充账号 session 管理。
 - volume 升级验证要求：升级不得清空账号 token/session、conversation 或 Agent runtime session；具体迁移待契约确认。
@@ -118,7 +120,7 @@
 - 去留结论：按 1.16 服务图重写最小 overlay；不得复制 1.15 YAML。
 - 证据：官方 `docker/docker-compose.yaml` 的新服务/depends_on/env；Release upgrade guide 明示 customized Compose 必须重新审查。
 - 风险：覆盖整个 service 会丢官方依赖或安全变量；api_websocket 使用官方镜像；agent key 不一致。
-- 实施任务：只覆盖 api/worker/beat/websocket/web 的 image/build 和企业变量；用 `docker compose config` 比较合并结果。
+- 实施任务：只覆盖 api/worker/beat/websocket/web 的 image/build 和企业变量；保持官方源码 `CAN_REPLACE_LOGO=false`，企业 overlay 显式设置 `CAN_REPLACE_LOGO=true`；用 `docker compose config` 比较合并结果。`api/configs/enterprise/__init__.py` 对 B6 仅作只读参考。
 - 前置依赖：E02、E03 配置名，官方镜像构建策略。
 - 单元测试：YAML 静态断言或脚本检查服务 image/env/depends_on。
 - 集成验证：本任务禁止启动 Docker；Builder 阶段执行 config、build、recreate 和 image ID 检查。
@@ -140,7 +142,7 @@
 
 ### E10 离线构建和镜像包 — KEEP_REQUIREMENT_REIMPLEMENT
 
-- 企业业务需求：联网构建机产出完整 image tar、manifest、image list 和最小配置包，离线 Linux 使用完全相同的已验证镜像。
+- 企业业务需求：联网构建机为 Linux amd64、PostgreSQL、Weaviate、Docker Compose 产出完整 image tar、manifest、image list 和最小配置包；包含企业 API/Web、官方 agent_backend/local_sandbox、插件离线安装和 `Mode=reuse`，离线目标使用完全相同的已验证镜像。
 - 旧实现提交和文件：`d70f1c3bbd`、`2699783f7a`、`22d952089b`；`scripts/build-enterprise-offline.*`、config package scripts、部署说明。
 - 1.16 官方对应实现：Compose 新增 agent backend/local sandbox 和 env 文件；官方不提供该 fork 的企业打包链。
 - 去留结论：按新 Compose 解析并重实现，保留 `Mode=reuse` 可追溯原则。
@@ -151,6 +153,7 @@
 - 单元测试：脚本 dry-run/fixture 测试，缺镜像/commit mismatch 必须失败。
 - 集成验证：隔离网络目标 `docker load`、`config --images`、`up --pull never`、Agent/传统 app smoke。
 - volume 升级验证要求：image/config archive 内容扫描不得含 `docker/volumes/**`；升级数据由运维独立备份/挂载，不由打包脚本复制。
+- 不支持/不承诺：多 CPU 架构、全部 vector store、MySQL 发布阻断支持、Kubernetes、目标机器在线构建、sandbox 永久共享存储。
 
 ### E11 插件离线安装 — KEEP_MINIMAL_PATCH
 
@@ -219,8 +222,9 @@
 - 实施任务：B2 恢复 `c8f3d9d4a1be`、`f1a14e1e9b41`、`e2f0a9b7c6d5`；创建空 merge `a71e16c0de01`（文件 `2026_07_21_1000-a71e16c0de01_merge_1_16_0_enterprise_heads.py`），parents 为 `e2f0a9b7c6d5`、`7a1c2d9e4b60`。B4 创建 `b416e5c4e702`（文件 `2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`，parent `a71e16c0de01`），独占 1.16 智慧广场列、索引、约束与数据迁移；它才是最终企业 head。merge revision 禁止业务 DDL。
 - 前置依赖：B2 先完成历史图和空 merge，B3 平台管理员基础鉴权随后合并，B4 最后确定 schema；顺序 `B2 → B3 → B4 → B5`。
 - 单元测试：Alembic heads/history、历史文件与旧候选逐字段/DDL 语义对比、空 merge 无 `op.*` 业务 DDL、最终 head `b416e5c4e702`、已有表/数据保留。
-- 集成验证：真实 PostgreSQL/MySQL 支持矩阵；升级后启动 API 并跑智慧广场/Agent/workflow smoke。
+- 集成验证：当前发布阻断组合 PostgreSQL + Weaviate 必须完整验证；MySQL 仅在未来对外交付声明支持时提升为空库与升级必跑项，本轮不得声称已完成 MySQL 兼容验证。升级后启动 API 并跑智慧广场/Agent/workflow smoke。
 - volume 升级验证要求：先由运维备份；在隔离副本升级，记录前后 head、表/索引、行数/抽样哈希；绝不在本任务访问 `docker/volumes`。
+- B2 启动门禁：先完成旧 1.15 数据库和 volume 的只读 inventory，记录实际 Alembic head、marketplace 表结构/行数/状态/`source_app_id`、来源 app 正常/删除/异常数量、核心对象计数、PostgreSQL 版本、Weaviate class/index 及运行镜像/Compose 身份；该 inventory 不授权 migration、修复或修改 volume。
 
 ### E16 OAuth 专用加密器 — DROP_UPSTREAMED
 

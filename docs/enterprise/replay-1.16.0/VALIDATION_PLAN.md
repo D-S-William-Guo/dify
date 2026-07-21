@@ -2,7 +2,7 @@
 
 ## 1. 目标与硬门禁
 
-本计划用于后续 Builder 和 Reviewer。当前架构任务不修改代码、不启动 Docker、不访问或复制 `docker/volumes`。
+本计划用于后续 Builder 和 Reviewer。当前状态为 `DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`；Gate Reviewer 通过前不启动 Builder，通过后也仅授权 B0/B1，B2～B9 暂不授权。本文所有测试均为计划项，不代表已经运行通过。当前任务不修改代码、不启动 Docker、不访问或复制 `docker/volumes`。
 
 发布必须同时证明四件事：源码正确、迁移可升级、运行容器确实包含本轮源码、离线包复用同一批已验证镜像。任一层通过都不能替代下一层。
 
@@ -14,6 +14,11 @@
 4. Alembic 只有一个最终企业 head `b416e5c4e702`，且空库、官方 1.15、旧企业 1.15 和官方 1.16 路径均按支持矩阵升级。
 5. API、worker、worker_beat、api_websocket 使用同一企业 API image ID；Web 使用本轮企业 Web image ID。
 6. 离线 manifest 包含 Agent backend/local sandbox，并与通过 runtime 验证的 image IDs/digests 一致。
+7. 当前发布阻断组合为 PostgreSQL + Weaviate；MySQL 仅条件验证，不是本轮本地发布阻断项。
+
+### B2 启动前只读 inventory
+
+B2 启动前，必须对旧 1.15 数据库和 volume 完成只读 inventory，记录实际 Alembic head；`enterprise_marketplace_assets` 表结构、行数、状态分布和 `source_app_id`；源应用正常/删除/异常数量；tenant/member/app/workflow/dataset/document/plugin 计数；PostgreSQL 版本；Weaviate class/index；运行镜像和 Compose 配置身份。该步骤不授权 migration、修复或修改 volume；证据不完整时 B2 不得启动。
 
 ## 2. 验证阶段
 
@@ -86,7 +91,7 @@ UV_CACHE_DIR=.uv-cache uv run --project api flask db history
 - 从官方 1.15 head 升级会执行官方实际新增的 5 个 revision，再收敛到企业 head。
 - Release 列表中三个在 1.15 已存在但 1.16 修改的 Agent migrations，以及同样被修改的 uuidv7 migration `1c9ba48be8e4`，不得被错误地当作升级时会重跑。
 
-数据库兼容矩阵（“必须运行”才可作为本次发布通过证据；“条件运行”不得冒充已执行）：
+数据库兼容矩阵（以下均为待执行计划；“必须运行”才可作为本次发布通过证据，“条件运行”不得冒充已执行）：
 
 | 级别 | 数据库/场景 | 起点与操作 | 必验结果 |
 | --- | --- | --- | --- |
@@ -95,13 +100,15 @@ UV_CACHE_DIR=.uv-cache uv run --project api flask db history
 | 必须运行 | PostgreSQL 18 空库 | 无表 → 1.16 | 完整 history 成功；`SELECT uuidv7()` 成功且 UUID version 为 7；智慧广场最终表/索引/约束正确 |
 | 必须运行 | PostgreSQL 18 应用升级 | 在 PG18 上预置企业 1.15 副本后升级 Dify 1.16 | `1c9ba48be8e4` 的 PG18 兼容路径有效；`SELECT uuidv7()` 成功；数据与最终 head 正确 |
 | 必须运行 | PostgreSQL 当前生产版本，官方 1.16 | `7a1c2d9e4b60` → 企业 1.16 | 恢复企业历史分支、执行空 merge 和 B4；无重复建表 |
-| 必须运行 | MySQL 空库 | 无表 → 1.16 | `enterprise_marketplace_assets` DDL 成功；`SHOW CREATE TABLE` 验证 JSON 列、`created_at`/`updated_at` 默认值、索引和约束符合设计 |
-| 必须运行 | MySQL 企业升级 | 企业 1.15 `e2f0a9b7c6d5` → 1.16 | 历史 DDL 与 B4 migration 均成功；资产数据保留；最终单 head |
+| 条件运行 | MySQL 空库 | 未来对外交付声明支持 MySQL 时：无表 → 1.16 | `enterprise_marketplace_assets` DDL 成功；`SHOW CREATE TABLE` 验证 JSON 列、`created_at`/`updated_at` 默认值、索引和约束符合设计 |
+| 条件运行 | MySQL 企业升级 | 未来对外交付声明支持 MySQL 时：企业 1.15 `e2f0a9b7c6d5` → 1.16 | 历史 DDL 与 B4 migration 均成功；资产数据保留；最终单 head |
 | 条件运行 | PostgreSQL 大版本升级与 Dify 升级组合窗口 | 仅当运维坚持同窗：生产 PG 版本副本升级到 PG18，并在同一演练中升级 Dify | 作为独立高风险场景完整重跑备份恢复、uuidv7、数据和业务验收，不得用分开升级结果代替 |
 | 条件运行 | 其他官方支持的 PostgreSQL/MySQL 小版本与 vector provider | 该组合进入本次生产支持声明时 | 重跑对应空库、升级和 vector 一致性场景 |
 | 不在本次支持范围 | SQLite、MariaDB、低于官方最低版本或未声明数据库 | 任意 | 不声称兼容，不以本地 mock/SQLite 结果替代真实数据库 |
 
 默认并且推荐把“数据库大版本升级”和“Dify 应用升级”放在不同维护窗口：先独立完成数据库升级、稳定与备份，再升级 Dify，以减少同时变化的变量。若必须组合，只有上表的独立高风险演练通过后才能批准。
+
+当前本地发布阻断组合固定为 PostgreSQL + Weaviate，必须覆盖旧企业 PostgreSQL 数据升级、单一 migration head、智慧广场数据和快照回填、用户/workspace/应用/工作流/知识库/插件、Weaviate class/index、hit testing 与完整备份恢复回滚。不得声称本轮已经完成 MySQL 兼容验证。
 
 ### Phase E：Compose 静态验证
 
@@ -135,7 +142,7 @@ docker compose \
 - Landlock 默认开启；Agent server secret 不使用发布环境的开发默认值。
 - `DIFY_AGENT_RUN_RETENTION_SECONDS` 未覆盖时等于官方 3 天（259200 秒），允许部署配置显式覆盖并记录；`local_sandbox` 默认无永久持久化，企业 overlay 禁止擅自增加永久共享 volume。
 - 解析所有 Redis URL 的 database 编号并断言 agent backend 的编号不与 API 主缓存/session 及 Celery broker/result backend 使用的编号冲突；禁止只比较 URL 字符串前缀。
-- `CAN_REPLACE_LOGO` 未覆盖时最终值为官方 1.16 默认 `false`；若企业产品要求 `true`，必须显式配置并记录产品批准，不得假定旧默认仍生效。
+- 普通官方配置的 `CAN_REPLACE_LOGO` 必须保持官方 1.16 默认 `false`；企业 overlay 必须显式设置并展开为 `true`。不得修改官方源码默认。
 - 企业 overlay 没有覆盖官方 volume、network、healthcheck 和安全变量。
 
 上述临时 Compose 展开文件属于 secret-bearing artifact：仅在受保护临时目录存在，验证完成后安全清理，不进入日志、CI artifact、manifest 或仓库。
@@ -174,31 +181,31 @@ local_sandbox                           -> official 1.16 local sandbox image
 - Enterprise enabled：新账号 best-effort 加入默认 workspace；API 故障不阻断注册。
 - 非平台管理员所有 `/platform-admin/**` 均 403，不能通过伪造 tenant/header 绕过。
 - 平台管理员跨 workspace 列表/成员操作正确；当前 workspace、最后 workspace、owner 和 seat limit guard 生效。
-- 所有高风险操作产生可检索审计；若 Builder 任务未交付审计，则密码重置/归档不得进入发布范围。
+- 首版只验证平台管理员身份、全局 workspace/成员查询、基础邀请/成员管理以及 tenant/owner/最后 owner/最后 workspace/seat limit 保护和允许操作的日志。密码重置、workspace 强制归档/删除、需新审计表的高风险操作和 break-glass 不进入首版；B3 不新增 audit model。
 
 #### 智慧广场
 
 - Workspace A editor/owner 提交，普通成员按产品权限被允许或拒绝。
 - Admin 审核批准/拒绝/下架；状态机拒绝非法转换。
 - Workspace B 只能看到已批准资产，复制到 B 后 source secret 不泄漏。
-- 源 app 删除、归档或修改时行为符合已确认的快照/引用语义。
+- 发布时保存无 secret DSL、版本、内容哈希、冻结时间和来源；复制只使用已审核快照。源 app 删除后仍可复制，修改不影响已发布版本；更新必须重新提交/审核/版本化。旧来源存在时回填无密钥快照，丢失/异常时标记待处理或下架且不得猜测；复杂回填通过独立、可重试、有 inventory 和失败恢复的数据迁移执行。
 - 重复提交/重复复制有幂等或明确冲突结果。
 
 #### Agent App Beta
 
-执行前固定两个隔离部署 A/B（不同 `DIFY_AGENT_SERVER_SECRET_KEY`）、测试 workspace、可用模型、测试 Knowledge、无敏感内容的文件和可控 Tool。HTTP 路径以本提交生成的 Console OpenAPI 为准；下表列出的 `/console/api` 路径必须与生成 contract 对齐，若路径或响应 schema 漂移必须更新本表后再执行，不能临场猜测。每行必须保存请求 ID、实际状态、响应 schema 校验、页面截图和对应 service 日志时间窗。
+执行前固定两个隔离部署 A/B（不同 `DIFY_AGENT_SERVER_SECRET_KEY`）、测试 workspace、可用模型、测试 Knowledge、无敏感内容的文件和可控 Tool。下表的具体 API 路径全部是期望路径，须与生成 OpenAPI 对齐，并非已经实现的事实；若路径或响应 schema 漂移必须先更新并复审本表，不能临场猜测。每行必须保存请求 ID、实际状态、响应 schema 校验、页面截图和对应 service 日志时间窗。
 
-| 场景 | 前置数据 | UI / API 操作 | 期望 HTTP / 响应字段 | 期望页面状态 | 失败判定 | 截图与日志证据 |
+| 场景 | 前置数据 | UI / 期望 API 路径（须与生成 OpenAPI 对齐） | 期望 HTTP / 响应字段 | 期望页面状态 | 失败判定 | 截图与日志证据 |
 | --- | --- | --- | --- | --- | --- | --- |
-| roster Agent | 空 roster、可用 model | UI 创建；`POST /console/api/agent` 后 `GET /console/api/agent/{agent_id}` | 创建 201；读取 200；含 `id`、`app_id`、`role`、配置状态 | roster 出现唯一 Agent，可进入编辑页 | 状态码/schema 不符、重复项、刷新丢失 | roster/编辑页截图；API 与 agent backend 日志 |
-| Skills | 已创建 Agent、受控 Skill 包 | 上传/安装；调用 `/console/api/agent/{agent_id}/config/skills/upload`，读取 skills 列表/inspect | 上传 200；返回 skill 标识/状态；inspect 200 且文件清单符合包 | Skill 显示已安装并可选；失败包显示可操作错误 | 安装假成功、越权文件、错误被吞、重启后无状态 | Skill 状态截图；API/plugin/agent backend 日志 |
-| 文件 | 小文本文件与超限/非法文件 fixture | UI 上传；`POST /console/api/agent/{agent_id}/config/files`，再 preview/download | 合法文件 200，含文件名/size；非法输入为 contract 定义的 4xx | 文件可预览/删除，错误提示明确 | 内容错、跨 Agent 可读、非法文件 2xx | 文件页截图；API/agent backend/local sandbox 日志 |
+| roster Agent | 空 roster、可用 model | UI 创建；期望 `POST /console/api/agent` 后 `GET /console/api/agent/{agent_id}`（须与生成 OpenAPI 对齐） | 创建 201；读取 200；含 `id`、`app_id`、`role`、配置状态 | roster 出现唯一 Agent，可进入编辑页 | 状态码/schema 不符、重复项、刷新丢失 | roster/编辑页截图；API 与 agent backend 日志 |
+| Skills | 已创建 Agent、受控 Skill 包 | 上传/安装；期望 `/console/api/agent/{agent_id}/config/skills/upload`（须与生成 OpenAPI 对齐），并读取 skills 列表/inspect | 上传 200；返回 skill 标识/状态；inspect 200 且文件清单符合包 | Skill 显示已安装并可选；失败包显示可操作错误 | 安装假成功、越权文件、错误被吞、重启后无状态 | Skill 状态截图；API/plugin/agent backend 日志 |
+| 文件 | 小文本文件与超限/非法文件 fixture | UI 上传；期望 `POST /console/api/agent/{agent_id}/config/files`（须与生成 OpenAPI 对齐），再 preview/download | 合法文件 200，含文件名/size；非法输入为 contract 定义的 4xx | 文件可预览/删除，错误提示明确 | 内容错、跨 Agent 可读、非法文件 2xx | 文件页截图；API/agent backend/local sandbox 日志 |
 | Knowledge | 已索引测试 Knowledge，含唯一答案 | 在 Agent 配置绑定 Knowledge 后保存并调试提问 | 保存 200；调试消息 200/stream success；响应含引用/答案字段 | 配置显示数据集；回答显示预期引用 | 未检索、引用跨 tenant、错误静默降级 | 配置与回答截图；API/worker/vector 日志 |
 | Tools | 成功 Tool 和确定失败 Tool | 绑定 Tool，分别执行成功/失败输入 | 保存 200；成功调用返回 tool output；失败调用返回结构化错误而非 500 crash | tool 状态、调用步骤和错误可见 | 参数泄漏、失败挂起、后台未清理 | Tool trace 截图；API/plugin daemon/agent backend 日志 |
-| 发布 Web App | roster 配置完整且未发布 | `POST /console/api/agent/{agent_id}/publish`，再读取 Web App/public 配置 | publish 200；含 published/version 状态；公开读取 200 且无 secret | Published 状态和公开 URL 可见 | 未发布即可访问、响应含 secret、版本不固定 | 发布页与公开页截图；API/agent backend 日志 |
+| 发布 Web App | roster 配置完整且未发布 | 期望 `POST /console/api/agent/{agent_id}/publish`（须与生成 OpenAPI 对齐），再读取 Web App/public 配置 | publish 200；含 published/version 状态；公开读取 200 且无 secret | Published 状态和公开 URL 可见 | 未发布即可访问、响应含 secret、版本不固定 | 发布页与公开页截图；API/agent backend 日志 |
 | 最终用户对话 | 已发布 Agent Web App | 匿名/授权用户打开公开 URL，发送唯一 prompt，随后取消一次长响应 | 页面请求 200；消息 stream 成功；取消 endpoint 200；响应含 message/task id | 能看到 Agent 回复、引用和已取消状态 | 500、无限 loading、取消后仍继续执行 | 对话前后截图；web/API/agent backend 日志 |
 | Workflow 引用 roster Agent | 已发布 roster Agent、空 Workflow | 在 Agent v2 节点选择 roster；运行固定输入 | composer/save 200；workflow run 200/stream；输出 schema 含预期字段 | 节点显示 roster binding，run panel 输出正确 | binding 变 inline、输出丢字段、跨 workspace 引用 | 节点与 run detail 截图；API/worker/agent backend 日志 |
-| inline Agent | Workflow Agent v2 节点 | `PUT /console/api/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer` 保存 inline 配置，validate 后运行 | save/validate 200；`binding_type=inline_agent`；运行输出匹配 schema | inline 编辑器保留配置，刷新后不变 | 偷存 roster、校验与运行不一致、输出类型错 | composer 与输出截图；API/worker/agent backend 日志 |
+| inline Agent | Workflow Agent v2 节点 | 期望 `PUT /console/api/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer`（须与生成 OpenAPI 对齐）保存 inline 配置，validate 后运行 | save/validate 200；`binding_type=inline_agent`；运行输出匹配 schema | inline 编辑器保留配置，刷新后不变 | 偷存 roster、校验与运行不一致、输出类型错 | composer 与输出截图；API/worker/agent backend 日志 |
 | agent_backend 停止 | 有可运行 Agent；记录健康基线 | 停止 agent_backend，发起调试/Workflow run，再恢复服务 | 新请求 503，响应含稳定错误 `code`/`message` 且不含内部 secret；API/Web 不 crash；恢复后同请求 200 | 明确“服务不可用/可重试”；恢复后页面可继续 | 非 503、假成功、API crash、永久脏 running 状态 | 错误与恢复截图；API/worker/agent backend 容器事件日志 |
 | 超时/重连/取消/清理 | 可控慢 Tool、可断开的浏览器网络 | 触发超时；中断 stream 后重连；调用 stop/cancel；等待 retention/cleanup job | 同步超时请求 504 或异步 stream 以结构化 `run_failed` 终止（按对应接口固定）；重连 200 且不重复消息；取消 200；最终 terminal 状态 | timeout/cancel 状态明确，可重试；无幽灵输出 | 状态/事件不符、无限 running、重复消息、取消无效、临时文件/run 未清理 | 四阶段截图；API/worker/WebSocket/agent backend/sandbox 日志及清理 inventory |
 | Landlock 边界 | sandbox 当前工作目录含测试文件 | Shell 读取当前目录文件；尝试读 `/etc/passwd`、写工作目录外路径 | 允许路径成功；越界操作为权限拒绝/结构化 tool error，不返回目标内容 | 成功与拒绝结果清楚，Landlock 仍 enabled | 能读取 `/etc/passwd`、越界写成功、overlay 关闭隔离 | 结果截图；agent backend/local sandbox 审计日志 |
