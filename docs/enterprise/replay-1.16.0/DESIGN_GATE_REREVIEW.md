@@ -5,8 +5,8 @@
 | 序号 | Commit ID | 说明 |
 | --- | --- | --- |
 | 1 | `e776629ef4` | Gate 记录：记录 DG-01～DG-09 及附带文档修改 |
-| 2 | `f6ef4e900b` | 首次 Gate Review：发现文件范围歧义阻断 |
-| 3 | `76942bb246` | Review 纠正：明确 CHANGES_REQUIRED 结论，修正 Review 自身措辞 |
+| 2 | `f6ef4e900b` | 首次 Gate Review：错误给出 PASS，未识别文件范围歧义 |
+| 3 | `76942bb246` | Reviewer 自查纠正：识别文件范围歧义，更正为 CHANGES_REQUIRED |
 | 4 | `b22f309f13` | Gate Fix：整改 DESIGN_GATE.md §9 文件数量歧义 |
 
 - 审查分支：`ctyun/replay-116-gate-rereviewer`
