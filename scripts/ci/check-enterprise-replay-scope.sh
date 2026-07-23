@@ -84,6 +84,10 @@ classify_forbidden_path() {
       printf 'node_modules is a dependency artifact'
       return 0
       ;;
+    */.venv/*|*/venv/*)
+      printf 'virtual environment content is a dependency/runtime artifact'
+      return 0
+      ;;
     */.cache/*|*/.pytest_cache/*|*/.mypy_cache/*|*/.ruff_cache/*|*/.uv-cache/*|*/__pycache__/*|*/.turbo/*|*/.pnpm-store/*|*/.yarn/cache/*)
       printf 'cache content is not allowed'
       return 0

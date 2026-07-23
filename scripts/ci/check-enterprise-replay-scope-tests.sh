@@ -71,6 +71,8 @@ mkdir -p "$fixture/.github/workflows" "$fixture/docs/enterprise"
 printf '%s\n' 'name: fixture' >"$fixture/.github/workflows/fixture.yml"
 printf '%s\n' 'Historical db.session and console_ns.schema_model references are documentation.' \
   >"$fixture/docs/enterprise/replay-notes.md"
+printf '%s\n' 'A filename containing venv is not a virtual-environment directory.' \
+  >"$fixture/docs/enterprise/venv-migration-notes.md"
 commit_fixture "$fixture"
 expect_pass "legal CI and documentation changes" "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
 
@@ -108,6 +110,13 @@ mkdir -p "$fixture/web/node_modules/example"
 printf '%s\n' 'fixture' >"$fixture/web/node_modules/example/index.js"
 commit_fixture "$fixture"
 expect_fail "node_modules path" "node_modules is a dependency artifact" \
+  "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
+fixture=$(new_fixture virtual-environment)
+mkdir -p "$fixture/tools/runtime/.venv/bin"
+printf '%s\n' 'fixture' >"$fixture/tools/runtime/.venv/bin/python"
+commit_fixture "$fixture"
+expect_fail ".venv dependency artifact" "virtual environment content is a dependency/runtime artifact" \
   "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
 
 fixture=$(new_fixture cache-artifact)
