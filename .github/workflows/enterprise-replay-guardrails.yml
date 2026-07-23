@@ -1,0 +1,41 @@
+name: Enterprise replay guardrails
+
+on:
+  workflow_dispatch:
+    inputs:
+      head-ref:
+        description: Candidate commit or ref to check
+        required: false
+        default: HEAD
+        type: string
+  push:
+    branches:
+      - "ctyun/replay-116-*"
+      - "codex/enterprise-candidate-*"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  replay-scope:
+    if: >-
+      github.event_name != 'pull_request' ||
+      startsWith(github.head_ref, 'ctyun/replay-116-') ||
+      startsWith(github.head_ref, 'codex/enterprise-candidate-')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: >-
+            ${{ github.event_name == 'workflow_dispatch' && inputs['head-ref'] ||
+                github.event_name == 'pull_request' && github.event.pull_request.head.sha ||
+                github.sha }}
+
+      - name: Check enterprise replay scope
+        shell: bash
+        run: scripts/ci/check-enterprise-replay-scope.sh 1.16.0 HEAD
