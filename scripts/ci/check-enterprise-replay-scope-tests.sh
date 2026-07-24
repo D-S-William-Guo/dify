@@ -13,7 +13,7 @@ pass_count=0
 
 fallback_bin="$tmp_root/fallback-bin"
 mkdir -p "$fallback_bin"
-for command_name in bash git awk grep; do
+for command_name in bash git awk grep python3; do
   ln -s "$(command -v "$command_name")" "$fallback_bin/$command_name"
 done
 
@@ -32,6 +32,24 @@ commit_fixture() {
   local fixture=$1
   git -C "$fixture" add -A --force
   git -C "$fixture" commit --quiet -m "fixture change"
+}
+
+assert_cross_hunk_fixture() {
+  local fixture=$1
+  local path=$2
+  local expected_call_line=$3
+  local diff
+  local hunk_count
+  local added_lines
+
+  diff=$(git -C "$fixture" diff --no-ext-diff --unified=0 "$OFFICIAL_BASE_COMMIT" HEAD -- "$path")
+  hunk_count=$(printf '%s\n' "$diff" | grep -c '^@@ ' || true)
+  added_lines=$(printf '%s\n' "$diff" | awk '/^\+\+\+ / { next } /^\+/ { print substr($0, 2) }')
+  if [[ "$hunk_count" -ne 2 || $(printf '%s\n' "$added_lines" | awk 'END { print NR }') -ne 2 ]] \
+    || ! grep -Fqx "$expected_call_line" <<<"$added_lines"; then
+    printf 'not ok - fixture did not isolate the session.get call line from its context argument\n' >&2
+    exit 1
+  fi
 }
 
 expect_pass() {
@@ -222,6 +240,14 @@ commit_fixture "$fixture"
 expect_fail_without_ast "controller SQLAlchemy session.get fallback" "adds direct controller SQLAlchemy" \
   "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
 
+fixture=$(new_fixture controller-session-get-no-arguments)
+mkdir -p "$fixture/api/controllers/console"
+printf '%s\n' 'account = session.get()' \
+  >"$fixture/api/controllers/console/session_get_no_arguments_fixture.py"
+commit_fixture "$fixture"
+expect_fail_without_ast "controller session.get without arguments fallback" \
+  "adds direct controller SQLAlchemy" "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
 fixture=$(new_fixture controller-bare-select)
 mkdir -p "$fixture/api/controllers/console"
 printf '%s\n' 'statement = select(Account)' \
@@ -304,6 +330,47 @@ commit_fixture "$fixture"
 expect_fail_without_ast "controller multiline SQLAlchemy session.get fallback" \
   "adds direct controller SQLAlchemy" "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
 
+fixture=$(new_fixture controller-sqlalchemy-session-get-cross-hunk)
+oauth_controller="$fixture/api/controllers/console/auth/oauth.py"
+sed -i 's/github_oauth = GitHubOAuth(/github_oauth = session.get(/' "$oauth_controller"
+printf '%s\n' '"unrelated cross-hunk string"' >>"$oauth_controller"
+commit_fixture "$fixture"
+assert_cross_hunk_fixture "$fixture" "api/controllers/console/auth/oauth.py" \
+  "            github_oauth = session.get("
+expect_fail_without_ast "controller cross-hunk SQLAlchemy session.get fallback" \
+  "adds direct controller SQLAlchemy" "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
+fixture=$(new_fixture controller-flask-session-get-cross-hunk)
+init_controller="$fixture/api/controllers/console/init_validate.py"
+sed -i 's/@console_router.get(/@session.get(/' "$init_controller"
+printf '%s\n' '"unrelated cross-hunk string"' >>"$init_controller"
+commit_fixture "$fixture"
+assert_cross_hunk_fixture "$fixture" "api/controllers/console/init_validate.py" "@session.get("
+expect_pass_without_ast "Flask session.get cross-hunk context key fallback" \
+  "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
+fixture=$(new_fixture controller-session-get-argument-change)
+init_controller="$fixture/api/controllers/console/init_validate.py"
+sed -i 's/session.get("is_init_validated")/session.get(InitValidateResponse)/' "$init_controller"
+commit_fixture "$fixture"
+expect_fail_without_ast "controller SQLAlchemy session.get changed argument fallback" \
+  "adds direct controller SQLAlchemy" "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
+fixture=$(new_fixture controller-historical-session-get)
+workflow_controller="$fixture/api/controllers/console/app/workflow.py"
+printf '%s\n' '"unrelated change beside historical session.get"' >>"$workflow_controller"
+commit_fixture "$fixture"
+expect_pass_without_ast "historical untouched session.get fallback" \
+  "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
+fixture=$(new_fixture controller-invalid-python)
+mkdir -p "$fixture/api/controllers/console"
+printf '%s\n' 'def invalid_controller(:' \
+  >"$fixture/api/controllers/console/invalid_python_fixture.py"
+commit_fixture "$fixture"
+expect_fail_without_ast "controller stdlib ast parse failure is closed" \
+  "stdlib ast fallback could not safely inspect" "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
 fixture=$(new_fixture controller-request-session-get)
 mkdir -p "$fixture/api/controllers/console"
 printf '%s\n' 'account = request.session.get(Account, account_id)' \
@@ -334,12 +401,16 @@ commit_fixture "$fixture"
 expect_pass_without_ast "controller similar identifiers fallback" \
   "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
 
-if ! grep -Fq "AST guard did not run" "$tmp_root/controller similar identifiers fallback.out"; then
-  printf 'not ok - dependency-free fallback diagnostic (AST status missing)\n' >&2
+if ! grep -Fq "third-party AST guard did not run" "$tmp_root/controller similar identifiers fallback.out"; then
+  printf 'not ok - dependency-free fallback diagnostic (third-party AST status missing)\n' >&2
   exit 1
 fi
-if ! grep -Fq "dependency-free fallback ran" "$tmp_root/controller similar identifiers fallback.out"; then
-  printf 'not ok - dependency-free fallback diagnostic (fallback status missing)\n' >&2
+if ! grep -Fq "Python stdlib ast fallback ran" "$tmp_root/controller similar identifiers fallback.out"; then
+  printf 'not ok - dependency-free fallback diagnostic (stdlib ast status missing)\n' >&2
+  exit 1
+fi
+if ! grep -Fq "dependency-free text fallback ran" "$tmp_root/controller similar identifiers fallback.out"; then
+  printf 'not ok - dependency-free fallback diagnostic (text fallback status missing)\n' >&2
   exit 1
 fi
 printf 'ok - dependency-free fallback diagnostic\n'

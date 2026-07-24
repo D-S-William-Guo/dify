@@ -162,27 +162,115 @@ added_lines() {
 has_added_sqlalchemy_session_get() {
   local path=$1
 
-  added_lines "$path" | awk '
-    {
-      if (NR > 1) {
-        source = source "\n"
-      }
-      source = source $0
-    }
-    END {
-      remaining = source
-      while (match(remaining, /(^|[^[:alnum:]_.])session[[:space:]]*\.[[:space:]]*get[[:space:]]*\(/)) {
-        arguments = substr(remaining, RSTART + RLENGTH)
-        sub(/^[[:space:]]*/, "", arguments)
-        first = substr(arguments, 1, 1)
-        if (first != "\047" && first != "\"") {
-          found = 1
-        }
-        remaining = arguments
-      }
-      exit found ? 0 : 1
-    }
-  '
+  python3 - "$base_commit" "$head_commit" "$path" <<'PY'
+import ast
+import re
+import subprocess
+import sys
+
+
+base_commit, head_commit, path = sys.argv[1:]
+
+
+def fail_closed(message: str) -> None:
+    print(f"stdlib ast fallback could not safely inspect {path}: {message}", file=sys.stderr)
+    sys.exit(0)
+
+
+def git_output(*arguments: str) -> bytes:
+    try:
+        result = subprocess.run(
+            ["git", *arguments],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as error:
+        fail_closed(f"git invocation failed: {error}")
+    if result.returncode != 0:
+        diagnostic = result.stderr.decode("utf-8", errors="replace").strip()
+        fail_closed(diagnostic or f"git {' '.join(arguments[:2])} failed")
+    return result.stdout
+
+
+diff = git_output(
+    "diff",
+    "--no-ext-diff",
+    "--unified=0",
+    base_commit,
+    head_commit,
+    "--",
+    path,
+)
+hunk_header = re.compile(rb"^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(?: |$)")
+lines = diff.splitlines()
+changed_ranges: list[tuple[int, int]] = []
+saw_hunk = False
+index = 0
+
+while index < len(lines):
+    match = hunk_header.match(lines[index])
+    if match is None:
+        index += 1
+        continue
+
+    saw_hunk = True
+    old_count = int(match.group(1) or b"1")
+    new_start = int(match.group(2))
+    new_count = int(match.group(3) or b"1")
+    old_seen = 0
+    new_seen = 0
+    index += 1
+
+    while index < len(lines) and not lines[index].startswith(b"@@ "):
+        line = lines[index]
+        if line.startswith(b"\\"):
+            index += 1
+            continue
+        if not line or line[:1] not in (b" ", b"+", b"-"):
+            break
+        prefix = line[:1]
+        old_seen += prefix in (b" ", b"-")
+        new_seen += prefix in (b" ", b"+")
+        index += 1
+
+    if old_seen != old_count or new_seen != new_count:
+        fail_closed("git diff hunk line counts were inconsistent")
+    if new_count:
+        changed_ranges.append((new_start, new_start + new_count - 1))
+
+if not saw_hunk:
+    fail_closed("git diff did not contain a parseable hunk")
+
+source = git_output("show", f"{head_commit}:{path}")
+try:
+    tree = ast.parse(source, filename=path)
+except (SyntaxError, ValueError) as error:
+    fail_closed(f"HEAD source could not be parsed: {error}")
+
+for node in ast.walk(tree):
+    if not isinstance(node, ast.Call):
+        continue
+    function = node.func
+    if not (
+        isinstance(function, ast.Attribute)
+        and function.attr == "get"
+        and isinstance(function.value, ast.Name)
+        and function.value.id == "session"
+    ):
+        continue
+
+    end_lineno = getattr(node, "end_lineno", None)
+    if end_lineno is None:
+        fail_closed("Python AST call location was incomplete")
+    if not any(node.lineno <= range_end and range_start <= end_lineno for range_start, range_end in changed_ranges):
+        continue
+    if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
+        continue
+    sys.exit(0)
+
+sys.exit(1)
+PY
 }
 
 has_added_controller_sqlalchemy() {
@@ -252,8 +340,9 @@ if [[ "$controller_changed" -eq 1 && "$head_commit" == "$(git rev-parse HEAD)" ]
       || fail "the repository controller SQLAlchemy guard rejected the candidate diff"
   else
     printf '%s\n' \
-      "note: the AST guard did not run because neither ast-grep nor uvx is available." \
-      "note: the dependency-free fallback ran and passed all controller SQLAlchemy policy checks." \
+      "note: the third-party AST guard did not run because neither ast-grep nor uvx is available." \
+      "note: the Python stdlib ast fallback ran and passed bare session.get checks." \
+      "note: the dependency-free text fallback ran and passed the other controller SQLAlchemy policy checks." \
       "      Install ast-grep to also run scripts/check_no_new_controller_sqlalchemy.py."
   fi
 fi
