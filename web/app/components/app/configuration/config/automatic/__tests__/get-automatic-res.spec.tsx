@@ -58,6 +58,11 @@ vi.mock(
         >
           change-model
         </button>
+        <button
+          onClick={() => setModel({ modelId: 'no-mode-model', provider: 'openai' })}
+        >
+          change-model-no-mode
+        </button>
         <button onClick={() => onCompletionParamsChange({ temperature: 0.3 })}>
           change-params
         </button>
@@ -405,6 +410,40 @@ describe('GetAutomaticRes', () => {
         expect.objectContaining({
           model_config: expect.objectContaining({
             mode: 'completion',
+          }),
+        }),
+      )
+    })
+  })
+
+  it('should normalize no-mode model to chat in basic prompt generation', async () => {
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+      variables: [],
+      opening_statement: '',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.COMPLETION}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        isBasicMode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('change-model-no-mode'))
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            name: 'no-mode-model',
+            mode: 'chat',
           }),
         }),
       )

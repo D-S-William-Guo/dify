@@ -57,6 +57,11 @@ vi.mock(
         >
           change-model
         </button>
+        <button
+          onClick={() => setModel({ modelId: 'no-mode-model', provider: 'openai' })}
+        >
+          change-model-no-mode
+        </button>
         <button onClick={() => onCompletionParamsChange({ temperature: 0.2 })}>
           change-params
         </button>
@@ -317,6 +322,40 @@ describe('GetCodeGeneratorResModal', () => {
       expect(mockGenerateRule).toHaveBeenCalledWith(
         expect.objectContaining({
           model_config: expect.objectContaining({
+            mode: 'chat',
+          }),
+        }),
+      )
+    })
+  })
+
+  it('should normalize no-mode model to chat in code generation', async () => {
+    mockGenerateRule.mockResolvedValue({
+      code: 'print("hello")',
+    })
+
+    render(
+      <GetCodeGeneratorResModal
+        flowId="flow-1"
+        nodeId="node-1"
+        currentCode="print(1)"
+        mode={AppModeEnum.COMPLETION}
+        isShow
+        codeLanguages={CodeLanguage.python3}
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('change-model-no-mode'))
+    fireEvent.click(screen.getByText('set-code-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            name: 'no-mode-model',
             mode: 'chat',
           }),
         }),

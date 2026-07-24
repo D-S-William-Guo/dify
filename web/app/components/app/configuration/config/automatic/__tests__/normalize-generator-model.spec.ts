@@ -82,6 +82,20 @@ describe('normalizeGeneratorModel', () => {
     })
   })
 
+  it('converts undefined to chat', () => {
+    const model: Model = { ...baseModel, mode: undefined as unknown as Model['mode'] }
+    const result = normalizeGeneratorModel(model)
+
+    expect(result.mode).toBe('chat')
+  })
+
+  it('converts unknown string to chat', () => {
+    const model: Model = { ...baseModel, mode: 'some-unknown-mode' as Model['mode'] }
+    const result = normalizeGeneratorModel(model)
+
+    expect(result.mode).toBe('chat')
+  })
+
   it('returns a new object without mutating input', () => {
     const model: Model = { ...baseModel, mode: 'agent-chat' as Model['mode'] }
     const result = normalizeGeneratorModel(model)

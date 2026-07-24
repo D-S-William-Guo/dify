@@ -125,7 +125,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
         ...model,
         provider: newValue.provider,
         name: newValue.modelId,
-        mode: (newValue.mode as ModelModeType) ?? model.mode,
+        mode: newValue.mode as ModelModeType,
       })
       setModel(newModel)
       setStoredModel(newModel)
