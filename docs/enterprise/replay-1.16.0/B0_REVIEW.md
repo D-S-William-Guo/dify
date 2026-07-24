@@ -7,7 +7,7 @@
 | Reviewer | B0 Reviewer (独立) |
 | 审查分支 | `ctyun/replay-116-b0-reviewer` |
 | 审查日期 | 2026-07-24 |
-| 审查轮次 | 2 (correction) |
+| 审查轮次 | 3 (clarification) |
 | Builder 范围 | `d9089773e89d24cd0404a76bb840bfbf7069a854..1b8df896f75f520ed7f17143e0752a2009533927` |
 | Checker 范围 | `1.16.0...HEAD` = 治理文档 11 个 + Builder 3 文件 = 共 14 文件 |
 | 最终结论 | **CHANGES_REQUIRED** |
@@ -176,7 +176,7 @@ AST 规则全部 48 个 pattern（来自 `no_new_controller_sqlalchemy.yml` 行 
 | `session.delete` | bare session | ✓ 已覆盖 | |
 | `session.execute` | bare session | ✓ 已覆盖 | |
 | `session.flush` | 事务边界 | — 豁免 | Python guard 放行 |
-| `session.get` | bare session | ⚠ 覆盖但有误报风险 | 文本 regex 会匹配 Flask `session.get('key')`；AST guard 通过 `is_flask_session_get` 豁免（见下） |
+| `session.get` | bare session | **✗ 未覆盖** | 当前 fallback 不含 `get`（仅 `db.session` 分组含 `get`）；bare `session.get(Model, id)` 是合法的 SQLAlchemy 1.x 用法，缺失会漏过。未来补入 `get` 时需加入 Flask 字符串 key 豁免 |
 | `session.merge` | bare session | ✓ 已覆盖 | |
 | `session.refresh` | bare session | ✓ 已覆盖 | |
 | `session.rollback` | bare session | ✓ 已覆盖 | |
@@ -189,30 +189,36 @@ AST 规则全部 48 个 pattern（来自 `no_new_controller_sqlalchemy.yml` 行 
 | `sqlalchemy.select(...)` / `sqlalchemy.insert(...)` / `sqlalchemy.update(...)` / `sqlalchemy.delete(...)` / `sqlalchemy.text(...)` | 2.0 core (sqlalchemy.) | **5 个均未覆盖** | 全限定导入 |
 | `db.select(...)` / `db.insert(...)` / `db.update(...)` / `db.delete(...)` / `db.text(...)` | 2.0 core (db.) | **5 个均未覆盖** | Flask-SQLAlchemy db 快捷方式 |
 
-汇总：有效拦截 pattern 共 44 个（48 个总 pattern minus 4 个 commit/flush）。文本 fallback 覆盖了 19 个（其中 1 个有 Flask 误报风险），**缺失 26 个**。
+**分维度覆盖率：**
 
-其中 `select`/`insert`/`update`/`delete`/`text`（20 个 pattern，含 4 种前缀）是 SQLAlchemy 2.0 最常用的核心 API——在 controller 中出现 `db.session.execute(select(Model))` 或直接 `select(Model)` 的概率远高于旧式 `db.session.query(Model)`。
+| 维度 | AST 有效 pattern | 当前覆盖 | 缺失 | 缺失项 |
+| --- | --- | --- | --- | --- |
+| `db.session.*` | 11 (13-2 commit/flush) | 9 | 2 | `add_all`, `begin` |
+| bare `session.*` | 11 (13-2 commit/flush) | 8 | 3 | `add_all`, `begin`, `get` |
+| `Session`/`sessionmaker` | 2 | 0 | 2 | `Session(...)`, `sessionmaker(...)` |
+| Core API (select/insert/update/delete/text × 4 前缀) | 20 | 0 | 20 | `sa.*`/`sqlalchemy.*`/`db.*`/bare |
+| **合计** | **44** | **17** | **27** | |
 
-Flask `session.get` 误报：AST guard (`check_no_new_controller_sqlalchemy.py` 行 19, 38-39) 通过正则 `^session\.get\(\s*['\"]` 识别 Flask 的 cookie session（参数为字符串字面量），从而豁免；文本 fallback 无法区分。这可能导致 controller 合法使用 `session.get('key')` 时触发误报。
+注：`db.paginate` 和 `db.session.query` 是 checker 的额外策略，不属于 AST 规则的 44 个模式，不计入覆盖率统计。bare `session.get` 缺失意味着 `session.get(Model, id)` 这种合法 SQLAlchemy 1.x 用法会漏过；未来补入 `get` 时，AST guard (`check_no_new_controller_sqlalchemy.py` 行 19, 38-39) 通过正则 `^session\.get\(\s*['\"]` 豁免 Flask cookie session（参数为字符串字面量），文本 fallback 届时也须实现等效豁免。
 
 #### 影响分析
 
-- CI workflow 不安装任何依赖，`ast-grep`/`uvx` 在 CI 中不可用
-- 因此 `scripts/check_no_new_controller_sqlalchemy.py` 在 CI 中永远不会执行
-- 当未来 Builder（如 B3 平台管理员、B4 智慧广场）修改 controller 文件时，CI 仅执行不完整的文本 fallback
+- CI workflow 未安装或保证 `ast-grep`/`uvx` 可用，因此 CI 不能依赖 AST guard 一定执行；无依赖文本 fallback 必须独立满足拦截要求
+- 当未来 Builder（如 B3 平台管理员、B4 智慧广场）修改 controller 文件时，若 CI 环境缺少 `ast-grep`/`uvx`，则仅执行当前不完整的文本 fallback
 - "B0 当前无 controller diff" 是事实，但不能证明护栏面向未来有效
 
 #### 所需整改
 
-1. **扩充文本 fallback regex**（`check-enterprise-replay-scope.sh` 行 167），使其覆盖 AST 规则的全部有效拦截 pattern：`add_all`、`begin`、`Session`、`sessionmaker`、`select`/`insert`/`update`/`delete`/`text`（含 `sa.`/`sqlalchemy.`/`db.` 前缀）。可用单一扩展 regex 或多个 `has_added_match` 调用实现。须同时加入 Flask `session.get` 豁免逻辑（例如检测 `session.get(` 后紧跟 `'` 或 `"` 则跳过）。
+1. **扩充文本 fallback regex**（`check-enterprise-replay-scope.sh` 行 167），使其覆盖 AST 规则的全部有效拦截 pattern：`add_all`、`begin`、bare `session.get`（区分 Flask 字符串 key）、`Session`、`sessionmaker`、`select`/`insert`/`update`/`delete`/`text`（含 `sa.`/`sqlalchemy.`/`db.` 前缀）。可用单一扩展 regex 或多个 `has_added_match` 调用实现。bare `session.get` 需加入 Flask 豁免逻辑（例如检测 `session.get(` 后紧跟 `'` 或 `"` 则跳过），与 AST guard 的 `is_flask_session_get` 行为等效。
 2. **新增 fixture 测试**（`check-enterprise-replay-scope-tests.sh`），至少覆盖下列代表性子集：
-   - `db.session.add_all(Model(...))` 或 `session.add_all([...])`
-   - `db.session.begin()` 或 `session.begin()`
-   - `Session()` 构造
-   - `select(Model)` — bare SQLAlchemy 2.0 core
-   - `db.select(Model)` — Flask-SQLAlchemy shortcut
-   - `sqlalchemy.insert(table).values(...)` — 全限定路径
-   - Flask `session.get('key')` 豁免验证 (不触发)
+   - `db.session.add_all(Model(...))` 或 `session.add_all([...])` — 拦截
+   - `db.session.begin()` 或 `session.begin()` — 拦截
+   - `Session()` 构造 — 拦截
+   - `session.get(Model, id)` — 拦截（SQLAlchemy bare session.get）
+   - `select(Model)` — 拦截（bare SQLAlchemy 2.0 core）
+   - `db.select(Model)` — 拦截（Flask-SQLAlchemy shortcut）
+   - `sqlalchemy.insert(table).values(...)` — 拦截（全限定路径）
+   - Flask `session.get('key')` — **豁免**（不触发；验证与 SQLAlchemy `session.get(Model, id)` 的区分）
 3. **补充 P2-01 中遗漏的测试**：同时为手写 `fetch('/console/api/` 和旧 app context (`useAppContext(`) 检测增加 fixture。
 4. **AST guard fallback 消息**（行 211-213）：区分"AST guard 未运行"与"文本 fallback 已执行"；当 `controller_changed=1` 且 AST 不可用时，在 note 中列出文本 fallback 已知未覆盖的 pattern 类别（如 `Session`, `select`, `insert`, `update`, `delete`, `text`），避免向 Reviewer 暗示 fallback 覆盖了完整 AST 规则。
 
@@ -298,7 +304,7 @@ fi
 - 仅在 `ast-grep` 或 `uvx` 可用时运行 AST 检查
 - 不可用时打印诚实 note，声明 "offline fallback passed"，不声称 AST 检查已运行
 
-在 CI 中：workflow 不安装依赖，`ast-grep`/`uvx` 不可用，会打印 fallback note。此行为诚实——前提是 fallback 覆盖面足够。当前 fallback 未完整覆盖 AST 规则的 26 个 pattern，note 的 "passed" 措辞可能被误读为等效于 AST 检查通过。见 P1-01。
+在 CI 中：workflow 不安装依赖，`ast-grep`/`uvx` 不可用，会打印 fallback note。此行为诚实——前提是 fallback 覆盖面足够。当前 fallback 仅覆盖 AST 规则有效拦截 pattern 的 17/44，note 的 "passed" 措辞可能被误读为等效于 AST 检查通过。见 P1-01。
 
 **需改进** (见 P1-01) — 总体设计合理，但 fallback 覆盖面不足。
 
@@ -432,9 +438,9 @@ printf '%s\n' \
 
 **CHANGES_REQUIRED** — P1-01 必须解决后重新审查。
 
-B0 的三个 Builder 文件在其他方面质量良好：基线锁定、文件范围、forbidden 路径拦截、name-status 解析、Workflow 配置、自测隔离和 AST fallback 架构均正确。但 `check-enterprise-replay-scope.sh` 行 167 的 controller SQLAlchemy 文本 fallback 仅覆盖 AST 规则 `no_new_controller_sqlalchemy.yml` 有效拦截 pattern 的 19/44（43%），缺失 `add_all`、`begin`、`Session`、`sessionmaker` 和 `select`/`insert`/`update`/`delete`/`text` 等 26 个 pattern。
+B0 的三个 Builder 文件在其他方面质量良好：基线锁定、文件范围、forbidden 路径拦截、name-status 解析、Workflow 配置、自测隔离和 AST fallback 架构均正确。但 `check-enterprise-replay-scope.sh` 行 167 的 controller SQLAlchemy 文本 fallback 仅覆盖 AST 规则 `no_new_controller_sqlalchemy.yml` 有效拦截 pattern 的 17/44（39%），缺失 `add_all`、`begin`、`get`（bare session）、`Session`、`sessionmaker` 和 `select`/`insert`/`update`/`delete`/`text` 等 27 个 pattern。
 
-由于 CI workflow 不安装 ast-grep/uvx 依赖，AST guard 在所有 CI 运行中均不执行。当后续 Builder 引入 controller 变更时，护栏将仅提供不完整的文本验证。这不是理论问题——SQLAlchemy 2.0 的 `select()`/`insert()` API 是现代 controller 代码中最可能出现的直接数据库调用形式，而当前 fallback 完全未覆盖。
+由于 CI workflow 未安装或保证 `ast-grep`/`uvx`，AST guard 在 CI 中不一定执行；无依赖文本 fallback 必须独立满足要求。当后续 Builder 引入 controller 变更时，护栏将仅提供不完整的文本验证。这不是理论问题——SQLAlchemy 2.0 的 `select()`/`insert()` API 是现代 controller 代码中最可能出现的直接数据库调用形式，而当前 fallback 完全未覆盖。
 
 **Builder 必须在下一提交中：**
 
