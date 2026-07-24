@@ -164,8 +164,14 @@ has_added_sqlalchemy_session_get() {
 
   added_lines "$path" | awk '
     {
-      remaining = $0
-      while (match(remaining, /(^|[^[:alnum:]_])session[[:space:]]*\.[[:space:]]*get[[:space:]]*\(/)) {
+      if (NR > 1) {
+        source = source "\n"
+      }
+      source = source $0
+    }
+    END {
+      remaining = source
+      while (match(remaining, /(^|[^[:alnum:]_.])session[[:space:]]*\.[[:space:]]*get[[:space:]]*\(/)) {
         arguments = substr(remaining, RSTART + RLENGTH)
         sub(/^[[:space:]]*/, "", arguments)
         first = substr(arguments, 1, 1)
@@ -174,8 +180,8 @@ has_added_sqlalchemy_session_get() {
         }
         remaining = arguments
       }
+      exit found ? 0 : 1
     }
-    END { exit found ? 0 : 1 }
   '
 }
 

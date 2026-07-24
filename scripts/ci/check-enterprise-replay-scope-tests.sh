@@ -270,6 +270,48 @@ commit_fixture "$fixture"
 expect_pass_without_ast "Flask session.get double-quoted key fallback" \
   "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
 
+fixture=$(new_fixture controller-flask-session-multiline-single-quote)
+mkdir -p "$fixture/api/controllers/console"
+printf '%s\n' \
+  'tenant_id = session.get(' \
+  "    'tenant-id'" \
+  ')' \
+  >"$fixture/api/controllers/console/flask_session_multiline_single_quote_fixture.py"
+commit_fixture "$fixture"
+expect_pass_without_ast "Flask session.get multiline single-quoted key fallback" \
+  "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
+fixture=$(new_fixture controller-flask-session-multiline-double-quote)
+mkdir -p "$fixture/api/controllers/console"
+printf '%s\n' \
+  'tenant_id = session.get(' \
+  '    "tenant-id"' \
+  ')' \
+  >"$fixture/api/controllers/console/flask_session_multiline_double_quote_fixture.py"
+commit_fixture "$fixture"
+expect_pass_without_ast "Flask session.get multiline double-quoted key fallback" \
+  "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
+fixture=$(new_fixture controller-sqlalchemy-session-get-multiline)
+mkdir -p "$fixture/api/controllers/console"
+printf '%s\n' \
+  'account = session.get(' \
+  '    Account,' \
+  '    account_id,' \
+  ')' \
+  >"$fixture/api/controllers/console/sqlalchemy_session_get_multiline_fixture.py"
+commit_fixture "$fixture"
+expect_fail_without_ast "controller multiline SQLAlchemy session.get fallback" \
+  "adds direct controller SQLAlchemy" "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
+fixture=$(new_fixture controller-request-session-get)
+mkdir -p "$fixture/api/controllers/console"
+printf '%s\n' 'account = request.session.get(Account, account_id)' \
+  >"$fixture/api/controllers/console/request_session_get_fixture.py"
+commit_fixture "$fixture"
+expect_pass_without_ast "request.session.get is not bare session fallback" \
+  "$fixture" "$OFFICIAL_BASE_COMMIT" HEAD
+
 fixture=$(new_fixture controller-allowed-session-boundaries)
 mkdir -p "$fixture/api/controllers/console"
 printf '%s\n' \
