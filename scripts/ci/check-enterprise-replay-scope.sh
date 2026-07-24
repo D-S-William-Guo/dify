@@ -149,9 +149,46 @@ has_added_match() {
   local path=$1
   local pattern=$2
 
+  added_lines "$path" | grep -Eq -- "$pattern"
+}
+
+added_lines() {
+  local path=$1
+
   git diff --no-ext-diff --unified=0 "$base_commit" "$head_commit" -- "$path" \
-    | awk '/^\+\+\+ / { next } /^\+/ { print substr($0, 2) }' \
-    | grep -Eq -- "$pattern"
+    | awk '/^\+\+\+ / { next } /^\+/ { print substr($0, 2) }'
+}
+
+has_added_sqlalchemy_session_get() {
+  local path=$1
+
+  added_lines "$path" | awk '
+    {
+      remaining = $0
+      while (match(remaining, /(^|[^[:alnum:]_])session[[:space:]]*\.[[:space:]]*get[[:space:]]*\(/)) {
+        arguments = substr(remaining, RSTART + RLENGTH)
+        sub(/^[[:space:]]*/, "", arguments)
+        first = substr(arguments, 1, 1)
+        if (first != "\047" && first != "\"") {
+          found = 1
+        }
+        remaining = arguments
+      }
+    }
+    END { exit found ? 0 : 1 }
+  '
+}
+
+has_added_controller_sqlalchemy() {
+  local path=$1
+
+  has_added_match "$path" '(^|[^[:alnum:]_])db\.paginate[[:space:]]*\(' \
+    || has_added_match "$path" '(^|[^[:alnum:]_])db\.session\.(query|execute|scalar|scalars|add|add_all|begin|delete|merge|refresh|rollback|get)[[:space:]]*\(' \
+    || has_added_match "$path" '(^|[^[:alnum:]_])session\.(query|execute|scalar|scalars|add|add_all|begin|delete|merge|refresh|rollback)[[:space:]]*\(' \
+    || has_added_sqlalchemy_session_get "$path" \
+    || has_added_match "$path" '(^|[^[:alnum:]_])(Session|sessionmaker)[[:space:]]*\(' \
+    || has_added_match "$path" '(^|[^[:alnum:]_.])(select|insert|update|delete|text)[[:space:]]*\(' \
+    || has_added_match "$path" '(^|[^[:alnum:]_])(sa|sqlalchemy|db)\.(select|insert|update|delete|text)[[:space:]]*\('
 }
 
 pattern_failures=0
@@ -164,7 +201,7 @@ for path in "${changed_paths[@]}"; do
   case "$path" in
     api/controllers/*.py|api/controllers/**/*.py)
       controller_changed=1
-      if has_added_match "$path" '(^|[^[:alnum:]_])(db\.paginate|db\.session\.(query|execute|scalar|scalars|add|delete|merge|refresh|rollback|get)|session\.(query|execute|scalar|scalars|add|delete|merge|refresh|rollback))([[:space:]]*\(|$)'; then
+      if has_added_controller_sqlalchemy "$path"; then
         printf 'forbidden production pattern: %q adds direct controller SQLAlchemy; inject a service/session boundary\n' "$path" >&2
         pattern_failures=1
       fi
@@ -209,8 +246,9 @@ if [[ "$controller_changed" -eq 1 && "$head_commit" == "$(git rev-parse HEAD)" ]
       || fail "the repository controller SQLAlchemy guard rejected the candidate diff"
   else
     printf '%s\n' \
-      "note: ast-grep is unavailable; the offline direct-SQLAlchemy fallback passed." \
-      "      Install ast-grep to run scripts/check_no_new_controller_sqlalchemy.py as an additional AST check."
+      "note: the AST guard did not run because neither ast-grep nor uvx is available." \
+      "note: the dependency-free fallback ran and passed all controller SQLAlchemy policy checks." \
+      "      Install ast-grep to also run scripts/check_no_new_controller_sqlalchemy.py."
   fi
 fi
 
