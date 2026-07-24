@@ -291,4 +291,68 @@ describe('GetCodeGeneratorResModal', () => {
 
     expect(screen.queryByTestId('code-result-panel')).not.toBeInTheDocument()
   })
+
+  it('should normalize agent-chat app mode to chat in code generation', async () => {
+    mockGenerateRule.mockResolvedValue({
+      code: 'print("hello")',
+    })
+
+    render(
+      <GetCodeGeneratorResModal
+        flowId="flow-1"
+        nodeId="node-1"
+        currentCode="print(1)"
+        mode={AppModeEnum.AGENT_CHAT}
+        isShow
+        codeLanguages={CodeLanguage.python3}
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-code-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            mode: 'chat',
+          }),
+        }),
+      )
+    })
+  })
+
+  it('should send mode=completion for completion app mode in code generation', async () => {
+    mockGenerateRule.mockResolvedValue({
+      code: 'print("hello")',
+    })
+
+    render(
+      <GetCodeGeneratorResModal
+        flowId="flow-1"
+        nodeId="node-1"
+        currentCode="print(1)"
+        mode={AppModeEnum.COMPLETION}
+        isShow
+        codeLanguages={CodeLanguage.python3}
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-code-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            mode: 'completion',
+          }),
+        }),
+      )
+    })
+  })
 })

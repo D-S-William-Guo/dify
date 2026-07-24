@@ -314,4 +314,142 @@ describe('GetAutomaticRes', () => {
 
     expect(screen.queryByTestId('result-panel')).not.toBeInTheDocument()
   })
+
+  it('should normalize agent-chat app mode to chat in basic prompt generation', async () => {
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+      variables: [],
+      opening_statement: '',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.AGENT_CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="agent-flow"
+        isBasicMode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            mode: 'chat',
+          }),
+        }),
+      )
+    })
+  })
+
+  it('should normalize agent-chat app mode to chat in workflow generation', async () => {
+    mockGenerateRule.mockResolvedValue({
+      modified: 'modified prompt',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.AGENT_CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        nodeId="node-1"
+        currentPrompt="current prompt"
+        isBasicMode={false}
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-workflow-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            mode: 'chat',
+          }),
+        }),
+      )
+    })
+  })
+
+  it('should send mode=completion for completion app mode', async () => {
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+      variables: [],
+      opening_statement: '',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.COMPLETION}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        isBasicMode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            mode: 'completion',
+          }),
+        }),
+      )
+    })
+  })
+
+  it('should normalize stale localStorage agent-chat to chat before generation', async () => {
+    localStorage.setItem(
+      'auto-gen-model',
+      JSON.stringify({
+        name: 'stored-model',
+        provider: 'openai',
+        mode: 'agent-chat',
+        completion_params: {},
+      }),
+    )
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+      variables: [],
+      opening_statement: '',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        isBasicMode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)generate\.generate(?=$|:)/))
+
+    await waitFor(() => {
+      expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model_config: expect.objectContaining({
+            name: 'stored-model',
+            mode: 'chat',
+          }),
+        }),
+      )
+    })
+  })
 })

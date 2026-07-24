@@ -28,6 +28,7 @@ import { generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import { useAutoGenModel } from '../auto-gen-model-storage'
+import { normalizeGeneratorModel } from '../automatic/normalize-generator-model'
 import IdeaOutput from '../automatic/idea-output'
 import InstructionEditor from '../automatic/instruction-editor-in-workflow'
 import ResPlaceholder from '../automatic/res-placeholder'
@@ -70,13 +71,15 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
 }) => {
   const { t } = useTranslation()
   const [storedModel, setStoredModel] = useAutoGenModel()
-  const [model, setModel] = React.useState<Model>(
-    storedModel || {
-      name: '',
-      provider: '',
-      mode: mode as unknown as ModelModeType,
-      completion_params: defaultCompletionParams,
-    },
+  const [model, setModel] = React.useState<Model>(() =>
+    normalizeGeneratorModel(
+      storedModel || {
+        name: '',
+        provider: '',
+        mode: mode as unknown as ModelModeType,
+        completion_params: defaultCompletionParams,
+      },
+    ),
   )
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
@@ -118,12 +121,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
 
   const handleModelChange = useCallback(
     (newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
-      const newModel = {
+      const newModel = normalizeGeneratorModel({
         ...model,
         provider: newValue.provider,
         name: newValue.modelId,
-        mode: newValue.mode as ModelModeType,
-      }
+        mode: (newValue.mode as ModelModeType) ?? model.mode,
+      })
       setModel(newModel)
       setStoredModel(newModel)
     },
@@ -147,12 +150,13 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
     if (isLoading) return
     setLoadingTrue()
     try {
+      const normalizedModel = normalizeGeneratorModel(model)
       const { error, ...res } = await generateRule({
         flow_id: flowId,
         node_id: nodeId,
         current: currentCode,
         instruction,
-        model_config: model,
+        model_config: normalizedModel,
         ideal_output: ideaOutput,
         language: languageMap[codeLanguages] || 'javascript',
       })
@@ -178,19 +182,23 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = ({
   useEffect(() => {
     if (defaultModel) {
       if (storedModel) {
-        setModel({
-          ...storedModel,
-          completion_params: {
-            ...defaultCompletionParams,
-            ...storedModel.completion_params,
-          },
-        })
+        setModel(
+          normalizeGeneratorModel({
+            ...storedModel,
+            completion_params: {
+              ...defaultCompletionParams,
+              ...storedModel.completion_params,
+            },
+          }),
+        )
       } else {
-        setModel((prev) => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
+        setModel((prev) =>
+          normalizeGeneratorModel({
+            ...prev,
+            name: defaultModel.model,
+            provider: defaultModel.provider.provider,
+          }),
+        )
       }
     }
   }, [defaultModel, storedModel])

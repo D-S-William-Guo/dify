@@ -39,6 +39,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { useAutoGenModel } from '../auto-gen-model-storage'
+import { normalizeGeneratorModel } from './normalize-generator-model'
 import IdeaOutput from './idea-output'
 import InstructionEditorInBasic from './instruction-editor'
 import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
@@ -91,13 +92,15 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 }) => {
   const { t } = useTranslation()
   const [storedModel, setStoredModel] = useAutoGenModel()
-  const [model, setModel] = React.useState<Model>(
-    storedModel || {
-      name: '',
-      provider: '',
-      mode: mode as unknown as ModelModeType,
-      completion_params: {} as CompletionParams,
-    },
+  const [model, setModel] = React.useState<Model>(() =>
+    normalizeGeneratorModel(
+      storedModel || {
+        name: '',
+        provider: '',
+        mode: mode as unknown as ModelModeType,
+        completion_params: {} as CompletionParams,
+      },
+    ),
   )
   const { defaultModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
     ModelTypeEnum.textGeneration,
@@ -193,13 +196,15 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   useEffect(() => {
     if (defaultModel) {
       if (storedModel) {
-        setModel(storedModel)
+        setModel(normalizeGeneratorModel(storedModel))
       } else {
-        setModel((prev) => ({
-          ...prev,
-          name: defaultModel.model,
-          provider: defaultModel.provider.provider,
-        }))
+        setModel((prev) =>
+          normalizeGeneratorModel({
+            ...prev,
+            name: defaultModel.model,
+            provider: defaultModel.provider.provider,
+          }),
+        )
       }
     }
   }, [defaultModel, storedModel])
@@ -215,12 +220,12 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const handleModelChange = useCallback(
     (newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
-      const newModel = {
+      const newModel = normalizeGeneratorModel({
         ...model,
         provider: newValue.provider,
         name: newValue.modelId,
-        mode: newValue.mode as ModelModeType,
-      }
+        mode: (newValue.mode as ModelModeType) ?? model.mode,
+      })
       setModel(newModel)
       setStoredModel(newModel)
     },
@@ -244,12 +249,13 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     if (isLoading) return
     setLoadingTrue()
     try {
+      const normalizedModel = normalizeGeneratorModel(model)
       let apiRes: GenRes
       let hasError = false
       if (isBasicMode || !currentPrompt) {
         const { error, ...res } = await generateBasicAppFirstTimeRule({
           instruction,
-          model_config: model,
+          model_config: normalizedModel,
           no_variable: false,
         })
         apiRes = {
@@ -267,7 +273,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           current: currentPrompt,
           instruction,
           ideal_output: ideaOutput,
-          model_config: model,
+          model_config: normalizedModel,
         })
         apiRes = res
         if (error) {
