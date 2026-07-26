@@ -62,10 +62,21 @@
 
 ### B3：平台管理员后端
 
-- 交付：平台管理员身份判断、全局 workspace/成员查询、基础邀请和成员管理、tenant/owner/最后 owner/最后 workspace/seat limit 保护、session-injected service、DTO/controller、允许操作的测试和日志。
-- 明确延期：密码重置、workspace 强制归档/删除、需要新审计表的高风险操作和 break-glass。B3 首版不新增 audit model；恢复高风险操作必须另建任务并重审 model、migration、权限、恢复和通知。
-- handoff：向 B4 列出 controller、route、DTO、schema 和测试；B4 在 B3 已合并代码上负责 import、注册和最终 contract generation。
-- 完成标准：admin/non-admin、跨 tenant scope、owner/last workspace/seat limit、rollback 全覆盖。
+- 交付：平台管理员身份、workspace list/detail/rename、member list/invite/non-owner role update；
+  session-injected service、DTO/controller、允许操作的测试和日志。现行契约精确 7 条 route。
+- 明确延期：member removal 整体延期；workspace create/delete/archive、owner mutation、密码重置、需要新
+  审计表的高风险操作和 break-glass 继续延期。B3 首版不新增 audit model。
+- member removal 及其完整副作用另立未来任务，覆盖 maintainer、孤立 PENDING Account、billing cache、
+  enterprise sync、RBAC、owner/current/last workspace、事务补偿、通知和审计；B3 不再验证
+  current/last workspace 删除 guard。
+- ACTIVE 账号遵循官方邀请—接受流程。邀请时 capacity 只是瞬时门禁，无 reservation；官方 `/activate`
+  不复查且不受 B3 Redis 锁覆盖，延迟/并发接受可能突破 workspace member limit。该已知限制已被人工接受，
+  B3 不直接创建 ACTIVE join，也不修改 `/activate`。
+- `RBAC_ENABLED=true` 时 invite/role mutation 503 fail-closed；不调用外部 RBAC 写路径。
+- handoff：向 B4 列出 controller、精确 7 条 route、DTO、schema 和测试；B4 在 B3 已合并代码上只注册并
+  生成这 7 条平台管理员 route，负责最终 contract generation。
+- 完成标准：admin/non-admin、跨 tenant scope、7-route 正/负契约、invite/role owner guard、邀请时
+  capacity、事务 rollback 与上述 `KNOWN_LIMITATION` 证据全覆盖；无 member DELETE route。
 
 ### B4：智慧广场后端
 

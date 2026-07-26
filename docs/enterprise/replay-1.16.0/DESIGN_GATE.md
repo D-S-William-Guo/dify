@@ -77,6 +77,21 @@ MySQL 为条件验证，不是当前本地发布阻断项，不得声称本轮�
 3. B3 handoff 必须列出 controller、route、DTO、schema 和测试；B4 在 B3 已合并代码上负责 import、注册和最终 contract generation。
 4. Agent App 文档中的具体 API 路径均为期望路径，每个路径都须与生成 OpenAPI 对齐，不得描述为已经实现的事实。
 
+### 2026-07-26 B3 人工门禁范围细化
+
+本段记录后续人工决定对 DG-02 的正式收缩，不改写 2026-07-21 原始 Gate 或任何历史 Review：
+
+1. B3 首版成员 mutation 仅包含 invite 与 non-owner role update；member removal 整体延期。
+2. 平台管理员首版精确为身份、workspace list/detail/rename、member list/invite/non-owner role update，共
+   7 条 route。workspace create/delete/archive、owner mutation、密码重置与 break-glass 继续延期。
+3. current/last workspace 删除 guard 移至未来完整 member-removal 独立任务，不是 B3 验收项；未来任务还
+   必须覆盖 maintainer、孤立 PENDING Account、billing cache、enterprise sync、RBAC、事务补偿、通知和审计。
+4. ACTIVE 账号继续使用官方邀请—接受流程：未加入时 B3 不创建 join，由官方 `/activate` 接受时建立。
+5. capacity 只在邀请时作瞬时检查，没有持久 reservation；官方 `/activate` 不 recheck，B3 Redis 锁也不
+   覆盖接受路径，延迟/并发接受可能突破 workspace member limit。该官方既有限制已被人工明确接受，不得
+   声称最终一致性已维护，也不得以此恢复 ACTIVE 直接建 join或暗改 `/activate`。
+6. `RBAC_ENABLED=true` 时 B3 invite/role mutation 返回 503 fail-closed；read-only 能力按降级契约保留。
+
 ## 4. 批准、延期与不支持范围
 
 明确批准：DG-01 不可变发布快照；DG-02 首版低风险平台管理范围；PostgreSQL + Weaviate 发布阻断组合；官方 Agent App 受控验证；企业 overlay 显式启用 logo 替换；DG-08 列出的首版离线交付范围；B0 和 B1 启动。

@@ -180,8 +180,18 @@ local_sandbox                           -> official 1.16 local sandbox image
 
 - Enterprise enabled：新账号 best-effort 加入默认 workspace；API 故障不阻断注册。
 - 非平台管理员所有 `/platform-admin/**` 均 403，不能通过伪造 tenant/header 绕过。
-- 平台管理员跨 workspace 列表/成员操作正确；当前 workspace、最后 workspace、owner 和 seat limit guard 生效。
-- 首版只验证平台管理员身份、全局 workspace/成员查询、基础邀请/成员管理以及 tenant/owner/最后 owner/最后 workspace/seat limit 保护和允许操作的日志。密码重置、workspace 强制归档/删除、需新审计表的高风险操作和 break-glass 不进入首版；B3 不新增 audit model。
+- 首版只验平台管理员身份、workspace list/detail/rename、member list/invite/non-owner role update，共
+  7 条 route；验证 tenant scope、owner mutation 拒绝、邀请时 capacity 和允许操作的日志。
+- 负向验证必须确认没有 member DELETE route；member removal 不验成功，current/last workspace 删除 guard
+  不属于本轮必须通过项。owner mutation、workspace create/delete/archive、密码重置、需新审计表的高风险
+  操作与 break-glass 均不存在；B3 不新增 audit model。
+- `RBAC_ENABLED=true` 时 invite/role mutation 必须 503 fail-closed，且无 DB/token/task 副作用。
+- ACTIVE 未加入的 invitation token 必须 `requires_setup=false`，接受时不得错误触发 PENDING setup；
+  新建或既有 PENDING invitation token 必须 `requires_setup=true`，并在隔离 integration 中证明官方
+  `/activate` 收集 setup fields 后将 Account 激活为 ACTIVE。
+- unit 验证邀请时精确 capacity guard。官方 `/activate` 不复查 capacity，B3 也不修改它；ACTIVE 邀请无
+  reservation，B3 Redis 锁不覆盖接受路径，延迟/并发接受可能突破 workspace member limit。此结果必须标记
+  `KNOWN_LIMITATION`，不得声称最终 workspace limit 不会被突破。
 
 #### 智慧广场
 

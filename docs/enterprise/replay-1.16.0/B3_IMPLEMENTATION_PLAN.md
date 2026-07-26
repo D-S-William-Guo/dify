@@ -40,6 +40,11 @@ join、仅删除 join、响应 token/activation URL 等模式。
 | P2-5 LoginConfig 放置 | **ACCEPTED**：当前允许范围内的 pragmatic 选择 | §4.1 |
 | HD-1 RBAC mutation 策略 | **ACCEPTED**：RBAC 开启时 invite/role mutation 503 fail-closed | §6.8 |
 | HD-2 ACTIVE 邀请语义 | **ACCEPTED**：使用官方邀请—接受流程 | §5.4、§6.3 |
+| P1-RR-1 `requires_setup` 契约 | **FIXED**：四种发 token 状态均显式传值，并验证 Redis payload 与激活分支 | §5.4、§6.3、§10 |
+| P1-RR-2 ACTIVE 延迟接受 capacity | **ACCEPTED_LIMITATION**：改正为邀请时瞬时门禁；无 reservation/recheck，最终成员数可能超限 | §6.4、§10、§11.2 |
+| P2-RR-1 capacity 精确 guard | **FIXED**：补齐零增量、enterprise seat-zero、billing enabled/unlimited 条件 | §6.4、§10 |
+| P2-RR-2 上游治理文档陈旧措辞 | **FIXED_BY_GOVERNANCE_SYNC**：同步 Design Gate、handoff、decision matrix 与 validation plan 的 7-route/无删除契约 | §2、§9、§10 |
+| 2026-07-26 最新人工决定 | **ACCEPTED**：保持官方 ACTIVE 邀请—接受流程，接受 capacity 既有限制，成员移除继续整体延期 | §2、§6.4、§11.2 |
 
 ### 1.2 已核实的官方事务事实
 
@@ -342,16 +347,32 @@ role/rename 已有明确数据库 row lock，不额外使用 Redis 锁。B3 锁�
 10. 若 `immediate_join_count > 0` 且 `dify_config.BILLING_ENABLED=true`，在有效数据库提交后
     best-effort 调用 `BillingService.clean_billing_info_cache(tenant.id)`。失败只记录脱敏 warning，
     不回滚、不冒充数据库失败，并继续后续 dispatch。
-11. 仅对需要邮件的四类结果逐项调用 `RegisterService.generate_invite_token(...)`，再调用
-    `send_invite_member_mail_task.delay(...)`。ACTIVE 已加入不生成 token/task。
+11. 仅对需要邮件的四类结果逐项调用 `RegisterService.generate_invite_token`，再调用
+    `send_invite_member_mail_task.delay(...)`。调用必须等价于：
+
+    ```python
+    RegisterService.generate_invite_token(
+        tenant,
+        account,
+        role,
+        requires_setup=requires_setup,
+    )
+    ```
+
+    其中新建 `PENDING`、既有 `PENDING` 未加入、既有 `PENDING` 已加入 resend 均显式使用
+    `requires_setup=True`；`ACTIVE` 未加入显式使用 `requires_setup=False`；`ACTIVE` 已加入不生成
+    token/task。`generate_invite_token` 默认值为 `False`，Builder 不得省略参数或依赖默认值。生成后的
+    Redis invitation JSON 必须包含与状态矩阵一致的 `requires_setup`。
 12. token 或 task dispatch 失败不回滚数据库；若 token 已生成，必须调用
     `RegisterService.revoke_token(None, None, token)`，或等价关键字
     `workspace_id=None, email=None, token=token`。不得传 workspace id/email。
 13. 捕获每项 post-commit 异常，返回 `email_delivery="failed"`；成功入队为 `queued`；
     `already_member` 为 `not_applicable`。批次 HTTP response 仍稳定返回，不泄漏异常。
 
-ACTIVE 用户只有通过官方 `/activate` 接受后才由官方流程创建 join；B3 邀请既不改变其 current workspace，
-也不冒充永久 seat 已被预留。
+`PENDING` 用户通过官方 `/activate` 接受时，`requires_setup=True` 使该流程收集 setup fields 并把
+Account 更新为 `ACTIVE`。`ACTIVE` 用户使用 `requires_setup=False`，不进入 PENDING setup 分支；其只有
+通过官方 `/activate` 接受后才由官方流程创建 join。B3 邀请既不改变其 current workspace，也不冒充永久
+seat 已被预留。
 
 ### 5.5 成员移除不存在
 
@@ -374,36 +395,51 @@ race 映射 `concurrent_operation`。post-commit delivery 是另一阶段，其�
 
 ### 6.3 邀请状态矩阵
 
-| 输入 | DB commit 内容 | action | token/task |
-| --- | --- | --- | --- |
-| ACTIVE，未加入 | 无 join；不修改 current | `invitation_queued` | commit 后生成/投递 |
-| ACTIVE，已加入 | 不修改既有 join/current | `already_member` | 无 |
-| 既有 PENDING，未加入 | 新 join，`join.current=False`；已有 current workspace 不变 | `membership_created` | commit 后生成/投递 |
-| 既有 PENDING，已加入 | 不重复 join；原 `join.current` 不变 | `invitation_resent` | commit 后生成/投递 |
-| Account 不存在 | 新 PENDING Account + join，`join.current=True` | `account_created` | commit 后生成/投递 |
+| 输入 | DB commit 内容 | action | token/task | 显式 `requires_setup` |
+| --- | --- | --- | --- | --- |
+| ACTIVE，未加入 | 无 join；不修改 current | `invitation_queued` | commit 后生成/投递 | `False` |
+| ACTIVE，已加入 | 不修改既有 join/current | `already_member` | 无 | 不生成 token |
+| 既有 PENDING，未加入 | 新 join，`join.current=False`；已有 current workspace 不变 | `membership_created` | commit 后生成/投递 | `True` |
+| 既有 PENDING，已加入 | 不重复 join；原 `join.current` 不变 | `invitation_resent` | commit 后生成/投递 | `True` |
+| Account 不存在 | 新 PENDING Account + join，`join.current=True` | `account_created` | commit 后生成/投递 | `True` |
+
+每个生成 token 的分支都必须使用 §5.4 的显式五参数调用语义，不得依赖默认
+`requires_setup=False`。token payload 与 `/activate` 行为以本表为唯一契约：PENDING 接受必须收集 setup
+fields 并激活 Account；ACTIVE 接受不得错误进入 PENDING setup 分支。
 
 ### 6.4 workspace member limit 的唯一来源
 
 不得对同一限制同时使用 DB count 与 feature payload size。
 
+**所有部署分支的首个 guard：** `required_memberships <= 0` 时立即返回并跳过全部 capacity 检查。因而
+`already_member` 和纯 resend 批次不得获取 capacity features、调用 workspace limit 或调用 seat limit。
+
 **`ENTERPRISE_ENABLED=true`：**
 
-- workspace member limit 只调用
+- 仅当 `required_memberships > 0` 时获取 workspace features 并调用
   `features.workspace_members.is_available(required_memberships)`；
-- seat 只调用
-  `system_features.license.seats.is_available(new_account_count)`；
+- 仅当 `new_account_count > 0` 时调用
+  `system_features.license.seats.is_available(new_account_count)`；`new_account_count=0` 时不得调用 seat 检查；
 - 不再用 DB join count 对 enterprise workspace limit 做第二次拒绝。
 
 **`ENTERPRISE_ENABLED=false` 且 `BILLING_ENABLED=true`：**
 
-- 与官方 `controllers/console/workspace/members.py` 一致，只使用 billing `features.members.limit` 加当前
-  DB member count 的分支；
-- 比较 `current_db_member_count + required_memberships` 与 billing limit；
+- 与官方 `controllers/console/workspace/members.py` 一致，只有 `features.billing.enabled is True` 才应用
+  billing member limit；billing feature disabled 时不拒绝；
+- 只有 `0 < features.members.limit < current_db_member_count + required_memberships` 时拒绝；
+  `members.limit=0` 表示 unlimited，不拒绝；总数正好等于 limit 时不拒绝；
 - 不同时调用 enterprise `workspace_members.is_available`，也不应用 enterprise seat license。
 
-两种配置都未启用时不发明容量限制。feature payload size 可能陈旧是外部一致性限制；B3 不增加第二套互相
-矛盾的拒绝。ACTIVE 延迟接受不会跳过邀请时的 capacity 检查，但该检查不构成永久 seat reservation；
-接受时仍由官方 `/activate` 流程维护最终一致性。
+两种配置都未启用时不发明容量限制。enterprise 与 billing 分支互斥。feature payload size 可能陈旧是
+外部一致性限制；B3 不增加第二套互相矛盾的拒绝。
+
+**已接受的官方既有限制：** `ACTIVE` 未加入虽计入邀请时的 `required_memberships`，但此 capacity check
+只是瞬时门禁，不是 reservation。B3 此时不创建 join，也不建立任何持久 reservation；官方 `/activate`
+不调用 workspace capacity 检查，B3 Redis 锁也不覆盖该接受路径。因此多个延迟或并发接受可能使最终
+workspace 成员数超过 limit，不能声称最终一致性或最终 limit 保证已被维护。2026-07-26 人工决定明确接受
+该限制，同时要求 B3 继续使用官方邀请—接受流程：不得偷偷修改 `/activate`，也不得恢复 ACTIVE 直接建
+join。若未来产品不能接受，必须另建跨流程 reservation/recheck 任务，重新审查 API、Redis/DB 状态、过期
+释放、并发、用户错误体验与 migration 需求。
 
 ### 6.5 billing freeze
 
@@ -520,9 +556,12 @@ B5 只消费 generated contract：
 | status/auth | ACTIVE/email 规范化；非 admin 403；status 无 current tenant 稳定返回布尔；setup/login 安全不降级 |
 | management current tenant | 无 current tenant 返回稳定 `current_tenant_required`，无 AssertionError/500；decorator 顺序正确 |
 | ACTIVE 未加入/已加入 | 未加入不创建 join；两者均不修改 current；已加入不修改 join且无 token/task |
-| 既有 PENDING 未加入/已加入 | 未加入创建 `current=False` join且已有 current 不变；已加入保留原 `join.current`；均验证对应 post-commit 行为 |
-| 新账号 | PENDING Account + `current=True` join，一个有效业务事务；commit 后 token/task |
-| counts/capacity | `new_account_count`、`immediate_join_count`、`pending_invitation_count` 分类；ACTIVE invite 仍检查 capacity |
+| invite token 参数/payload | 对新建 PENDING、既有 PENDING 未加入、既有 PENDING 已加入 resend 分别断言 `generate_invite_token(..., requires_setup=True)`；对 ACTIVE 未加入断言 `requires_setup=False`；ACTIVE 已加入断言不调用；逐类断言 Redis invitation JSON 中的 `requires_setup` |
+| 既有 PENDING 未加入/已加入 | 未加入创建 `current=False` join且已有 current 不变；已加入保留原 `join.current`；均显式传 `requires_setup=True` 并验证对应 post-commit 行为 |
+| 新账号 | PENDING Account + `current=True` join，一个有效业务事务；commit 后显式以 `requires_setup=True` 生成 token/task |
+| activation integration | 隔离 integration 验证 PENDING 经官方 `/activate` 收集 setup fields 后成为 ACTIVE；ACTIVE 接受使用 `requires_setup=False` 且不错误触发 setup 流程 |
+| counts/capacity | 分类计数；`required_memberships=0`、`new_account_count=0`、billing disabled、billing limit=0、正好等于 limit、超过 limit、enterprise/billing 互斥；ACTIVE pending invitation 计入瞬时 `required_memberships` 但不构成 reservation |
+| capacity accepted limitation | unit 验证邀请时 capacity 检查；source/integration 证据证明 B3 未修改 `/activate` 且该路径不受 B3 锁覆盖；integration 将并发接受超限风险记录为 `KNOWN_LIMITATION`，不得写成最终 limit 保证通过 |
 | billing freeze | 仅 billing enabled 调用；命中整批 rollback，无 Account/join/token/task；验证官方 fail-open 语义未被改写 |
 | billing cache | immediate join 且 billing enabled 时有效 commit 后清理一次；ACTIVE/no-change 不调用；失败 warning、数据保留且继续 dispatch |
 | token revoke | dispatch 失败调用 `revoke_token(None, None, token)`；验证删除 `member_invite:token:{token}`，错误 key 未触碰 |
@@ -574,7 +613,8 @@ integration 环境后续才验证真实 PostgreSQL unique/row lock、Redis/Celer
 - request DEBUG body 可能泄漏 PII，必须由部署门禁关闭；
 - 运维日志不是 audit model；
 - `PLATFORM_ADMIN_EMAILS` 配置变更需重启；
-- ACTIVE invitation capacity 检查不构成永久 seat reservation，最终一致性依赖官方接受流程；
+- ACTIVE invitation capacity 只是邀请时瞬时门禁，无 reservation/recheck；延迟或并发接受可能突破最终
+  workspace member limit，这是 2026-07-26 人工明确接受的 `KNOWN_LIMITATION`；
 - service commit 后仍存在 controller/framework 序列化故障窗口。
 
 ## 12. 最终状态

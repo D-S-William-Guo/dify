@@ -42,17 +42,27 @@
 
 ### E03 平台管理员 — KEEP_REQUIREMENT_REIMPLEMENT
 
-- 企业业务需求：由 `PLATFORM_ADMIN_EMAILS` 授权跨 workspace 管理员；首版仅支持身份判断、全局 workspace 查询、workspace 成员查询、基础邀请和成员管理，以及 tenant scope、owner、最后 owner/最后 workspace、seat limit 保护。
+- 企业业务需求：由 `PLATFORM_ADMIN_EMAILS` 授权跨 workspace 管理员；首版精确支持身份判断、workspace
+  list/detail/rename、member list/invite/non-owner role update，共 7 条 route。
 - 旧实现提交和文件：`d70f1c3bbd`、`d83e4bb351`、`3f883e23b1`；`api/controllers/console/platform_admin.py`、`api/services/platform_admin_service.py`、`api/libs/platform_admin.py`、`web/.../platform-admin-page/`。
 - 1.16 官方对应实现：普通 workspace/RBAC/member API 和生成契约存在；无 fork-local `platform-admin` endpoint 或 `PLATFORM_ADMIN_EMAILS`。
 - 去留结论：保留需求，完全按 1.16 controller→service、显式 `Session`、Pydantic/生成契约、Jotai/bootstrap 重实现。
-- 证据：旧候选提供 8 组 endpoint 与 service 测试；1.16 搜索无平台管理员实现；官方成员/RBAC 在 1.16 有权限和邀请状态修复。
-- 风险：跨租户越权、owner/最后 workspace 破坏、email 大小写授权、license seat 绕过、事务中途 commit。
+- 证据：旧候选曾提供 8 组 endpoint 与 service 测试；这是“旧实现证据”，不代表当前 7-route 契约。
+  1.16 搜索无平台管理员实现；官方成员/RBAC 在 1.16 有权限和邀请状态修复。
+- 风险：跨租户越权、owner mutation、email 大小写授权、邀请时 license/capacity 绕过、事务中途 commit。
 - 实施任务：实现纯授权 helper、session-injected service、DTO/controller、首版允许操作的测试和日志。B3 不新增 model；B3 handoff 列出 controller、route、DTO、schema 和测试，由 B4 在 B3 已合并代码上完成 import、注册和最终 contract generation。`api/configs/enterprise/__init__.py` 仅作只读参考。
-- 延期范围：密码重置、workspace 强制归档/删除、需要新审计表的高风险操作和 break-glass。后续恢复必须建立独立任务，重新设计并审查 audit model、migration、权限、恢复和通知。
+- 延期范围：member removal 整体延期；workspace create/delete/archive、owner mutation、密码重置、需要新
+  审计表的高风险操作和 break-glass 继续延期。current/last workspace 删除 guard 与 maintainer、孤立
+  PENDING Account、billing cache、enterprise sync、RBAC、事务补偿、通知和审计一并移入未来完整
+  member-removal 任务。
 - 前置依赖：E15 migration 方案和 Console contract 生成链。
-- 单元测试：admin/non-admin、email 规范化、tenant scope、owner/last-workspace guard、seat limit、显式 session、rollback、DTO 错误码。
-- 集成验证：跨 workspace CRUD、邀请 pending/active 账号、角色变更、当前 workspace 防删除、导航权限。
+- 单元测试：admin/non-admin、email 规范化、tenant scope、invite/non-owner role owner guard、邀请时
+  capacity、显式 session、rollback、DTO 错误码、无 member DELETE route。
+- 集成验证：workspace list/detail/rename、邀请 PENDING/ACTIVE 账号、non-owner 角色变更、导航权限；
+  member removal 及 current/last workspace 删除 guard 由未来独立任务验证。
+- ACTIVE 邀请限制：未加入不创建 join；capacity 检查只是邀请时瞬时门禁，不是 reservation。官方
+  `/activate` 不复查且不受 B3 Redis 锁覆盖，延迟/并发接受可能突破 workspace member limit。该
+  `KNOWN_LIMITATION` 已被人工接受；不得声称最终一致性已维护、不得直接创建 ACTIVE join或暗改接受流程。
 - volume 升级验证要求：已有 tenant/member/owner/current 标记不变；归档测试只用专用测试数据，禁止作用于迁移副本中的真实 workspace。
 
 ### E04 智慧广场后端 — KEEP_REQUIREMENT_REIMPLEMENT
@@ -256,7 +266,7 @@
 
 ### E18 旧 session 传递修复 — VERIFY_ONLY
 
-- 企业业务需求：平台管理员成员查询/变更使用同一显式 session，事务可回滚。
+- 企业业务需求：平台管理员成员查询及 B3 实际 invite/non-owner role 写路径使用同一显式 session，事务可回滚。
 - 旧实现提交和文件：`d83e4bb351`、`3f883e23b1`；`platform_admin_service.py` 和 tests。
 - 1.16 官方对应实现：显式 session 已成为全局架构原则，但平台管理员本身不存在。
 - 去留结论：不重放补丁代码；把用例作为 E03 的强制验收。
@@ -265,7 +275,7 @@
 - 实施任务：E03 review checklist 加入 session ownership/commit/rollback。
 - 前置依赖：E03。
 - 单元测试：mock/SQLite session identity、rollback 后无部分写入。
-- 集成验证：成员 invite/role/remove 与 workspace CRUD 事务一致。
+- 集成验证：B3 member invite/role 与 workspace rename 事务一致；member removal 完整副作用另立未来任务。
 - volume 升级验证要求：失败注入不得留下半完成 member join。
 
 ## 3. 旧企业候选提交逐项分类
