@@ -1438,6 +1438,10 @@ class CollaborationConfig(BaseSettings):
 
 
 class LoginConfig(BaseSettings):
+    PLATFORM_ADMIN_EMAILS: str = Field(
+        description="Comma-separated platform administrator email addresses.",
+        default="",
+    )
     ENABLE_EMAIL_CODE_LOGIN: bool = Field(
         description="whether to enable email code login",
         default=False,
