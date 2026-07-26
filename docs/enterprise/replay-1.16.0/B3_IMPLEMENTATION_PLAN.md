@@ -1,200 +1,199 @@
 # Dify Enterprise 1.16.0 Replay B3 平台管理员后端实施契约
 
-## 1. 结论与依据
+## 1. 结论、流程状态与授权边界
 
-结论：**B3_READY**。
+- 技术建议：**B3_READY**
+- 流程状态：**PENDING_INDEPENDENT_REREVIEW**
+- Builder 授权：**不授权**
 
-本文件只定义 B3 Builder 的实施契约，不实现业务代码，也不授权 B4、B5 或运行时发布。实现真相按以下
-优先级确定：
+`B3_READY` 仅表示本计划在技术上已形成可实施契约，不表示独立 Review 已通过。修订后的本文件必须由独立
+Reviewer 复审并取得明确 `PASS`；在此之前不得启动 B3 Builder、B4 注册/contract generation 或 B5。
+
+实现真相按以下优先级确定：
 
 1. 官方 tag `1.16.0` 的 model、Pydantic Console schema、显式 `Session`、account/tenant/member/RBAC
-   和错误处理模式；
-2. `DESIGN_GATE.md` 的 DG-02/DG-09、现有 replay handoff、decision matrix、validation plan；
-3. 旧提交 `d70f1c3bbd`、`d83e4bb351`、`3f883e23b1` 及
-   `origin/codex/enterprise-candidate-1.15.0-20260626` 只作为需求和历史缺陷证据。
+   与错误处理模式；
+2. 已完成的 HD-1、HD-2 和 P0 人工决定；
+3. `DESIGN_GATE.md` 的 DG-02/DG-09、`ARCHITECT_HANDOFF.md`、decision matrix 与 validation plan；
+4. 旧 1.15 企业提交仅作为需求和历史缺陷证据，不作为可复制实现。
 
-旧 1.15 实现中的全局 `db.session`、`console_ns.schema_model`、`marshal_with`、动态
-`Account.is_platform_admin` 字段、controller SQLAlchemy、逐项 commit、响应邀请 token/URL 等模式一律不得复制。
+禁止复制旧实现中的全局 `db.session`、controller SQLAlchemy、legacy RESTX field dict、
+`schema_model`、`marshal_with`、动态 `Account.is_platform_admin`、逐项 commit、直接给 ACTIVE 账号建
+join、仅删除 join、响应 token/activation URL 等模式。
 
-### 1.1 已核实的官方 1.16 事务事实
+### 1.1 Review 整改映射
 
-以下结论来自当前代码，不是推测：
+下表只记录 Architect/Fixer 对 Review 的处理，不宣称 Review 已通过。
 
-- `AccountService.create_account()` 会 `session.commit()`。
-- `RegisterService.register()` 使用 nested transaction，但其下游 `create_account()` 和可能的 workspace
-  创建仍会 commit，最后自己也 commit/rollback。
-- `RegisterService.invite_new_member()` 会调用上述写方法；它还会在返回前写 Redis invitation token 并调用
-  `send_invite_member_mail_task.delay()`。
-- `TenantService.create_tenant()` 分阶段多次 commit，并调用同样会 commit 的
-  `CreditPoolService.create_default_pool()`。
-- `TenantService.create_tenant_member()`、`switch_tenant()`、`remove_member_from_tenant()` 和
-  `update_member_role()` 都会 commit；remove 还会在 commit 后产生 enterprise/RBAC 外部副作用。
-- `RBACService.MemberRoles.replace()` 在 legacy 分支会 commit，在 `RBAC_ENABLED=true` 时调用外部 inner
-  RBAC API，无法与本地数据库事务形成原子提交。
-- `FeatureService.get_features()`/`get_system_features()` 是容量信息入口；workspace member license 的
-  `size/limit/enabled` 来自 enterprise workspace info，seat license 来自 system features。
-- `controllers.common.session.with_session` 为 controller 提供显式 `Session`，默认在 handler 正常返回后
-  commit、异常时 rollback；当前 session factory 默认 `expire_on_commit=False`。
+| Review 项 | 处理 | 本计划位置 |
+| --- | --- | --- |
+| P0-1 成员移除副作用不完整 | **DEFERRED**：成员移除整体 `DEFERRED + REJECTED`，B3 无删除路径 | §2、§3.2、§5.5、§10 |
+| P1-1 ACTIVE 邀请偏离官方 | **FIXED**：不直接建 join，经 `/activate` 接受后建立 | §2、§5.4、§6.3 |
+| P1-2 billing email freeze | **FIXED**：新建 Account 前按 billing 配置检查，命中则整批原子拒绝 | §5.4、§6.5、§10 |
+| P1-3 token 撤销 key 错配 | **FIXED**：只用 `revoke_token(None, None, token)` 撤销生成 key | §5.4、§6.6、§10 |
+| P1-4 RBAC read role 误导 | **FIXED**：nullable role、显式 `role_source` 与 `mutation_supported` | §3.1、§6.8、§10 |
+| P1-5 workspace limit 双算 | **FIXED**：enterprise/billing 分支各使用单一官方来源 | §6.4、§10 |
+| P2-1 Redis 无限等待 | **FIXED**：明确 TTL、`blocking_timeout`、顺序和异常策略 | §5.3、§10 |
+| P2-2 `session.begin()` 前 autobegin | **FIXED**：首个 DB 操作位于 begin 内，外部 I/O 位置明确 | §5.2、§5.4、§10 |
+| P2-3 current tenant 隐含依赖 | **FIXED**：status 去除不必要依赖；管理路由稳定拒绝无 current tenant | §4.3、§10 |
+| P2-4 token 不返回导致邮件依赖 | **FIXED**：邮件是接受链接唯一通道，delivery 语义明确 | §3.1、§6.7、§10 |
+| P2-5 LoginConfig 放置 | **ACCEPTED**：当前允许范围内的 pragmatic 选择 | §4.1 |
+| HD-1 RBAC mutation 策略 | **ACCEPTED**：RBAC 开启时 invite/role mutation 503 fail-closed | §6.8 |
+| HD-2 ACTIVE 邀请语义 | **ACCEPTED**：使用官方邀请—接受流程 | §5.4、§6.3 |
 
-因此 B3 不调用以上会 commit 的官方写 API。B3 在自己的 service 中以同一个注入 Session 完成允许的
-本地数据库写入；只复用不会提交数据库的查询/枚举/语言与 invitation-token 能力。workspace 创建因必须
-组合多个会 commit 的官方初始化器和 RBAC/信号副作用，本阶段延期。
+### 1.2 已核实的官方事务事实
+
+- `AccountService.create_account()`、`TenantService` 多个写方法及 legacy
+  `RBACService.MemberRoles.replace()` 会自行 commit。
+- `RegisterService.invite_new_member()` 在 commit 前后混合数据库、Redis token 与 Celery dispatch。
+- `TenantService.remove_member_from_tenant()` 除删除 join 外还有资源 maintainer、pending Account、
+  billing、enterprise sync 与 RBAC 等副作用。
+- `controllers.common.session.with_session` 注入显式 `Session`，handler 正常返回后还会调用 commit。
+- `FeatureService`/`BillingService`/Redis 可能产生外部 I/O；不能让其在 begin 前意外触发 Session 查询。
+
+B3 不调用会自行 commit 的官方写方法；允许的写入由一个注入 Session 和 service-owned transaction 完成。
 
 ## 2. 精确功能范围
 
-`DEFERRED` 表示本轮没有 endpoint；`REJECTED` 表示普通 B3 endpoint 必须显式拒绝该变体，不能借通用
-“成员管理”绕过。
+`DEFERRED` 表示本轮没有 endpoint；`REJECTED` 表示不得借通用 mutation、隐藏 route 或内部 helper 绕过。
 
 | 能力 | 决定 | B3 精确边界 |
 | --- | --- | --- |
-| 平台管理员身份判断 | INCLUDED | 配置 email 与当前已认证、`ACTIVE` Account 的规范化 email 比较；另提供 B5 可消费的布尔 status endpoint。 |
-| 全局 workspace 列表 | INCLUDED | 平台管理员可分页、按名称搜索、按 `normal/archive/all` 过滤；默认只列 `normal`。 |
-| 全局 workspace 详情 | INCLUDED | 返回 workspace、owner 和 member count；可读取 `normal`/`archive`。 |
-| workspace 创建 | DEFERRED | 官方创建链存在多次 commit、credit pool/plugin strategy/key/signal/RBAC 副作用，B3 允许文件内无法安全原子组合。不得恢复旧创建实现或创建无 owner workspace。 |
-| workspace 改名 | INCLUDED | 仅 `normal` workspace；沿用官方允许重名语义，不发明全局 workspace-name 唯一约束。 |
-| workspace 删除/归档 | DEFERRED | DG-02 明确延期；不得提供 DELETE/POST archive endpoint。 |
-| workspace 成员列表 | INCLUDED | 可读取 `normal`/`archive` workspace；角色来自 `TenantAccountJoin.role`，响应明确为 legacy fixed role。 |
-| 邀请新 pending 账号 | INCLUDED | 原子创建 `PENDING` Account 和 join；非 owner role；commit 后才生成 token/投递邮件。 |
-| 邀请既有 pending 账号 | INCLUDED | 不在目标 workspace 时新增 join；已在 workspace 时只做 commit 后 resend，不重复 join。 |
-| 邀请既有 active 账号 | INCLUDED | 不在目标 workspace 时新增 join并发送 workspace invitation；已在时返回 `already_member`，不写入、不发信。 |
-| 成员角色变更 | INCLUDED | 仅 `admin/editor/normal/dataset_operator` 之间；target 为 `ACTIVE/PENDING`；`RBAC_ENABLED=true` 时 fail closed。 |
-| 成员移除 | INCLUDED | 非 owner 成员；保护 target 当前 workspace、最后 workspace membership；不删除 Account。 |
-| owner 分配/转移 | DEFERRED + REJECTED | 不接受 invite `role=owner`，也不接受普通 role endpoint 晋升 owner；需独立 owner-transfer/audit/RBAC 设计。 |
-| owner 降级 | DEFERRED + REJECTED | 普通 role endpoint 遇 owner target：若是最后 owner 返回 `last_owner_protected`；即使异常数据有多个 owner，也返回 `owner_operation_deferred`。 |
-| owner 移除 | DEFERRED + REJECTED | 普通 remove endpoint 同上；不得以“多 owner”为由恢复高风险操作。 |
-| 密码重置 | DEFERRED | DG-02 明确延期；不得出现 password DTO、route 或 service method。 |
-| break-glass | DEFERRED | 不实现紧急接管、header/key bypass、隐式 owner 变更。 |
-| 需要新 audit model 的操作 | DEFERRED | B3 不新增 audit model/model/migration。 |
+| 平台管理员身份判断 | INCLUDED | 配置 email 与当前已认证 `ACTIVE` Account 的规范化 email 比较；提供 B5 status endpoint。 |
+| workspace 列表/详情 | INCLUDED | 跨 workspace 分页、搜索、状态过滤和详情；读取 normal/archive。 |
+| workspace 改名 | INCLUDED | 仅 normal；保持官方允许重名语义。 |
+| workspace 创建 | DEFERRED | 不提供 create route；官方初始化链不能在 B3 边界安全组合。 |
+| workspace 删除/归档 | DEFERRED | 不提供 delete/archive route。 |
+| workspace 成员列表 | INCLUDED | RBAC 关闭时返回 legacy fixed role；RBAC 开启时明确角色不可用。 |
+| 新账号邀请 | INCLUDED | 创建 `PENDING` Account 与 join；commit 后 token/邮件。 |
+| 既有 PENDING 邀请 | INCLUDED | 未加入则事务内建 join；已加入只 resend；commit 后 token/邮件。 |
+| 既有 ACTIVE 邀请 | INCLUDED | 未加入不建 join，commit 后 token/邮件，接受时由官方 `/activate` 建 join；已加入返回 `already_member`。 |
+| 成员角色变更 | INCLUDED | fixed non-owner roles；RBAC 开启时 503 fail-closed。 |
+| **成员移除** | **DEFERRED + REJECTED** | **B3 不提供成员删除路径，不实现 `remove_member`，不直接 `session.delete(TenantAccountJoin)`。** |
+| owner 分配/转移/降级/移除 | DEFERRED + REJECTED | invite/role DTO 不接受 owner；普通 mutation 不处理 owner 生命周期。 |
+| 密码重置、break-glass | DEFERRED | 无 DTO、route、service method。 |
+| 新 audit model | DEFERRED | B3 不新增 model/migration。 |
 
-必须等待真正 audit model、migration、通知与恢复设计后才能重新评审的操作：workspace 强制归档/删除、
-owner 分配/转移/降级/移除、密码重置、break-glass，以及任何可绕过正常账号生命周期或持久改变全局
-安全主体的操作。workspace 创建另因官方初始化链不可原子组合而延期；它不能通过创建后补 owner 的两步
-流程恢复。
+未定义的 member `DELETE` 请求只能得到 Flask/router 的 404 或 405；不得注册隐藏的通用 member mutation。
+
+后续若恢复成员移除，必须另立任务并复用官方逻辑或等价完整覆盖：
+
+- App maintainer 重分配；
+- Dataset maintainer 重分配；
+- 孤立 `PENDING` Account 处理；
+- billing cache 清理；
+- `sync_workspace_member_removal`；
+- RBAC binding cleanup；
+- owner、current workspace、last workspace 保护；
+- 数据库 transaction、外部副作用补偿、通知和审计。
+
+不得接受“只删除 join”的实现。last/current workspace protection 仍是未来移除任务的强制门禁；本轮没有可
+绕过这些门禁的删除路径。
 
 ## 3. 路由、DTO 与错误契约
 
-所有 DTO 均定义在 `api/controllers/console/platform_admin.py`，请求继承 Pydantic `BaseModel`，
-`model_config = ConfigDict(extra="forbid")`；响应继承 `fields.base.ResponseModel`。使用
+DTO 定义在 `api/controllers/console/platform_admin.py`。请求继承 Pydantic `BaseModel` 并使用
+`ConfigDict(extra="forbid")`；响应继承 `fields.base.ResponseModel`。使用
 `register_schema_models`、`register_response_schema_models`、`query_params_from_model` 和
-`dump_response`。禁止新建 legacy RESTX field dict、`schema_model`、`marshal_with` 或 GET
-`ns.expect`。
+`dump_response`。
 
-### 3.1 DTO 清单
+### 3.1 DTO 清单（14 个）
 
-- `PlatformAdminStatusResponse`
-  - `is_platform_admin: bool`
-- `PlatformAdminWorkspaceListQuery`
-  - `page: int = 1`，`ge=1`
-  - `limit: int = 50`，`ge=1, le=100`
-  - `keyword: str | None`，trim 后最长 255，空串转 `None`
-  - `status: Literal["normal", "archive", "all"] = "normal"`
-- `PlatformAdminWorkspaceOwnerResponse`
-  - `id: str`
-  - `name: str`
-  - `email: str`
-- `PlatformAdminWorkspaceResponse`
-  - `id/name/plan/status/created_at/updated_at`
-  - `member_count: int`
-  - `owner: PlatformAdminWorkspaceOwnerResponse | None`
-- `PlatformAdminWorkspacePaginationResponse`
-  - `items/page/limit/total/has_more`
-- `PlatformAdminWorkspaceRenamePayload`
-  - `name: str`，strip whitespace，`min_length=1, max_length=255`
-- `PlatformAdminMemberResponse`
-  - `id/name/email/status/role/current/created_at/last_login_at/last_active_at`
-  - `role` 是 `TenantAccountJoin.role` 的 fixed legacy role，不伪装成自定义 RBAC role
-- `PlatformAdminMemberListResponse`
-  - `items: list[PlatformAdminMemberResponse]`
-- `PlatformAdminMemberInvitePayload`
-  - `emails: list[EmailStr]`，1～50；先 trim/lower，再检查规范化重复项
-  - `role: Literal["admin", "editor", "normal", "dataset_operator"]`
-  - `language: str | None`
-- `PlatformAdminMemberInviteResultResponse`
-  - `email`
-  - `action: Literal["account_created", "membership_created", "invitation_resent", "already_member"]`
-  - `email_delivery: Literal["queued", "failed", "not_applicable"]`
-  - 不含 token、activation URL 或内部异常文本
-- `PlatformAdminMemberInviteResponse`
-  - `workspace_id`
-  - `results`
-- `PlatformAdminMemberRoleUpdatePayload`
-  - `role: Literal["admin", "editor", "normal", "dataset_operator"]`
-- `PlatformAdminMemberMutationResponse`
-  - `result: Literal["success"]`
-  - `workspace_id/member_id`
-- `PlatformAdminErrorResponse`
-  - `code/message/status`
+1. `PlatformAdminStatusResponse`
+   - `is_platform_admin: bool`
+   - `mutation_supported: bool`（仅平台管理员且 RBAC 关闭时为 true）
+2. `PlatformAdminWorkspaceListQuery`
+   - `page: int = 1`（`ge=1`）
+   - `limit: int = 50`（`ge=1, le=100`）
+   - `keyword: str | None`（trim，最长 255，空串为 `None`）
+   - `status: Literal["normal", "archive", "all"] = "normal"`
+3. `PlatformAdminWorkspaceOwnerResponse`
+   - `id/name/email`
+4. `PlatformAdminWorkspaceResponse`
+   - `id/name/plan/status/created_at/updated_at/member_count/owner`
+5. `PlatformAdminWorkspacePaginationResponse`
+   - `items/page/limit/total/has_more`
+6. `PlatformAdminWorkspaceRenamePayload`
+   - `name: str`（strip，1～255）
+7. `PlatformAdminMemberResponse`
+   - `id/name/email/status/current/created_at/last_login_at/last_active_at`
+   - `role: Literal["owner", "admin", "editor", "normal", "dataset_operator"] | None`
+   - `role_source: Literal["tenant_account_join", "rbac_unavailable"]`
+   - `mutation_supported: bool`
+8. `PlatformAdminMemberListResponse`
+   - `items: list[PlatformAdminMemberResponse]`
+   - `mutation_supported: bool`（即使空列表也能让 B5 正确禁用操作）
+9. `PlatformAdminMemberInvitePayload`
+   - `emails: list[EmailStr]`（1～50；trim/lower 后拒绝重复）
+   - `role: Literal["admin", "editor", "normal", "dataset_operator"]`
+   - `language: str | None`
+10. `PlatformAdminMemberInviteResultResponse`
+    - `email`
+    - `action: Literal["account_created", "membership_created", "invitation_queued", "invitation_resent", "already_member"]`
+    - `email_delivery: Literal["queued", "failed", "not_applicable"]`
+    - 不含 token、activation URL 或内部异常文本
+11. `PlatformAdminMemberInviteResponse`
+    - `workspace_id/results`
+12. `PlatformAdminMemberRoleUpdatePayload`
+    - `role: Literal["admin", "editor", "normal", "dataset_operator"]`
+13. `PlatformAdminMemberRoleUpdateResponse`
+    - `result: Literal["success"]`
+    - `workspace_id/member_id`
+14. `PlatformAdminErrorResponse`
+    - `code/message/status`
 
-Pydantic validation failure沿用 Console 的 400 validation contract。重复 email 必须是稳定的
-`duplicate_email` 400，不允许 DTO 静默去重，因为静默去重会掩盖 seat/capacity 计算错误。
+不再定义通用于 remove 的 `PlatformAdminMemberMutationResponse`，role endpoint 使用专用 response。
+RBAC 关闭时 `role` 来自 fixed legacy `TenantAccountJoin.role`、`role_source="tenant_account_join"`；
+RBAC 开启时 `role=None`、`role_source="rbac_unavailable"`、`mutation_supported=false`，不得把 join.role
+冒充权威 RBAC 角色。B3 不调用外部 RBAC read/write API。
 
-### 3.2 endpoint 表
+B3 response 永不返回 invitation token 或 activation URL。邮件是用户取得接受链接的唯一通道。B5 以
+status/list response 的 `mutation_supported` 控制批量邀请按钮，以 member response 的同名字段控制行级
+角色按钮。
 
-“日志”列中的 write success 必须在数据库 commit 后记录；read success 在 service 成功返回后记录。
+### 3.2 最终 endpoint 表（仅 7 条）
 
-| Method | route | request | response | success | platform admin | service | 日志 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| GET | `/account/platform-admin-status` | 无 | `PlatformAdminStatusResponse` | 200 | 否；仅 login/setup/init | 纯 helper，无 service SQL | `platform_admin.identity_checked`，仅 account id/结果 |
-| GET | `/platform-admin/workspaces` | `PlatformAdminWorkspaceListQuery` query | `PlatformAdminWorkspacePaginationResponse` | 200 | 是 | `list_workspaces` | `platform_admin.workspace_listed` |
-| GET | `/platform-admin/workspaces/<uuid:workspace_id>` | 无 | `PlatformAdminWorkspaceResponse` | 200 | 是 | `get_workspace` | `platform_admin.workspace_viewed` |
-| PATCH | `/platform-admin/workspaces/<uuid:workspace_id>` | `PlatformAdminWorkspaceRenamePayload` | `PlatformAdminWorkspaceResponse` | 200 | 是 | `rename_workspace` | `platform_admin.workspace_renamed` |
-| GET | `/platform-admin/workspaces/<uuid:workspace_id>/members` | 无 | `PlatformAdminMemberListResponse` | 200 | 是 | `list_members` | `platform_admin.members_listed` |
-| POST | `/platform-admin/workspaces/<uuid:workspace_id>/members/invitations` | `PlatformAdminMemberInvitePayload` | `PlatformAdminMemberInviteResponse` | 201 | 是 | `invite_members` | `platform_admin.members_invited`；delivery failure 单独 warning |
-| PATCH | `/platform-admin/workspaces/<uuid:workspace_id>/members/<uuid:member_id>/role` | `PlatformAdminMemberRoleUpdatePayload` | `PlatformAdminMemberMutationResponse` | 200 | 是 | `update_member_role` | `platform_admin.member_role_updated` |
-| DELETE | `/platform-admin/workspaces/<uuid:workspace_id>/members/<uuid:member_id>` | 无 | 空 body | 204 | 是 | `remove_member` | `platform_admin.member_removed` |
+| Method | route | request | response | success | service | 日志 |
+| --- | --- | --- | --- | --- | --- | --- |
+| GET | `/account/platform-admin-status` | 无 | `PlatformAdminStatusResponse` | 200 | 纯 helper | DEBUG `platform_admin.identity_checked` |
+| GET | `/platform-admin/workspaces` | list query | pagination response | 200 | `list_workspaces` | DEBUG `workspace_listed` |
+| GET | `/platform-admin/workspaces/<uuid:workspace_id>` | 无 | workspace response | 200 | `get_workspace` | DEBUG `workspace_viewed` |
+| PATCH | `/platform-admin/workspaces/<uuid:workspace_id>` | rename payload | workspace response | 200 | `rename_workspace` | INFO `workspace_renamed` |
+| GET | `/platform-admin/workspaces/<uuid:workspace_id>/members` | 无 | member list response | 200 | `list_members` | DEBUG `members_listed` |
+| POST | `/platform-admin/workspaces/<uuid:workspace_id>/members/invitations` | invite payload | invite response | 201 | `invite_members` | INFO `members_invited`；delivery failure warning |
+| PATCH | `/platform-admin/workspaces/<uuid:workspace_id>/members/<uuid:member_id>/role` | role payload | role update response | 200 | `update_member_role` | INFO `member_role_updated` |
 
-不提供 `POST /platform-admin/workspaces`、workspace DELETE/archive、owner、password 或 break-glass route。
-对 204 必须返回真正空 body。
+明确不包含 member DELETE、workspace create/delete/archive、owner mutation、password 或 break-glass route。
 
-### 3.3 明确错误映射
+### 3.3 稳定错误映射
 
-| code | HTTP | 适用条件 |
+| code | HTTP | 条件 |
 | --- | --- | --- |
-| Console 既有 unauthenticated contract | 401 | 未认证；由 `login_required` 处理 |
-| `platform_admin_required` | 403 | 已认证但非平台管理员、非 ACTIVE 账号；所有已定义 `/platform-admin/**` route 一致 |
-| `invalid_request` | 400 | Pydantic/路径以外的普通参数错误 |
-| `duplicate_email` | 400 | 同一批中 trim/lower 后重复 |
-| `invalid_role` | 400 | owner 或不支持的 fixed role |
-| `workspace_not_found` | 404 | workspace id 不存在 |
-| `member_not_found` | 404 | account 不存在或不属于目标 workspace；不得泄露跨 workspace account 是否存在 |
-| `workspace_unavailable` | 409 | mutation 的 tenant 非 `TenantStatus.NORMAL` |
-| `role_already_assigned` | 409 | fixed role 无变化 |
-| `member_already_exists` | 409 | 单成员 mutation 发现状态冲突；批量 invite 用结构化 `already_member` 结果 |
-| `last_owner_protected` | 409 | target 是最后 owner |
-| `owner_operation_deferred` | 409 | target 是 owner 但不是最后 owner |
-| `owner_assignment_deferred` | 409 | 尝试把 member 晋升 owner |
-| `last_workspace_membership` | 409 | remove 后账号将没有 workspace |
-| `current_workspace_membership` | 409 | target join 的 `current=True` |
-| `account_uninitialized` | 409 | invite/role target 为 `UNINITIALIZED` |
-| `account_disabled` | 409 | invite/role target 为 `BANNED` 或 `CLOSED` |
-| `email_identity_ambiguous` | 409 | 历史数据中 case-insensitive email 命中多个 Account |
-| `concurrent_operation` | 409 | lock 超时、join unique race 或 optimistic recheck 失败 |
-| `workspace_member_limit_exceeded` | 403 | workspace 容量不足 |
-| `seat_limit_exceeded` | 403 | 创建新 Account 所需全局 seat 不足 |
-| `rbac_mode_not_supported` | 503 | `RBAC_ENABLED=true` 时调用 B3 member mutation；见 §6.9 |
+| 官方 unauthenticated contract | 401 | 未认证 |
+| `platform_admin_required` | 403 | 非 ACTIVE 或 email 未授权 |
+| `invalid_request` / `duplicate_email` / `invalid_role` | 400 | DTO/批次/role 错误 |
+| `workspace_not_found` / `member_not_found` | 404 | 不存在或不属于目标 workspace |
+| router 404/405 | 404/405 | 未定义的 member DELETE 等 route |
+| `workspace_unavailable` | 409 | mutation 目标非 normal |
+| `role_already_assigned` | 409 | fixed role 未变化 |
+| `owner_operation_deferred` / `owner_assignment_deferred` | 409 | owner 生命周期操作 |
+| `account_uninitialized` / `account_disabled` | 409 | 不允许的 Account 状态 |
+| `email_identity_ambiguous` | 409 | case-insensitive email 命中多个 Account |
+| `email_in_freeze` | 409 | billing freeze 命中；整批无副作用 |
+| `current_tenant_required` | 409 | 管理 route 调用者无 `current_tenant_id` |
+| `concurrent_operation` | 409 | Redis 错误、锁超时、unique race 或 recheck 失败 |
+| `workspace_member_limit_exceeded` | 403 | 对应官方分支的 workspace capacity 不足 |
+| `seat_limit_exceeded` | 403 | enterprise seat 不足 |
+| `rbac_mode_not_supported` | 503 | RBAC 开启时 invite/role mutation |
 
-意外异常使用官方通用 500 响应，controller 不回传 `str(exception)`。service domain exception 在
-controller 映射为上述稳定 code；预期业务失败记 warning，意外失败使用 `logger.exception`。
+删除专属于成员移除的 `last_workspace_membership`、`current_workspace_membership`、`last_owner_protected`
+错误路径；这些 guard 只记录为未来成员移除任务的强制要求，不是 B3 可调用契约。
 
-### 3.4 B5 身份发现
+## 4. 身份、配置与 decorator
 
-B5 只调用生成 contract 中的 `GET /account/platform-admin-status`。非管理员得到
-`{"is_platform_admin": false}`，不会探测 `/platform-admin/**`，也不会收到配置列表。
+### 4.1 LoginConfig
 
-status endpoint 故意位于 `/account/**` 而不是 `/platform-admin/**`：若位于后者，非管理员必须 403，
-前端就无法安全区分“不是 admin”和网络/权限故障。它只返回调用者自己的单个布尔值，不返回
-`PLATFORM_ADMIN_EMAILS`、匹配 email、数量或其他管理员身份，因此不违反“非管理员访问管理端
-`/platform-admin/**` 一律 403”。未知、未注册的 route 仍由 Flask 返回 404；这里的 403 保证覆盖 B3/B4
-实际注册的全部管理 route。
-
-B3 只定义 controller module，**不得**在 `api/controllers/console/__init__.py` import/register。
-B4 在 B3 合并后完成注册和最终 contract generation。
-
-## 4. 鉴权设计
-
-### 4.1 配置
-
-在允许文件 `api/configs/feature/__init__.py` 的现有 `LoginConfig` 增加：
+在当前允许文件 `api/configs/feature/__init__.py` 的 `LoginConfig` 增加唯一配置：
 
 ```python
 PLATFORM_ADMIN_EMAILS: str = Field(
@@ -203,286 +202,274 @@ PLATFORM_ADMIN_EMAILS: str = Field(
 )
 ```
 
-不修改只读的 `api/configs/enterprise/__init__.py`。默认空串表示没有平台管理员，fail closed。
+这是当前允许范围内的 pragmatic 选择：默认空且 fail closed；配置在进程启动时加载，变更需重启。不得新增
+第二个同义配置，不修改 `EnterpriseConfig`。
 
-### 4.2 纯 helper
+### 4.2 授权 helper
 
-`api/libs/platform_admin.py` 仅包含无 ORM mutation 的 helper 和 decorator：
+`api/libs/platform_admin.py` 提供纯规范化/解析/predicate 和薄 decorator：
 
-- `normalize_platform_admin_email(email: str | None) -> str | None`
-  - `strip().lower()`；空值返回 `None`。
-- `parse_platform_admin_emails(raw: str) -> frozenset[str]`
-  - 逗号切分；每项 trim/lower；忽略空项；set 去重。
-- `is_platform_admin_email(email: str | None, configured_emails: str) -> bool`
-  - 只组合前两个纯函数；不自己读取 env、数据库或 request。
-- `is_platform_admin_account(account: Account | None, configured_emails: str) -> bool`
-  - 仅 `AccountStatus.ACTIVE` 且 email 命中时为 true。
-- `platform_admin_required(view)`
-  - request-aware 薄 decorator；从 Flask-Login `current_user` proxy 解析真实 `Account`，把
-    `dify_config.PLATFORM_ADMIN_EMAILS` 传给上述纯 predicate；失败抛 `Forbidden`。
+- email 使用 `strip().lower()`；空值为 `None`；
+- 配置按逗号解析为去重 `frozenset`；
+- 只有 `AccountStatus.ACTIVE` 且规范化 email 命中才是平台管理员；
+- 不缓存或返回配置，不注入 Account 动态字段；
+- 身份仅来自 `login_required` 建立的 `current_user`，不读取 tenant/header/query/body。
 
-不得缓存或返回原始配置，不得把 config 注入 Account。不得实现
-`apply_platform_admin_flag`/`apply_platform_admin_flag_for_accounts`。
+### 4.3 current tenant 与 decorator 顺序
 
-### 4.3 decorator 顺序与身份来源
-
-管理 route 统一使用：
+status endpoint 只需判断已登录 Account 是否为 ACTIVE 且配置命中，不需要 workspace 上下文：
 
 ```text
 setup_required
 login_required
-account_initialization_required
+```
+
+它不得使用 `account_initialization_required`，从而避免对 `current_tenant_id` 的不必要依赖；这不降低 setup、
+login 或 CSRF 安全要求。
+
+六条管理 route 使用：
+
+```text
+setup_required
+login_required
 platform_admin_required
+platform_admin_current_tenant_required
+account_initialization_required
 with_session
 ```
 
-身份只来自已经通过 `login_required` 的 Flask-Login Account/cookie 与 CSRF 保护。鉴权 helper 不读取
-URL workspace、`current_tenant_id`、`X-Tenant-Id`、query、JSON 或任意自定义 admin header。因此攻击者
-伪造 tenant/header 只能改变未使用的输入，不能使 email predicate 变真。service 再从 path 中的
-`workspace_id` 重新查询目标 Tenant，不信任 caller 的 current tenant。
+`platform_admin_current_tenant_required` 在官方 `account_initialization_required` 之前检查
+`current_user.current_tenant_id`；缺失时返回稳定 409 `current_tenant_required`，不得让
+`current_account_with_tenant()` 的 AssertionError 变成 500。因而，无 current tenant 的平台管理员不能使用
+管理 route。测试必须覆盖 decorator 短路、顺序、setup/login 不降级及稳定错误。
 
-B3 不修改 `wraps.py`、Account model、member fields 或现有 account response；不动态设置 ORM 未声明字段。
+service 始终从 path `workspace_id` 查询目标 Tenant，不信任调用者 current tenant 来决定管理目标。
 
-## 5. Service 与事务边界
+## 5. Service、事务与锁
 
-### 5.1 构造与 public API
+### 5.1 public API
 
-controller 获得 `with_session` 注入的同一个 `Session` 后，仅执行：
-
-```python
-service = PlatformAdminService(session)
-```
-
-精确构造：
-
-```python
-class PlatformAdminService:
-    _session: Session
-
-    def __init__(self, session: Session) -> None:
-        self._session = session
-```
-
-public methods：
+controller 只用 `with_session` 注入的唯一 `Session` 构造 `PlatformAdminService(session)`。public methods：
 
 ```text
-list_workspaces(*, page: int, limit: int, keyword: str | None,
-                status: WorkspaceStatusFilter) -> WorkspacePage
-get_workspace(workspace_id: str) -> WorkspaceView
-list_members(workspace_id: str) -> list[MemberView]
-rename_workspace(*, workspace_id: str, name: str,
-                 operator_account_id: str) -> WorkspaceView
-invite_members(*, workspace_id: str, emails: tuple[str, ...],
-               role: TenantAccountRole, language: str | None,
-               operator: Account) -> InviteBatchResult
-update_member_role(*, workspace_id: str, member_id: str,
-                   new_role: TenantAccountRole,
-                   operator_account_id: str) -> MemberMutationResult
-remove_member(*, workspace_id: str, member_id: str,
-              operator_account_id: str) -> None
+list_workspaces(*, page, limit, keyword, status) -> WorkspacePage
+get_workspace(workspace_id) -> WorkspaceView
+list_members(workspace_id) -> list[MemberView]
+rename_workspace(*, workspace_id, name, operator_account_id) -> WorkspaceView
+invite_members(*, workspace_id, emails, role, language, operator) -> InviteBatchResult
+update_member_role(*, workspace_id, member_id, new_role,
+                   operator_account_id) -> MemberRoleUpdateResult
 ```
 
-`WorkspacePage/WorkspaceView/MemberView/InviteBatchResult/MemberMutationResult` 是 service 文件内的 frozen
-dataclass 或 TypedDict，不导入 controller DTO，避免 service→controller 依赖。
+没有 `remove_member` 或通用 delete/mutation method。service 返回自身 frozen dataclass/TypedDict，不依赖
+controller DTO。
 
-### 5.2 硬规则
+### 5.2 一个有效业务事务
 
-- service 不 import 或使用 `extensions.ext_database.db`；禁止全局 `db.session`。
-- controller 不 import SQLAlchemy/model 并且不写查询；只做 DTO、auth、service 调用和 response dump。
-- 每个 public write method 从拿锁后第一条 DB 查询起就在唯一的 `with self._session.begin():` 中。
-- service 是事务 owner：context 正常退出时一次 commit，异常时 rollback；禁止中途 commit。
-- controller 的 `with_session` 负责 Session 生命周期并提供异常安全网；service 已完成的 commit 之后，
-  wrapper 的最终 commit 是无新增工作量的 no-op。任何 post-commit dispatch exception必须在 service 内捕获，
-  不能冒泡成“整个操作失败”。
-- 一个操作中的 Tenant、Account、TenantAccountJoin 查询/flush 必须使用 `self._session`；禁止创建第二个
-  Session。
-- 只用 `flush()` 获得新 id 或触发约束检查；flush 不是 commit。
+- controller 使用官方 `with_session` 注入唯一 Session；不修改 `with_session`。
+- write service 在任何数据库 query/flush 之前进入 `with self._session.begin():`。
+- 所有 Tenant/Account/Join query、`FOR UPDATE`、add/update/flush 都在 begin 块内，禁止第二 Session。
+- begin context 正常退出完成唯一有效数据库 commit；异常退出 rollback；禁止中途 commit。
+- `with_session` 在 handler 返回后的最后一次 commit 仍会被调用，但没有 pending change，只是 no-op。
+  因此准确表述是“一个有效业务事务/一次有效业务提交”，而不是“commit 方法只调用一次”。
+- Redis 锁获取发生在 begin 前且不得访问数据库；FeatureService/BillingService 调用的具体位置见 §5.4。
+  禁止在 begin 前调用可能通过同一 Session 查询数据库的 helper，避免 autobegin 后再次 begin。
+- post-commit token/task 只能在 begin 成功退出后执行。
+- 所有 post-commit 异常在 service 内捕获并转换为每项 `email_delivery="failed"`，不得冒泡为 HTTP 500。
+- controller 在 service 返回后先预构造并校验 response model，再 dump；测试注入序列化异常。即使如此，
+  数据库已提交后仍可能发生 controller/框架序列化故障，计划明确承认无法回滚这一窗口。
 
-### 5.3 禁止调用的官方写 API
+rename 与 role 分别在自己的 begin 块内锁 Tenant/Join，完成状态和 owner guard 后更新；不调用会 commit 的
+`TenantService.update_member_role` 或 `RBACService.MemberRoles.replace`。
 
-B3 write path 禁止调用：
+### 5.3 可执行 Redis 锁策略
 
-- `AccountService.create_account`
-- `RegisterService.register`
-- `RegisterService.invite_new_member`
-- `TenantService.create_tenant/create_owner_tenant/create_tenant_member/switch_tenant`
-- `TenantService.remove_member_from_tenant/update_member_role`
-- legacy 分支会 commit 的 `RBACService.MemberRoles.replace`
+invite 使用项目现有 `redis_client.lock` context manager：
 
-这些方法适用于各自现有 controller，但不能作为 B3 组合事务的 no-commit primitive。B3 可复用
-`get_valid_language`、language→timezone mapping、enum、只读 FeatureService，以及 commit 后的
-`RegisterService.generate_invite_token/revoke_token`。
+```text
+LOCK_TTL_SECONDS = 60
+LOCK_BLOCKING_TIMEOUT_SECONDS = 5
+```
 
-### 5.4 invite 数据库事务
+调用必须显式传 `timeout=LOCK_TTL_SECONDS` 和
+`blocking_timeout=LOCK_BLOCKING_TIMEOUT_SECONDS`。固定获取顺序：
 
-1. DTO 已得到规范化、无重复的 tuple。
-2. 获取按 key 排序的分布式锁：
-   - tenant：`platform_admin:invite:tenant:<tenant_id>`
-   - 全局 seats：`platform_admin:invite:seats`
-   - 每个 email：`platform_admin:invite:email:<sha256(normalized_email)>`
-   - key 不含明文 email；blocking timeout 后返回 `concurrent_operation`。
-3. 进入唯一 `session.begin()`。
-4. `SELECT Tenant ... FOR UPDATE`；必须存在且 `NORMAL`。
-5. case-insensitive 批量查询 Account。每个 email 0/1 行；多于 1 行报
-   `email_identity_ambiguous`。
-6. 批量查询目标 tenant joins，计算：
-   - `new_account_count`：无 Account 的唯一 email 数；
-   - `new_membership_count`：无目标 join 的唯一 email 数；
-   - pending 已有 join、active 已有 join均不消耗新容量。
-7. 重新读取 `FeatureService` 容量；workspace limit 用当前 DB join count 加
-   `new_membership_count`，seat limit 同时要求官方 `seats.is_available(new_account_count)`。任一不足时
-   不写入。
-8. 新账号直接构造官方 `Account` model：normalized email、本地部分 name、有效 language/timezone、
-   `interface_theme="light"`、`status=PENDING`、`initialized_at=naive_utc_now()`、无 password；
-   `session.add/flush`。创建逻辑必须保持与官方当前字段默认一致，不能复制旧 password/flag 字段。
-9. 为所有需要的新 membership 构造 `TenantAccountJoin`，role 必须 non-owner；新账号的 join
-   `current=True`，既有账号的新 join `current=False`，不得改写既有账号的 current workspace。
-10. flush；若 unique join 约束或并发 recheck 失败，整个事务 rollback。
-11. context 正常退出，单次 commit。
-12. commit 后才逐项生成 invitation token 并调用 Celery `.delay()`。active 新 membership 的
-    `requires_setup=False`；new/pending 为 `True`。active already-member 不发信；pending already-member
-    允许 resend。
-13. token/dispatch 失败不回滚已经 commit 的账号/join；best-effort revoke 刚生成的 token，记录
-    `platform_admin.invite_delivery_failed`，响应 `email_delivery="failed"`。不得返回 500 或声称 DB
-    操作失败。
+1. `platform_admin:invite:tenant:<tenant_id>`
+2. `platform_admin:invite:seats`
+3. `platform_admin:invite:email:<sha256(normalized_email)>`，按 hash 字典序逐个获取
 
-这保证不会出现已创建 Account 但没有预期 join、或一批邀请只提交一半。邮件队列成功只表示 queued，
-不表示最终送达；B3 没有持久化 outbox/audit，不能宣称 exactly-once delivery。
+context manager 保证逆序释放，包括业务异常路径。Redis error、未取得锁或 lock timeout 全部 fail closed
+为 `concurrent_operation`；测试验证已取得锁会释放。key 不含明文 email。
 
-### 5.5 rename、role、remove 事务
+每类锁的目的：
 
-- rename：锁 Tenant；检查 `NORMAL`；更新 name；一次 commit。
-- role：锁 Tenant 和 target join；检查状态/owner/RBAC/role；更新 join.role；一次 commit。
-- remove：锁 Tenant、target join、该 account 的全部 joins 和 tenant owner joins；依次执行 owner、
-  current、last-membership guard；只删除 join；一次 commit。B3 不删除 pending Account，不调用 account
-  deletion sync，不改 app/dataset maintainer，因为 owner 不允许移除，普通 member 的 maintainer 处理需要
-  后续明确契约。
+- tenant lock：串行化同 workspace 的 B3 批量邀请和 capacity recheck；
+- seats lock：串行化 B3 新 Account 的全局 seat 竞争。因为 begin 前禁止用 DB 预判批次是否含新 Account，
+  invite 批次统一取得该锁，这是有意的保守选择；
+- email lock：保护没有可供 `FOR UPDATE` 的 Account row 时，B3 内相同规范化 email 的并发创建。
 
-## 6. 安全 guard 算法
+role/rename 已有明确数据库 row lock，不额外使用 Redis 锁。B3 锁不能约束范围外官方注册/邀请流程，不得声称
+提供全局唯一性；Account email 无数据库 unique constraint 仍是未闭环风险。
 
-### 6.1 tenant 与跨 tenant scope
+### 5.4 invite 时序与官方语义
 
-- read：Tenant 必须存在；list/detail/member list 可读 `NORMAL` 和 `ARCHIVE`。
-- write：Tenant 必须存在且 `status == NORMAL`，否则 404/409。
-- 所有跨 tenant route 先通过真实认证 Account 的 platform-admin email predicate。
-- path workspace id 是唯一 scope 输入；service 每次重新解析，不使用当前 tenant/header 代替。
+1. DTO 产生规范化、无重复 email tuple；RBAC 开启则在任何锁、DB、token/task 前返回 503。
+2. 按 §5.3 获取全部 Redis 锁。
+3. 立即进入 `session.begin()`，此前没有 DB query。
+4. 锁定并验证 normal Tenant；批量查询 Account、目标 joins，发现同 email 多 Account 则整批拒绝。
+5. 分类并定义计数：
+   - `new_account_count`：不存在 Account 的 email 数；仅此计数用于 enterprise seat。
+   - `immediate_join_count`：新 Account 加既有 `PENDING` 且未加入的数量；这些 join 在本地事务建立。
+   - `pending_invitation_count`：既有 `ACTIVE` 且未加入的数量；本次不建 join，但邀请时仍计入 workspace
+     capacity 检查。
+   - `required_memberships = immediate_join_count + pending_invitation_count`。
+   - 已加入的 ACTIVE/PENDING 不计新 capacity。
+6. 在 begin 块内调用 §6.4 对应部署分支的 FeatureService/system features。调用位置明确为分类之后、
+   数据写入之前；它可能产生 I/O，但不会造成 begin 前 autobegin。
+7. 仅当 `dify_config.BILLING_ENABLED=true`，对每个将创建新 Account 的 email 调用
+   `BillingService.is_email_in_freeze(email)`。任何命中都抛稳定 `email_in_freeze`，begin rollback，
+   整批不创建 Account/join。该官方调用可能 fail-open，但 B3 不得删除或绕过检查。
+8. 写入动作：
+   - **ACTIVE + 未加入**：不创建 join，不修改 current；记录 `invitation_queued` 待 dispatch。
+   - **ACTIVE + 已加入**：不修改既有 join 或 current；`already_member`，不生成 token、不发信。
+   - **既有 PENDING + 未加入**：创建 join 且 `join.current=False`，不修改该账号已有 current workspace；
+     记录 `membership_created`。
+   - **既有 PENDING + 已加入**：不重复 join，不修改原 `join.current`；记录 `invitation_resent`。
+   - **新账号**：构造 `PENDING` Account 和目标 workspace join，明确设置 `join.current=True`；
+     使用官方 language/timezone/初始字段语义；这等价于官方新邀请账号创建 membership 后
+     `switch_tenant` 的最终 current 语义；记录 `account_created`。
+9. `flush()` 触发约束并预构造不含 token 的内部结果；begin 正常退出完成有效业务提交。
+10. 若 `immediate_join_count > 0` 且 `dify_config.BILLING_ENABLED=true`，在有效数据库提交后
+    best-effort 调用 `BillingService.clean_billing_info_cache(tenant.id)`。失败只记录脱敏 warning，
+    不回滚、不冒充数据库失败，并继续后续 dispatch。
+11. 仅对需要邮件的四类结果逐项调用 `RegisterService.generate_invite_token(...)`，再调用
+    `send_invite_member_mail_task.delay(...)`。ACTIVE 已加入不生成 token/task。
+12. token 或 task dispatch 失败不回滚数据库；若 token 已生成，必须调用
+    `RegisterService.revoke_token(None, None, token)`，或等价关键字
+    `workspace_id=None, email=None, token=token`。不得传 workspace id/email。
+13. 捕获每项 post-commit 异常，返回 `email_delivery="failed"`；成功入队为 `queued`；
+    `already_member` 为 `not_applicable`。批次 HTTP response 仍稳定返回，不泄漏异常。
 
-### 6.2 email 规范化与唯一性
+ACTIVE 用户只有通过官方 `/activate` 接受后才由官方流程创建 join；B3 邀请既不改变其 current workspace，
+也不冒充永久 seat 已被预留。
 
-- 配置与邀请 email 都 `strip().lower()`；配置忽略空项并去重。
-- invite batch 对规范化重复值报 400，不静默折叠。
-- Account 查询使用 `func.lower(Account.email) == normalized`；若历史大小写数据导致多行则 fail closed。
-- Account 表当前只有 email index、没有数据库 unique constraint；B3 不允许改 model/migration，因此
-  B3 并发创建以 email hash Redis lock 串行化并在锁内重新查询。与范围外官方注册流的极端并发仍列为 P1，
-  不伪称数据库已全局保证唯一。
+### 5.5 成员移除不存在
 
-### 6.3 account 状态
+B3 controller、DTO、service、测试和 B4 handoff 均不得出现 member DELETE、`remove_member`、
+`member_removed` 或 `session.delete(TenantAccountJoin)`。未来删除设计见 §2，不能在 Builder 阶段恢复。
 
-| 状态 | invite | role update | remove |
+## 6. Guard、容量、RBAC 与 delivery
+
+### 6.1 tenant/account/owner
+
+- 所有 workspace path 从注入 Session 重新查询 Tenant；mutation 只允许 normal。
+- email 先 trim/lower，批次重复为 400；case-insensitive 多 Account 为 409。
+- `UNINITIALIZED`、`BANNED`、`CLOSED` 不可 invite/role；仅 ACTIVE/PENDING 使用 §5.4 语义。
+- invite/role DTO 排除 owner。role target 当前是 owner 时返回 `owner_operation_deferred`；不得降级。
+
+### 6.2 计数原子性
+
+capacity/billing freeze 任一失败均在写入前终止并由 begin rollback；批次不做部分数据库成功。数据库 unique
+race 映射 `concurrent_operation`。post-commit delivery 是另一阶段，其失败不改变数据库结果。
+
+### 6.3 邀请状态矩阵
+
+| 输入 | DB commit 内容 | action | token/task |
 | --- | --- | --- | --- |
-| 不存在 | 创建 `PENDING` + join | 不适用 | 404 |
-| `PENDING` | join 或 resend | 允许 non-owner role | 允许，但受 owner/current/last-membership guard |
-| `ACTIVE` | join；已 join 返回 already_member | 允许 non-owner role | 允许，同上 |
-| `UNINITIALIZED` | 409，不能借 invitation 改写独立初始化流程 | 409 | 允许清理非 owner、非 current、非 last join |
-| `BANNED/CLOSED`（disabled） | 409 | 409 | 允许清理非 owner、非 current、非 last join |
+| ACTIVE，未加入 | 无 join；不修改 current | `invitation_queued` | commit 后生成/投递 |
+| ACTIVE，已加入 | 不修改既有 join/current | `already_member` | 无 |
+| 既有 PENDING，未加入 | 新 join，`join.current=False`；已有 current workspace 不变 | `membership_created` | commit 后生成/投递 |
+| 既有 PENDING，已加入 | 不重复 join；原 `join.current` 不变 | `invitation_resent` | commit 后生成/投递 |
+| Account 不存在 | 新 PENDING Account + join，`join.current=True` | `account_created` | commit 后生成/投递 |
 
-### 6.4 seat 与 workspace capacity
+### 6.4 workspace member limit 的唯一来源
 
-- 只对真正新增 Account 计算 seat；既有 active/pending 加入新 workspace 不消耗新 seat。
-- 只对真正新增 join 计算 workspace member；resend/already-member 为 0。
-- batch 先全量分类再检查，禁止边写边检查。
-- enterprise workspace limit：若 enabled 且 limit 非 0，要求
-  `current_db_join_count + new_membership_count <= limit`，同时保留官方 feature payload 的
-  `is_available(new_membership_count)` 检查；两者任一失败即拒绝。
-- seat：要求官方 authenticated system features 的 `seats.is_available(new_account_count)`；在全局 B3
-  seat lock 内重读。
-- 任何 limit failure 整批 rollback，不逐 email 部分成功。
+不得对同一限制同时使用 DB count 与 feature payload size。
 
-### 6.5 owner
+**`ENTERPRISE_ENABLED=true`：**
 
-- invite DTO 与 service 双重拒绝 owner。
-- role new value owner：`owner_assignment_deferred`。
-- role/remove target 当前 role owner：锁住所有 owner joins并计数；`<=1` 为
-  `last_owner_protected`；`>1` 仍为 `owner_operation_deferred`。
-- 因此普通 API 不能通过“先增加 owner、再删旧 owner”绕过延期边界。
+- workspace member limit 只调用
+  `features.workspace_members.is_available(required_memberships)`；
+- seat 只调用
+  `system_features.license.seats.is_available(new_account_count)`；
+- 不再用 DB join count 对 enterprise workspace limit 做第二次拒绝。
 
-### 6.6 last workspace 与 current workspace
+**`ENTERPRISE_ENABLED=false` 且 `BILLING_ENABLED=true`：**
 
-remove 前锁住 target account 的全部 `TenantAccountJoin`：
+- 与官方 `controllers/console/workspace/members.py` 一致，只使用 billing `features.members.limit` 加当前
+  DB member count 的分支；
+- 比较 `current_db_member_count + required_memberships` 与 billing limit；
+- 不同时调用 enterprise `workspace_members.is_available`，也不应用 enterprise seat license。
 
-1. target join 不存在 → `member_not_found`；
-2. `join.current is True` → `current_workspace_membership`，B3 不自动切换；
-3. join 总数 `<=1` → `last_workspace_membership`；
-4. 通过后才删除 target join。
+两种配置都未启用时不发明容量限制。feature payload size 可能陈旧是外部一致性限制；B3 不增加第二套互相
+矛盾的拒绝。ACTIVE 延迟接受不会跳过邀请时的 capacity 检查，但该检查不构成永久 seat reservation；
+接受时仍由官方 `/activate` 流程维护最终一致性。
 
-检查对象是被移除 member 的 current/last membership，不是 operator 的 current tenant。
+### 6.5 billing freeze
 
-### 6.7 重复邀请
+freeze 只针对本批将创建的新 Account，且只在 billing enabled 时调用。任一命中采用整批原子拒绝：
+无 Account、join、token 或 task。官方方法的异常语义可能 fail-open；B3 保留该语义但不得省略调用。
 
-- active + 已 join：结构化 `already_member`，不发 token。
-- pending + 已 join：`invitation_resent`，不重复 join，commit 后新 token/邮件。
-- active/pending + 未 join：新增 join。
-- 同批重复：400。
-- unique constraint race：409，整批 rollback。
+### 6.5.1 billing membership cache invalidation
 
-### 6.8 竞态
+`BillingService.is_email_in_freeze` 是创建新 Account **之前**的门禁；
+`BillingService.clean_billing_info_cache(tenant.id)` 是 immediate membership **有效提交之后**的缓存失效，
+两者不得混淆。
 
-- tenant row `FOR UPDATE` 串行化 B3 对同 workspace 的 invite/role/remove。
-- target join `FOR UPDATE` 防止角色更新/删除丢失更新。
-- owner joins 与 account 全部 joins锁定后再计数，避免 B3 内部 last-owner/last-membership TOCTOU。
-- Redis email/seat/tenant locks解决不存在 Account row 无法 `FOR UPDATE` 和 license counter 无数据库约束的
-  缺口；锁 key 不含 PII。
-- 约束异常统一转换为 `concurrent_operation`，不返回 SQL/constraint 文本。
+- 仅当 `immediate_join_count > 0` 且 billing enabled 时，在 begin 成功退出后 best-effort 清理一次；
+- ACTIVE invitation 尚未创建 join，不触发清理；
+- `already_member`、PENDING resend 等无 join 变化的批次不触发清理；
+- 清理失败不得回滚已提交数据库、不得改写为数据库失败，也不得阻止 token/task dispatch；
+- warning 只记录 tenant ID 和稳定失败分类，不记录 email、token、payload 或异常敏感内容；
+- 失败后 billing membership cache 可能短暂陈旧，这是明确保留的外部一致性风险。
 
-### 6.9 RBAC mode
+### 6.6 token key 与撤销
 
-`RBAC_ENABLED=true` 时，官方 role source 和 mutation 是外部 inner RBAC API；平台管理员未必是目标
-tenant member，且 B3 禁止新增 outbox/audit model，无法把本地 join commit 与远端 role binding
-原子化。为避免“DB 成功、RBAC 失败”或反向半完成：
+`generate_invite_token` 创建 `member_invite:token:{token}`。dispatch 失败只用
+`revoke_token(None, None, token)` 删除该路径。传 workspace id/email 会选择不同且未创建的 key，明确禁止。
+token 不进入日志、response、异常文本或 snapshot。
 
-- workspace/member reads仍可返回 legacy join role，并在 contract 文档中明确来源；
-- invite、role update、member remove 全部 fail closed 为 503 `rbac_mode_not_supported`；
-- 不调用外部 RBAC API，不尝试补偿事务，不冒充成功。
+### 6.7 邮件唯一通道
 
-这是安全限制，不是隐藏的 TODO。若目标部署要求 `RBAC_ENABLED=true` 下的平台管理 mutation，必须另建
-任务决定权威 role source、platform actor 授权、outbox/补偿和审计后再实现。
+- B3 response 不返回 token 或 activation URL；
+- 邀请邮件是接受链接唯一通道；
+- `queued` 仅表示 Celery `.delay()` 已成功入队，不表示邮件送达；
+- `failed` 不回滚已提交数据；
+- 无 outbox，不保证 exactly-once、持久重试或自动补偿；
+- ACTIVE 在接受前不是 workspace 成员；
+- B5 必须原样展示 `queued`/`failed`/`not_applicable`，不得显示伪造“邀请成功”。
 
-### 6.10 敏感信息
+### 6.8 RBAC 模式
 
-- token 不进 response、日志、异常或测试快照。
-- 日志不记录 `PLATFORM_ADMIN_EMAILS`、原始 email list、完整 payload。
-- invite 日志只记录 account id（已有时）或 email SHA-256 的短指纹、数量与分类。
-- controller 不回传内部 exception/SQL/RBAC/Redis 内容。
+HD-1 已决定：
 
-## 7. 日志方案
+- `RBAC_ENABLED=true` 时 invite 与 role mutation 都在任何 DB/Redis/token/task 前返回
+  503 `rbac_mode_not_supported`；
+- 不调用外部 RBAC read/write API，不进行本地 join/role 写入；
+- read 使用 `role=None`、`role_source="rbac_unavailable"`、`mutation_supported=false`；
+- RBAC 关闭时 read 使用 fixed legacy role、`role_source="tenant_account_join"`，
+  `mutation_supported=true`（仍受 workspace/account/owner guard）；
+- RBAC 写支持另立任务，设计 outbox/补偿/审计和 platform actor 权限。
 
-使用 `logging.getLogger(__name__)` 和官方 request logging context。`core.logging.context`/logging filter
-已为日志注入 `req_id/trace_id`；B3 不生成第二套 correlation id。
+当前部署 `RBAC_ENABLED` 未设置并采用官方默认 `False` 只是部署事实，不是永久产品保证。
 
-| event | level/时机 | 标识 |
-| --- | --- | --- |
-| `platform_admin.identity_checked` | INFO，status helper 返回时 | operator account id、boolean |
-| `platform_admin.authorization_denied` | WARNING，decorator 403 时 | operator account id、request path；无 email/config |
-| `platform_admin.workspace_listed` | INFO，查询成功 | operator id、page/limit/result count |
-| `platform_admin.workspace_viewed` | INFO，查询成功 | operator id、tenant id |
-| `platform_admin.workspace_renamed` | INFO，commit 后 | operator id、tenant id；不记录旧/新名称 |
-| `platform_admin.members_listed` | INFO，查询成功 | operator id、tenant id、count |
-| `platform_admin.members_invited` | INFO，commit 后 | operator id、tenant id、new account/join/resend/already counts |
-| `platform_admin.invite_delivery_failed` | WARNING，commit 后 dispatch 失败 | operator id、tenant id、account id或 email fingerprint、异常类型 |
-| `platform_admin.member_role_updated` | INFO，commit 后 | operator id、tenant id、member id、old/new fixed role |
-| `platform_admin.member_removed` | INFO，commit 后 | operator id、tenant id、member id |
-| `platform_admin.operation_rejected` | WARNING，业务 guard 失败 | operator id、tenant/member id（若已安全解析）、稳定 error code |
-| `platform_admin.operation_failed` | ERROR + exception，未知失败/rollback 后 | operator id、允许的资源 id、异常类型；无 payload |
+## 7. 日志与隐私
 
-官方全局 debug request logger可能记录 JSON body；生产不得启用包含 request body 的 DEBUG 日志。B3 自身
-logger 和响应不记录 token/config；controller/source test 对 token/config 字样和 logger 参数做负向断言。
+允许事件：
 
-这些是可检索运行日志，不是不可篡改、可查询、具 retention/访问控制的持久化审计表。它不能满足合规
-审计、回放或 exactly-once 通知要求，这正是 owner/password/delete/break-glass 等操作保持延期的原因。
+- DEBUG/可降频 read：`identity_checked`、`workspace_listed`、`workspace_viewed`、`members_listed`；
+- INFO write success（有效 commit 后）：`workspace_renamed`、`members_invited`、
+  `member_role_updated`；
+- WARNING：稳定业务拒绝 code、资源 ID；delivery failed 只记录 tenant/account ID 与稳定原因分类。
 
-## 8. 文件所有权
+没有 `member_removed`。`logger.exception` 不得记录完整 payload、email list、token、activation URL、配置值
+或可能含这些内容的异常文本；可预期业务拒绝仅记录稳定 error code 和资源 ID。生产启用会记录 request body
+的 DEBUG logger 会泄漏 invite email，必须作为部署门禁关闭。上述日志用于运维诊断，不是 audit model，
+不能据此恢复高风险操作。
 
-### 8.1 Builder 允许写入
+## 8. Builder 文件边界
+
+独立复审 PASS 后，B3 Builder 只允许修改：
 
 - `api/configs/feature/__init__.py`
 - `api/libs/platform_admin.py`
@@ -492,171 +479,107 @@ logger 和响应不记录 token/config；controller/source test 对 token/config
 - `api/tests/unit_tests/libs/test_platform_admin.py`
 - `api/tests/unit_tests/services/test_platform_admin_service.py`
 - `api/tests/unit_tests/controllers/console/test_platform_admin.py`
-- `api/tests/unit_tests/controllers/console/test_platform_admin_contract_source.py`
-- 可选隔离 integration tests：
-  - `api/tests/test_containers_integration_tests/services/test_platform_admin_service.py`
-  - `api/tests/test_containers_integration_tests/controllers/console/test_platform_admin.py`
 
-不需要单独 B3 handoff 文档；本文件 §10 是唯一 handoff source，避免第二份清单漂移。若 Reviewer 强制要求
-独立文档，必须先精确批准
-`docs/enterprise/replay-1.16.0/B3_TO_B4_HANDOFF.md`，否则 Builder 不得创建。
+如需 B3→B4 handoff artifact，只能新增
+`docs/enterprise/replay-1.16.0/B3_TO_B4_HANDOFF.md`，且必须由任务明确授权；本 Fixer 不创建它。
 
-### 8.2 明确禁止
+禁止修改 controller 注册、models、migrations、contracts、Web、Docker、依赖、`with_session`、
+`EnterpriseConfig` 或其他文档。B3 不注册 controller、不生成 contracts。
 
-- `api/controllers/console/__init__.py`
-- `api/controllers/console/wraps.py`
-- `api/models/**`
-- `api/migrations/**`
-- `packages/contracts/**`
-- `web/**`
-- `docker/**`
-- 任何生成 contract/OpenAPI artifact
-- B2 的四个 migration 文件，尤其空 merge `a71e16c0de01`
-- 任何未列出的现有文件、依赖、lockfile、运行配置、volume
+## 9. B4/B5 handoff
 
-## 9. 测试矩阵
+B3 合并并通过复审后，B4 接收：
 
-### 9.1 Builder 必须运行的 unit/source tests
+1. controller module 与上列 14 个 DTO/schema；
+2. §3.2 精确 7 条 route；不得添加 member DELETE；
+3. 6 个 service public methods；没有 `remove_member`；
+4. 错误表、RBAC role 降级契约、`mutation_supported`；
+5. 全部 B3 focused tests 与未运行项；
+6. B4 只在 `api/controllers/console/__init__.py` 注册 7 条 route，并作为唯一生成者生成最终 contracts；
+7. generated contract 必须证明没有 member DELETE。
 
-| 场景 | 必须断言 |
+B5 只消费 generated contract：
+
+- 以 status endpoint 决定平台管理员入口；
+- `mutation_supported=false` 时不得启用 invite/role 按钮；
+- 不显示成员删除操作；
+- delivery 只显示 `queued`/`failed`/`not_applicable`；
+- 不手写 route/type，不把 RBAC unavailable role 显示为 legacy 权威角色。
+
+若 B4 contract generation 暴露 B3 schema defect，B4 暂停并交回 B3 独立修订，不得顺手扩大 route。
+
+## 10. 测试矩阵
+
+所有测试均是后续 Builder 计划项，不表示已运行。
+
+| 类别 | 必须证明 |
 | --- | --- |
-| admin/non-admin | normalized 配置命中；non-admin 每个已定义 `/platform-admin/**` route 均 403；status endpoint 分别 true/false |
-| email normalization | trim/lower、空配置、空项、重复配置、mixed case；原始配置不泄露 |
-| forged tenant/header | 改 path 以外 header/query/current tenant不能改变 admin predicate或 service path scope |
-| workspace list/detail | pagination/search/status、owner/member count、archive read、404 |
-| rename | normal 成功；archive 409；只 commit 一次；允许同名 |
-| invite new pending | 一个 Account + 一个 join；pending/current；commit 后 token/task |
-| invite existing pending | 未 join 新增；已 join只 resend；不重复 Account/join |
-| invite existing active | 未 join新增且不改 current；已 join already_member、不发信 |
-| duplicate batch email | 大小写/空白归一后重复为 400；没有 DB/task 调用 |
-| seat limit | 只计算新 Account；整批 403/rollback |
-| workspace member limit | 只计算新 join；整批 403/rollback |
-| account states | uninitialized/disabled invite和 role 409；remove按 guard执行 |
-| role update | non-owner fixed roles成功；same role 409；owner assignment rejected |
-| last owner | owner count 1 为 `last_owner_protected`；多 owner仍 deferred |
-| last workspace membership | count 1 时拒绝且 join保留 |
-| current workspace | target join.current 时拒绝；不自动 switch |
-| member not in tenant | 统一 404，不泄露 Account 是否存在 |
-| RBAC enabled | member mutation全部 503，外部 RBAC/DB write均未调用 |
-| explicit Session identity | constructor注入的对象是所有查询/flush/begin使用的唯一 Session；service 无 `db.session` |
-| failure injection | account staged 后、join staged 后、flush/guard异常均 rollback，无半完成 join |
-| email timing | rollback 时 token/task从不调用；commit 发生在 token/task 前 |
-| email delivery failure | DB 保留，token best-effort revoke，响应 delivery failed，不抛全操作失败 |
-| DTO/errors | extra forbid、limit、email、role、query/status和每个稳定 code/status |
-| log redaction | 无 token、activation URL、完整 email list、payload、`PLATFORM_ADMIN_EMAILS` |
-| controller source | AST/guard确认无 SQLAlchemy/model/db.session/Session constructor/select；无 legacy schema_model/marshal |
-| scope checker | B0 diff-owner、controller SQLAlchemy、implicit service session、generated contract guard通过 |
+| config | `PLATFORM_ADMIN_EMAILS` 默认空串；显式配置可由 Settings 正确读取；不新增第二个同义配置 |
+| config/helper ownership | config tests 不重复解析逻辑；trim/lower/去重继续由 libs helper tests 覆盖 |
+| route/service absence | route map、source/API 断言没有 member DELETE、`remove_member` 或隐藏通用 mutation；DELETE 为 404/405 |
+| status/auth | ACTIVE/email 规范化；非 admin 403；status 无 current tenant 稳定返回布尔；setup/login 安全不降级 |
+| management current tenant | 无 current tenant 返回稳定 `current_tenant_required`，无 AssertionError/500；decorator 顺序正确 |
+| ACTIVE 未加入/已加入 | 未加入不创建 join；两者均不修改 current；已加入不修改 join且无 token/task |
+| 既有 PENDING 未加入/已加入 | 未加入创建 `current=False` join且已有 current 不变；已加入保留原 `join.current`；均验证对应 post-commit 行为 |
+| 新账号 | PENDING Account + `current=True` join，一个有效业务事务；commit 后 token/task |
+| counts/capacity | `new_account_count`、`immediate_join_count`、`pending_invitation_count` 分类；ACTIVE invite 仍检查 capacity |
+| billing freeze | 仅 billing enabled 调用；命中整批 rollback，无 Account/join/token/task；验证官方 fail-open 语义未被改写 |
+| billing cache | immediate join 且 billing enabled 时有效 commit 后清理一次；ACTIVE/no-change 不调用；失败 warning、数据保留且继续 dispatch |
+| token revoke | dispatch 失败调用 `revoke_token(None, None, token)`；验证删除 `member_invite:token:{token}`，错误 key 未触碰 |
+| token privacy | response/log/snapshot 均无 token/activation URL |
+| RBAC enabled reads | role `None`、source unavailable、mutation unsupported；不调用外部 RBAC |
+| RBAC enabled writes | invite/role 503；无锁、外部 RBAC、DB write、token/task |
+| limit branches | enterprise 只用 workspace `is_available` + new-account seat；billing 只用 limit + DB count；不双算 |
+| Redis | TTL 60、blocking timeout 5、tenant→seats→sorted hashes；timeout/Redis error fail closed；异常逆序释放 |
+| transaction sequence | begin 前无 DB query；所有 query/flush 在 begin；一个有效业务事务；wrapper commit no-op |
+| exception injection | Feature/Billing、flush、token、Celery、response model/dump 逐点注入；DB rollback或稳定 delivery 状态符合阶段 |
+| logs | 无 email list/token/config/payload；read 可用 DEBUG；无 `member_removed` |
+| DTO/errors | 14 DTO、extra forbid、nullable RBAC role、role source、mutation supported 与稳定 error/status |
+| B4/B5 | contract 精确 7 route、无 DELETE；B5 不显示 delete，按 mutation/delivery 字段降级 |
+| B0 scope checker | 按实际 checker 范围运行并记录；不得把路径未覆盖冒充通过 |
 
-建议命令（依赖已存在时）：
+明确删除任何“成员 remove 成功”、last/current workspace 删除成功或直接删除 join 的测试。
+
+建议 focused 命令：
 
 ```bash
 uv run --project api pytest \
   api/tests/unit_tests/configs/test_platform_admin_config.py \
   api/tests/unit_tests/libs/test_platform_admin.py \
   api/tests/unit_tests/services/test_platform_admin_service.py \
-  api/tests/unit_tests/controllers/console/test_platform_admin.py \
-  api/tests/unit_tests/controllers/console/test_platform_admin_contract_source.py
-
-scripts/ci/check-enterprise-replay-scope.sh 1.16.0 HEAD
-git diff --check
+  api/tests/unit_tests/controllers/console/test_platform_admin.py
 ```
 
-Builder 还必须以 B3 的固定 base/head 运行 diff-owner 审核，确认仅 §8.1 路径。不得因当前环境缺依赖而安装
-依赖；缺失时记录 `NOT_RUN`。
-
-### 9.2 B4 注册/contract generation 后运行
-
-- 显式 import controller 后的 route registry 测试，确认 §3.2 全部且没有 deferred route。
-- `api/tests/unit_tests/controllers/common/test_schema.py`
-- `api/tests/unit_tests/commands/test_generate_swagger_specs.py`
-- `api/tests/unit_tests/commands/test_lint_response_contracts.py`
-- `api/tests/unit_tests/controllers/test_swagger.py` 中对应 Console spec assertions。
-- `pnpm --dir packages/contracts gen-api-contract`
-- 检查 GET query 在 query、request body/response `$ref`、204 空响应、400/401/403/404/409/503 schema。
-- 检查生成 `packages/contracts/generated/api/console/**` 含 status route和全部管理 route；由 B4 提交。
-
-### 9.3 隔离环境 integration tests
-
-在专用 PostgreSQL/Redis/Celery fake或受控 worker环境运行：
-
-- 真实 unique join、row lock、两个并发 invite/role/remove 的竞态。
-- seat/workspace feature payload与实际 join计数。
-- account+join commit/rollback、current flag保持。
-- task仅在 commit后可见；broker失败时 DB仍已提交且响应准确。
-- admin cookie/CSRF/non-admin/伪造 header 的完整 HTTP 流。
-- archive tenant、last owner、last/current workspace guard。
-- B4 生成 OpenAPI与实际响应 validation。
-
-### 9.4 当前明确 NOT_RUN
-
-本 Architect 任务不运行：
-
-- 任何依赖安装或锁定环境创建；
-- Docker/Compose；
-- PostgreSQL、Redis、Weaviate、volume；
-- migration/upgrade/downgrade/stamp；
-- Celery worker、真实邮件；
-- runtime browser/B5；
-- contract generation；
-- integration/runtime/发布验证。
-
-文档中的测试均为未来契约，不写成已经通过。
-
-## 10. B4 handoff
-
-B3 合并后，B4 必须接收：
-
-1. controller module：`api/controllers/console/platform_admin.py`。
-2. route：§3.2 的 8 条；不得新增 deferred route。
-3. request/response DTO：§3.1 全部。
-4. schema source：controller 中 Pydantic model registrations、query params、response decorators。
-5. tests：
-   - `api/tests/unit_tests/controllers/console/test_platform_admin.py`
-   - `api/tests/unit_tests/controllers/console/test_platform_admin_contract_source.py`
-   - 其余 config/helper/service tests作为不可回归基线。
-6. B4 注册动作：
-   - 在 `api/controllers/console/__init__.py` import `platform_admin`；
-   - 按当前 `__all__` 规则加入 module；
-   - 确认 import 一次且所有 route进入 Console namespace。
-7. B4 contract 动作：
-   - 同智慧广场 endpoint 一次性运行最终 Console OpenAPI/contracts generation；
-   - 运行 §9.2 tests；
-   - 只提交 generator 产物，不手改 generated files。
-8. B5 身份入口：只消费生成的 `/account/platform-admin-status`；管理 query/mutation只消费生成 route/types。
-
-B4 不得回头修改 B3 独占文件：
-
-- `api/configs/feature/__init__.py`
-- `api/libs/platform_admin.py`
-- `api/services/platform_admin_service.py`
-- `api/controllers/console/platform_admin.py`
-- B3 的 config/helper/service/controller/source tests
-
-若 contract generation 暴露 B3 schema defect，B4 必须暂停并交回 B3 owner形成独立修复，不得在 B4 顺手
-修改平台管理员实现。
+integration 环境后续才验证真实 PostgreSQL unique/row lock、Redis/Celery 与官方 `/activate` 接受流程。本计划
+修订任务不安装依赖，不运行 Docker、数据库、Redis、Weaviate、migration 或 contract generation。
 
 ## 11. 风险与最终建议
 
-### P0
+### 11.1 已整改
 
-0。允许范围、鉴权、route/DTO、单事务、post-commit 邮件、owner/last/current/seat guard 和 B3/B4 文件
-边界已形成可执行契约。
+- P0-1：通过整体延期并拒绝成员移除解决。
+- P1-1：恢复官方 ACTIVE 邀请—接受语义。
+- P1-2：补 billing freeze。
+- P1-3：固定正确 token revoke 路径。
+- P1-4：RBAC read 使用明确降级契约。
+- P1-5：enterprise/billing 各用单一 limit 来源。
+- P2-1～P2-5：锁等待、事务时序、current tenant、邮件依赖、LoginConfig 放置均已记录或修订。
 
-### P1
+### 11.2 未闭环风险
 
-1. `RBAC_ENABLED=true` 的远端 role authority 无法与本地 join原子提交；B3 明确 fail closed，后续若要求
-   支持必须独立设计 outbox/补偿、platform actor权限与审计。
-2. Account email 当前没有数据库 unique constraint；B3 Redis email lock覆盖 B3 并发，但不能约束同时
-   发生的范围外官方注册流。发现多行时 fail closed，后续 schema修复需独立 model/migration任务。
-3. 没有持久化 notification outbox；broker故障只能准确返回/记录 delivery failure，不能保证自动重试。
-4. 官方 DEBUG request logging可能记录 invite email payload；生产必须关闭 request-body DEBUG，B3 自身
-   logger仍保持脱敏。
+- RBAC mutation 不支持，开启时 fail closed；
+- Account email 无数据库 unique constraint，B3 lock 不能约束官方注册流；
+- notification 无 outbox，不保证 exactly-once/自动重试；
+- billing membership cache 清理是 post-commit best-effort，失败时可能短暂陈旧；
+- request DEBUG body 可能泄漏 PII，必须由部署门禁关闭；
+- 运维日志不是 audit model；
+- `PLATFORM_ADMIN_EMAILS` 配置变更需重启；
+- ACTIVE invitation capacity 检查不构成永久 seat reservation，最终一致性依赖官方接受流程；
+- service commit 后仍存在 controller/framework 序列化故障窗口。
 
-### P2
+## 12. 最终状态
 
-1. 运行日志不是持久化 audit model，不能用于合规证明或可靠回放。
-2. `PLATFORM_ADMIN_EMAILS` 是启动配置；变更按当前 Settings 生命周期需重启，不提供运行时管理 API。
-3. read success日志在超大部署可能有量；上线时通过现有日志级别/采集策略控制，不在 B3 新增采样系统。
-
-最终建议：**B3_READY**。Builder 必须严格实现本文件的低风险子集；不得用旧 1.15 CRUD、官方会自行
-commit 的 service 方法、通用“成员管理”措辞或 B4 contract generation扩大范围。
+- 技术建议：**B3_READY**
+- 流程状态：**PENDING_INDEPENDENT_REREVIEW**
+- Review 声明：**未宣称 PASS**
+- Builder：**不授权；等待独立复审 PASS**
