@@ -6,12 +6,14 @@
 
 B4 可以进入串行 Builder 阶段，但必须同时满足以下条件：
 
-1. Builder 从本计划核验的基线 `925b01e9d2486bd230bffdb5f3ecb41b83bdf8e4`
-   开始，不 merge、rebase、reset、cherry-pick 或复制旧企业实现。
+1. B4-A 只能在本修订计划复审 PASS 后，从 Reviewer 指定的精确接受 commit
+   开始；不得沿用本文历史 Architect commit 作为实现起点，不 merge、rebase、reset、
+   cherry-pick 或复制旧企业实现。
 2. B4-A、B4-B、B4-C 严格串行；后继 Builder 的任务单必须填写并核验前一阶段
    Reviewer 接受的精确 commit，禁止用分支名、`HEAD` 或未审工作树代替。
-3. 复杂旧数据 DSL 回填不得进入 Alembic；它是 schema 部署后的独立、可 dry-run、
-   可重试运维步骤，并且只能在隔离 PostgreSQL 副本先执行。
+3. 复杂旧数据 DSL 回填不得进入 Alembic；它由仓库内版本化、可测试、默认 dry-run 的
+   `flask data-migrate marketplace-snapshots` 命令执行，并且只能先在隔离 PostgreSQL
+   副本演练。
 4. B4-C 生成 contracts 时若发现 B3 schema 缺陷，立即停止并交回 B3 Fixer；
    B4 不修改 B3 独占文件。
 5. 本计划不授权数据库 migration、容器、Weaviate、volume、Docker、依赖或 Web 修改。
@@ -19,7 +21,9 @@ B4 可以进入串行 Builder 阶段，但必须同时满足以下条件：
 当前不需要产品/人工重新决定状态机或 API。需要人工执行的只是既有发布门禁：
 批准各 Builder 的精确起点和 allowlist、批准隔离副本上的回填与 migration 演练。
 
-风险计数：**P0=0，P1=3，P2=3**，详见 §16。
+Review 的 **P0=2、P1=5、P2=4 均已在计划层关闭**；唯一保留项是 P0-1 所揭示的
+官方 import 内部提交残留风险，按 `ACCEPTED_KNOWN_LIMITATION` 管理，不再虚构原子回滚。
+finding disposition 见 §18。
 
 ## 2. 当前基线和证据
 
@@ -146,12 +150,15 @@ B4 migration 新增：
 约束和索引：
 
 - 保留 PK、`unique_enterprise_marketplace_source_app(source_app_id)` 和两个旧索引；
-- 新增 check：`status IN ('pending','approved','rejected','unlisted')`；
+- **不**对历史 `status` 增加 CHECK；不 UPDATE、规范化、删除或猜测任何未知历史值；
+  Enum/Pydantic/service 只允许已知状态进入正常 mutation，未知值 fail closed 并分类为
+  `legacy_status_unknown` 等待人工处理；
 - 新增 check：
   `publication_status IN ('unpublished','published','unlisted')`；
 - 新增 check：
   `snapshot_state IN ('none','ready','backfill_pending','source_missing','failed')`；
-- 新增 check：`next_snapshot_version >= 1 AND row_version >= 0`；
+- 新增 check：`next_snapshot_version >= 1`；删除无实际并发保护价值的
+  `row_version >= 0` CHECK；
 - 新增索引
   `enterprise_marketplace_asset_publication_idx(publication_status, updated_at, id)`；
 - 新增索引
@@ -170,9 +177,9 @@ B4 migration 新增：
 | `id` | varchar(36) | NOT NULL | PK |
 | `asset_id` | varchar(36) | NOT NULL | 主资产软引用 |
 | `snapshot_version` | integer | NOT NULL | 每资产从 1 单调递增 |
-| `dsl_content` | text/LongText | NOT NULL | canonical、无 secret YAML |
+| `dsl_content` | text/LongText | NOT NULL | 官方 export 原字符串、无 secret YAML |
 | `dsl_version` | varchar(32) | NOT NULL | YAML 顶层 `version` |
-| `content_sha256` | char(64) | NOT NULL | UTF-8 canonical DSL 的 lowercase hex SHA-256 |
+| `content_sha256` | varchar(64) | NOT NULL | 官方 export 原字符串 UTF-8 字节的 lowercase hex SHA-256 |
 | `frozen_at` | datetime | NOT NULL | 审核通过冻结时间 |
 | `source_app_id` | varchar(36) | NOT NULL | 冻结时来源 App 审计 ID |
 | `source_tenant_id` | varchar(36) | NOT NULL | 冻结时来源 workspace ID |
@@ -210,8 +217,12 @@ B4 migration 新增：
 App/workspace/account 可能被删除，而历史资产与快照必须保留。
 
 也不为 `asset_id`/`published_snapshot_id` 建物理 FK：历史表原本无 FK，双向指针会增加
-migration 顺序和删除级联风险。service 在同一 Session 校验归属，删除主资产不是 B4 API；
-一致性由 migration/unit/integration invariant tests 检查。禁止 cascade delete。
+migration 顺序和删除级联风险。每次公开读取、copy、approve 和 backfill 都必须验证：
+`published_snapshot_id` 非空、对应 snapshot 存在且
+`snapshot.asset_id = asset.id`；完整性查询还必须报告 snapshot→asset 孤儿、非空 pointer
+缺失以及 pointer 指向其他 asset。service invariant、unit test、migration/backfill
+inventory 和 B8 PostgreSQL 验证共同覆盖。B4 禁止 asset delete 和 cascade delete；
+未来新增任何删除能力必须重新做 schema、保留和级联评审。
 
 ## 6. 状态机、重复操作与版本语义
 
@@ -235,9 +246,14 @@ migration 顺序和删除级联风险。service 在同一 Session 校验归属�
 | repeat unlist | publication unlisted | 409 `asset_already_unlisted` |
 | copy | publication published、state ready、pointer 对应快照 | 只导入 pointer 快照 |
 
-每次成功 submit/review/unlist 均 `row_version += 1`。review/unlist payload 必须传
-`expected_row_version`；resubmit 也必须传。首次 submit 不传。版本不匹配返回
-409 `stale_asset_version`。
+`FOR UPDATE` 负责数据库事务内串行化；`expected_row_version` 负责发现 HTTP 客户端基于
+陈旧响应发起 mutation。service 必须先按统一锁序锁行，再比较 expected/current version。
+每个成功改变可观察状态的 mutation 都 `row_version += 1`，包括 submit/resubmit、
+approve/reject/unlist，以及 backfill 的 ready、source_missing、failed 等
+`snapshot_state` 更新。review/unlist/resubmit 必须传版本，首次 submit 不传；失败后的
+retry 必须使用响应或受控 manifest 中读取的最新 row version。版本不匹配返回
+409 `stale_asset_version`。首次 submit 虽由 DB default 0 建行，也必须在同一 mutation
+中形成客户端可见的 `row_version=1`。
 
 审核通过在主资产 `FOR UPDATE` 锁内读取并递增 `next_snapshot_version`。同一
 source App 的并发首次提交由 source App row lock + unique constraint 收敛，冲突映射
@@ -306,8 +322,10 @@ DTO：
 | `snapshot_contains_secret` | 422 | 发布校验发现 secret/credential/token |
 | `nonportable_resource_reference` | 422 | workspace 私有资源或外链 icon |
 | `private_plugin_dependency` | 422 | package/private plugin 不能跨 workspace |
-| `dependency_unavailable` | 409 | 目标 workspace 缺少声明依赖；无 App 被创建 |
-| `copy_failed` | 422 | snapshot DSL import failed/pending；内部细节不回显 |
+| `dependency_unavailable` | 409 | 目标 workspace 缺少声明依赖；import 未开始、无 App 被创建 |
+| `dependency_service_unavailable` | 503 | dependency preflight timeout/Plugin Daemon 不可用；import 未开始 |
+| `copy_pending_unsupported` | 422 | 官方 import 返回 PENDING，不视为成功 |
+| `copy_failed` | 422 | 官方 import 返回 FAILED；内部细节不回显 |
 
 controller 只捕获 Pydantic validation 并把 domain/service error 映射为
 `MarketplaceHTTPError(BaseHTTPException)`；不得直接 SQLAlchemy、abort 或泄漏
@@ -318,8 +336,10 @@ controller 只捕获 Pydantic validation 并把 domain/service error 映射为
 
 审核通过的固定顺序：
 
-1. 在 service-owned transaction 中锁 asset，再按
-   `(App.id=source_app_id, App.tenant_id=source_tenant_id)` 锁 source App；要求 normal。
+1. 先用 asset ID 做非锁定定位以取得 `source_app_id/source_tenant_id`；再按
+   `(App.id=source_app_id, App.tenant_id=source_tenant_id)` 锁 source App，最后锁
+   asset。锁定 asset 后重新验证 status、row_version、source IDs 和 tenant scope；
+   定位结果与锁定行不一致即 fail closed。要求 source App normal。
 2. 精确调用：
 
    ```python
@@ -330,8 +350,9 @@ controller 只捕获 Pydantic validation 并把 domain/service error 映射为
    )
    ```
 
-3. `yaml.safe_load` 后要求 mapping、`kind=app`、version 为当前受支持字符串，重新用
-   canonical dumper 输出 UTF-8 YAML；hash 对 canonical 字节计算。
+3. 原样保存官方 `export_dsl(..., include_secret=False)` 返回字符串，并直接对其 UTF-8
+   原始字节计算 SHA-256。`yaml.safe_load` 只用于 mapping、`kind=app`、受支持 version、
+   sanitizer 和 dependency 提取；校验过程禁止排序、重写或重新 dump YAML。
 4. 结构化校验必须 fail closed：
    - workflow `value_type=secret` 的 value 必须为空；
    - 所有 tool/agent/model config 不得含 `credential_id`、credentials、API key、
@@ -344,13 +365,15 @@ controller 只捕获 Pydantic validation 并把 domain/service error 映射为
      不保存安装凭据；
    - `IconType.LINK` 与任何需要网络拉取的内容拒绝；B4 不发 HTTP；
    - 未识别的 credential/resource-bearing DSL 字段在 validator 未升级前拒绝发布。
-5. 从已校验 DSL 提取 dependencies，排序、去重并同时写入 DSL 与独立 JSON 列；
-   两者不一致则拒绝。
+5. DSL 内 dependencies 是发布快照的原始事实来源；从同一原始 DSL 解析并按稳定规则
+   规范化、排序、去重，生成独立 JSON manifest 作为派生索引。发布时验证两者语义一致，
+   但绝不为写入 manifest 而改写 DSL。
 6. 插入 snapshot、更新主表 pointer/state/version；绝不 UPDATE 旧 snapshot。
 
 测试使用 canary credentials、secret variables、API keys/tokens、私有 plugin
 credentials、knowledge IDs、file IDs 和 URL icon；除验证响应 code 外，不把 canary
-值写入日志或 snapshot assertion failure。
+值写入日志或 snapshot assertion failure。另验证保存的 `dsl_content` 与官方 export
+字符串逐字一致、hash 与 UTF-8 字节一致，并执行 export → validate → import round-trip。
 
 复制固定规则：
 
@@ -359,14 +382,24 @@ credentials、knowledge IDs、file IDs 和 URL icon；除验证响应 code 外�
 - 不查询 source App，不检查 source App 是否存在；
 - target tenant 只能来自 `current_account_with_tenant()`，且 `account.current_tenant_id`
   必须与之相同；body 不接受 tenant ID；
-- 用 snapshot dependencies 对目标 tenant 预检；缺失时 409，零 DB 写入；
-- 调用 `AppDslService(session).import_app(account=caller,
-  import_mode=ImportMode.YAML_CONTENT, yaml_content=snapshot.dsl_content, ...)`；
-- 仅接受 completed/completed-with-warnings 且 app_id 属于当前 tenant；pending/failed
-  均 rollback 并返回稳定错误；
-- import 后再次 `check_dependencies`；出现 leaked dependency 则 rollback，清理本次
-  import 对应的短期 dependency Redis key（best effort、仅使用本次新 app ID），返回
-  `dependency_unavailable`；
+- 只使用发布时已验证与 DSL 一致的 snapshot dependency manifest，对目标 tenant 做
+  import 前预检；禁止在 copy 时重新从其他来源推导。缺失或不允许的依赖必须在零 DB
+  写入状态下返回稳定错误；
+- timeout、Plugin Daemon 不可用统一映射可重试的 `dependency_service_unavailable`；
+  私有/Package/Remote 依赖映射不可重试的 `private_plugin_dependency`，不得泄漏 daemon
+  响应、连接信息或内部异常；
+- 预分配 UUID `import_app_id`，并调用
+  `AppDslService(session).import_app(account=caller,
+  import_mode=ImportMode.YAML_CONTENT, yaml_content=snapshot.dsl_content,
+  import_app_id=import_app_id, ...)`；客户端不能提供或覆盖它；
+- import 开始后不得增加任何 B4 自有、可能失败的业务校验，也不得调用 post-import
+  `check_dependencies`。之后只解释官方 Import status 并做不会抛出敏感信息的安全序列化；
+- `COMPLETED` 返回 201；`COMPLETED_WITH_WARNINGS` 返回 201 和脱敏 warnings（仅允许稳定
+  code，不透传内部文本）；`PENDING` 绝不视为成功，映射 `copy_pending_unsupported`；
+  `FAILED` 映射 `copy_failed`。所有失败都禁止向客户端返回 `Import.error`、DSL、credential
+  或内部异常；
+- 官方 import 创建的 dependency Redis key遵循官方 TTL/生命周期。Redis key 删除不是
+  DB 或 Plugin Daemon 补偿，B4 不以清 key 宣称回滚，也不新增危险删除逻辑；
 - 不允许客户端覆盖已有 app_id/import_app_id。
 
 发布后 source App 修改或删除不会改变 snapshot；copy 路径的测试必须使任何 source
@@ -375,20 +408,30 @@ App query 直接失败，从而证明没有动态回读。
 ## 10. Session、事务和并发
 
 - controller 通过 `with_session` 注入唯一 Session，只做 DTO、service 调用、序列化。
-- read service 只使用该 Session；write public method 在首个 DB query 前进入
-  `with session.begin():`，不调用会内部 commit 的 service。
+- read service 只使用该 Session。submit/review/reject/unlist/backfill 的 DB-only
+  mutation 可由 service-owned transaction 管理；copy 必须遵循官方 plain Session/import
+  行为，不在官方内部 commit 外虚构 `session.begin()` 嵌套原子事务。
 - submit：锁 source App；查询/锁 asset；首次 unique race 映射 409。
-- review：锁 asset 后锁 source App；export、校验、snapshot INSERT、pointer/state 更新
-  在同一事务。校验失败 rollback，不留下部分 snapshot。
+- review/approve：先非锁定定位 asset 的 source IDs，再锁 source App，最后锁 asset并
+  重验 status、row_version、source IDs、tenant scope；export、校验、snapshot INSERT、
+  pointer/state 更新在同一事务。
+- resubmit：先锁 source App，再锁 asset并重验；backfill 同时使用两者时也必须先 source
+  App 后 asset。
 - reject/unlist：锁 asset，检查 expected row version 后 mutation。
-- copy：用 PostgreSQL shared row lock使多个 copy 可并发、unlist 等更新等待；导入和
-  新 App 创建在同一事务。数据库外 plugin/Redis 调用必须在写入前预检；失败不产生 App。
-- 固定锁顺序均为 asset → source App；submit 只有 source App → asset，因此 review 不得
-  同时等待 source lock 后回取另一 asset。并发 PostgreSQL 测试验证无死锁。
-- `with_session` handler 返回后的 commit 只有 no-op；有效业务 commit/rollback 由 service
-  transaction 所有。禁止隐式 `db.session` 和第二 Session。
-- copy 的 plugin preflight 是外部 I/O，可能在 shared lock 下延长事务；设置明确 service
-  timeout，超时映射 dependency unavailable，不无限等待。
+- **全局锁序唯一为 source App → asset**；禁止任何 asset → source App 路径。reject/
+  unlist 不读取或锁 source App 时只锁 asset，不构成逆序。
+- copy 在 import 前完成 snapshot/pointer/hash/manifest/tenant 与 dependency 的全部
+  fail-closed 检查，且此前零 DB 写入；import 开始后只解释官方结果和安全序列化。
+- `AppDslService.import_app()` 的普通 workflow 路径会调用
+  `WorkflowService.sync_draft_workflow(commit=True)`，可能中途提交 App、InstalledApp、
+  Site、Workflow，并触发 signal/Redis 状态。因此外层 rollback 不能保证撤销整个 copy，
+  计划也不再作此承诺。官方 import 自身在内部 commit 后仍可能返回 FAILED，这是
+  `KNOWN_LIMITATION`：使用预分配 `import_app_id`、asset/snapshot/tenant/request ID 和稳定
+  status 日志形成受控 reconciliation 证据，但不自动删除对象。
+- 若实现审查发现上述边界仍不足以达到可接受安全性，必须把结论改为 `B4_BLOCKED`，
+  不得用 rollback 或 Redis 清理文字掩盖。
+- 禁止隐式 `db.session` 和第二 Session。B4-B 必须规划真实 PostgreSQL 的并发
+  submit/review/backfill 测试，设置 lock timeout，并证明无死锁和 stale version 误放行。
 
 ## 11. Migration 与旧数据
 
@@ -403,8 +446,15 @@ Alembic 只执行确定性 schema 和轻量状态初始化：
    - old `unlisted` → publication `unlisted`、snapshot `none`；
    - pending/rejected → publication `unpublished`、snapshot `none`；
 4. `next_snapshot_version=1`、`row_version=0`；
-5. 加 NOT NULL/check/index；
+5. 对所有历史值使用穷尽 `CASE ... ELSE` 初始化 B4 自有列后，再加安全的
+   NOT NULL/check/index；`publication_status` 与 `snapshot_state` CHECK 只约束 B4 自有
+   且已安全初始化的值，不会因未知旧 status 导致 upgrade 失败；
 6. 不改旧 status、source IDs、metadata、reviewer、行数及三个时间戳。
+
+未知 old status 的 `ELSE` 映射固定为：
+`publication_status='unpublished'`、`snapshot_state='failed'`、
+`snapshot_error_code='legacy_status_unknown'`。它保持旧 `status` 原值、永不公开并进入
+人工 inventory。migration 绝不 UPDATE、规范化或删除未知 status。
 
 migration 禁止 import 应用 service、export DSL、访问 Redis/plugin/network、逐行解析复杂
 DSL、删除来源丢失记录或猜测状态。
@@ -430,32 +480,63 @@ downgrade 仅允许在未发布环境做 schema reversal：
 | tenant 不匹配/重复异常 | 行保留，隐藏 | `failed`，需人工 inventory |
 | old approved 无 snapshot | 必为 backfill_pending | 回填成功前 list/detail/copy 都不可公开 |
 | pending/rejected/unlisted | 原 status 保留 | 默认不 export；报告 inventory，后续正常 resubmit/review |
+| 未知历史 status | 原 status 保留；unpublished/failed | 不进入正常 mutation；稳定分类后人工处理 |
 
 ## 12. 独立回填步骤
 
-回填不是 migration。B4-B 在 service 中提供一个仅供受控运维调用的
-`backfill_legacy_snapshot(asset_id, dry_run, expected_row_version)`，但不新增公开 HTTP
-route。实际 runner 使用 `/tmp` 中不提交仓库的一次性、审阅过的调用脚本，逐 ID 调用；
-不得把连接串、DSL 或 secret 输出到命令行/日志。
+回填不是 migration。B4-B 在 service 中提供仅供受控运维调用的
+`backfill_legacy_snapshot(asset_id, dry_run, expected_row_version)`，不新增公开 HTTP
+route；同时在 `api/commands/data_migrate.py` 增加并注册版本化
+`marketplace-snapshots` 子命令，由现有 `api/extensions/ext_commands.py` 注册的
+`data-migrate` group 暴露为 `flask data-migrate marketplace-snapshots`。默认 dry-run，
+只有显式 `--apply` 才写入；禁止 `/tmp` 一次性未版本化 runner。
 
 执行协议：
 
-1. read-only inventory 输出 count by status/snapshot state/source classification，不输出 DSL；
-2. `--dry-run` 对每行做 source scope、export、sanitizer、dependency/hash 验证，但不写 DB；
-3. 保存结构化 manifest：asset ID、旧状态、source 分类、预期 version、结果 code、hash 指纹前
-   12 位；权限 0600；
+1. 支持全量 read-only inventory、单 `--asset-id`、`--id-file`、retry manifest 和错误阈值；
+   输出 count by status/snapshot state/source classification，不输出 DSL；
+2. 默认 dry-run 对每行做 source scope、export、sanitizer、dependency/hash 验证但不写 DB；
+3. stdout/`--output` 只输出 JSONL 稳定事件；manifest 包含 asset ID、旧状态、source 分类、
+   操作前后 row version、结果 code、hash 指纹前 12 位，文件必须 0600 并记录完整文件
+   SHA-256；禁止 email、DSL、secret、token、credential、连接串、SQL 或内部异常；
 4. apply 每资产一个 transaction，`FOR UPDATE` + expected row version；成功写 v1 并发布；
-5. 失败只更新 snapshot state 为 source_missing/failed 和稳定 reason，不改旧 status、不删行；
-6. 重跑时 ready 行校验 hash 后 skip；failed/pending 可按 ID retry；同 asset/version unique
-   防重复；
+5. apply 的成功、source_missing、failed 状态更新都递增 row_version；不改旧 status、不删行；
+6. 重跑时 ready 行校验 hash 后 skip；failed/pending 使用 manifest/DB 最新 row_version 按 ID
+   retry；同 asset/version unique 防重复；
 7. 中断后从 manifest 的未完成 ID 继续；错误阈值触发停止；
 8. 隔离副本先验证总行数、状态、source IDs、时间戳和抽样 hash，再申请生产窗口；
 9. 恢复只用升级前备份；不自动删除 snapshot 或 downgrade。
 
-本地 Builder 只测试 service/dry-run contract，不连接真实数据库。B8/隔离 PostgreSQL 副本才
-执行实际 inventory、dry-run/apply/恢复演练。
+command/service focused tests覆盖默认 dry-run、显式 apply、单 ID/ID file、retry、阈值、
+JSONL 脱敏、manifest 权限/hash 和未知 status。实际 inventory、dry-run/apply/恢复演练仍只在
+B8/隔离 PostgreSQL 副本执行。
 
-## 13. B3 注册与最终 contracts
+## 13. 结构化日志与信息泄漏边界
+
+日志是运维与 reconciliation 证据，不是正式 audit table，不满足不可抵赖审计。所有事件使用
+稳定 event/code 字段；允许记录 request ID、asset ID、snapshot ID/version、source app ID、
+target tenant ID、预分配 import app ID、actor account ID、row version 和脱敏 hash 指纹。
+一律禁止 email、DSL、token、credential、`Import.error`、查询正文、SQL、连接串、Plugin
+Daemon 响应或内部异常文本。
+
+| event | level | 必要语义 |
+| --- | --- | --- |
+| `marketplace.submission_created` | info | asset/source/tenant/actor/new row version |
+| `marketplace.submission_resubmitted` | info | asset/source/actor/old+new row version |
+| `marketplace.review_approved` | info | asset/snapshot/version/reviewer/new row version |
+| `marketplace.review_rejected` | info | asset/reviewer/new row version/stable reason code |
+| `marketplace.asset_unlisted` | info | asset/reviewer/new row version |
+| `marketplace.asset_copied` | info | asset/snapshot/target tenant/import app/status |
+| `marketplace.copy_failed` | warning（预期状态/依赖失败）或 error（内部异常/可能残留） | 稳定阶段与错误 code；已知可能残留时含 import app ID |
+| `marketplace.backfill_started` | info | run/manifest hash/mode/count |
+| `marketplace.backfill_completed` | info | run/counts/manifest hash |
+| `marketplace.backfill_failed` | error | run/asset/stable code/latest row version |
+
+public response 不返回 reviewer、submitter、隐藏 workspace、source tenant/account 信息；
+错误响应不回显分页 keyword/query 原文、`Import.error`、SQL、Plugin Daemon 或内部异常。
+controller/service tests用 canary 值断言 response、日志与 JSONL 均无泄漏。
+
+## 14. B3 注册与最终 contracts
 
 `api/controllers/console/__init__.py` 只做两项显式 import：
 
@@ -493,7 +574,7 @@ pnpm --dir packages/contracts gen-api-contract
 交回 B3 Fixer。B4 不编辑 B3 controller/service/libs/tests/config，也不手改生成文件绕过。
 B5 只能在 B4-C commit 接受后消费 contracts，不得重新生成。
 
-## 14. 文件 allowlist / denylist
+## 15. 文件 allowlist / denylist
 
 ### B4 总 allowlist
 
@@ -502,10 +583,12 @@ B5 只能在 B4-C commit 接受后消费 contracts，不得重新生成。
 - `api/models/model.py`
 - `api/controllers/console/enterprise_marketplace.py`
 - `api/services/enterprise_marketplace_service.py`
+- `api/commands/data_migrate.py`（仅 B4-B marketplace-snapshots 子命令与注册）
 - 经 Reviewer 预先批准、且只服务 B4 的
   `api/services/errors/enterprise_marketplace.py` 或 controller-local error/DTO
 - `api/tests/unit_tests/models/test_enterprise_marketplace.py`
 - `api/tests/unit_tests/services/test_enterprise_marketplace_service.py`
+- `api/tests/unit_tests/commands/test_marketplace_snapshot_backfill.py`
 - `api/tests/unit_tests/controllers/console/test_enterprise_marketplace.py`
 - `api/tests/unit_tests/migrations/test_enterprise_1_16_marketplace_migration.py`
 - 必要的 container integration test，路径在 Builder 开始前精确登记
@@ -527,16 +610,23 @@ B5 只能在 B4-C commit 接受后消费 contracts，不得重新生成。
 出现未登记文件立即停止；若实现证明必须修改 denylist，结论转为
 `B4_BLOCKED` 或 `HUMAN_DECISION_REQUIRED`，不得扩 scope。
 
-## 15. Builder 拆分与串行 handoff
+## 16. Builder 拆分与串行 handoff
 
 推荐拆为三个严格串行 Builder；不得并行修改 model/service/controller/contracts。
 
 ### B4-A：schema/model/migration
 
-- 精确起点：`925b01e9d2486bd230bffdb5f3ecb41b83bdf8e4`。
-- allowlist：model 两文件、最终 migration、model/migration focused tests。
+- 启动门禁：本修订计划 Reviewer PASS 后，任务单填写该 Reviewer 接受的精确 commit；
+  未通过复审不得启动。
+- 精确 allowlist：
+  `api/models/__init__.py`、`api/models/model.py`、
+  `api/migrations/versions/2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`、
+  `api/tests/unit_tests/models/test_enterprise_marketplace.py`、
+  `api/tests/unit_tests/migrations/test_enterprise_1_16_marketplace_migration.py`。
 - denylist：service/controller/init/contracts、B2/B3/Web/Docker。
-- 交付：§5/§11 完整 schema、model、migration graph tests。
+- 交付：§5/§11 完整 schema、model、migration graph tests；不加 legacy status CHECK，
+  hash 使用 VARCHAR(64)。migration test 必须含未知 status fixture，证明 upgrade 成功、
+  原 status/source IDs/时间戳不变且 publication 不公开。
 - 测试：
 
   ```bash
@@ -552,15 +642,22 @@ B5 只能在 B4-C commit 接受后消费 contracts，不得重新生成。
 
 - 精确起点规则：任务单必须填入“B4-A Reviewer 接受的单一 commit SHA”；该 SHA 在 B4-A
   完成前客观不存在，禁止预填、用 `HEAD` 或分支名替代。起点不满足则不得启动。
-- allowlist：enterprise marketplace service、专用 error/domain 文件、service tests。
+- 起点必须是 B4-A Reviewer 接受的单一 commit。
+- allowlist：enterprise marketplace service、专用 error/domain 文件、
+  `api/commands/data_migrate.py` 中 marketplace-snapshots 子命令/注册、
+  service tests 和
+  `api/tests/unit_tests/commands/test_marketplace_snapshot_backfill.py`。
 - denylist：model/migration/controller/init/contracts、B3/Web/Docker。
 - 依赖：只能在 B4-A review PASS 后开始。
-- 交付：§6、§8–§12 service、sanitizer、copy、backfill primitive。
+- 交付：§6、§8–§13 service、sanitizer、原始 DSL/hash、统一 source App → asset
+  锁序、manifest-only dependency preflight、遵循官方内部 commit 已知限制的 copy，以及
+  版本化 backfill command。禁止 post-import dependency rejection；禁止修改 B3 独占文件。
 - 测试：
 
   ```bash
   uv run --project api pytest \
-    api/tests/unit_tests/services/test_enterprise_marketplace_service.py
+    api/tests/unit_tests/services/test_enterprise_marketplace_service.py \
+    api/tests/unit_tests/commands/test_marketplace_snapshot_backfill.py
   ```
 
 - handoff：接受 commit、public method/exception 清单、状态矩阵、session/lock 证据、
@@ -573,6 +670,7 @@ B5 只能在 B4-C commit 接受后消费 contracts，不得重新生成。
   generated console contracts。
 - denylist：model/migration/service/B3 独占文件/Web/Docker。
 - 依赖：B4-B review PASS。
+- 不修改 B4-A model/migration 或 B4-B service/command 文件。
 - 交付：8 条 B4 route、B3+B4 注册、真实 route tests、唯一 final contracts。
 - 测试：
 
@@ -594,9 +692,9 @@ B5 只能在 B4-C commit 接受后消费 contracts，不得重新生成。
 写入下一任务单”是启动硬门禁。这也是采用 `B4_READY_WITH_CONDITIONS` 而非 `B4_READY`
 的原因之一。最终 contracts 只能由 B4-C 生成。
 
-## 16. 测试矩阵、验证地点与风险
+## 17. 测试矩阵、验证地点与风险
 
-### 16.1 Builder 本地必须执行
+### 17.1 Builder 本地必须执行
 
 - tenant scope、admin/non-admin、DTO extra forbid、稳定 error body；
 - 完整状态转换和非法状态；
@@ -604,51 +702,74 @@ B5 只能在 B4-C commit 接受后消费 contracts，不得重新生成。
 - source App 修改/删除后 copy 不查询 source；
 - canary secret、credential、token、private plugin、workspace resource 被拒；
 - hash/version/frozen_at、append-only snapshot；
+- 官方 export 原字符串逐字保存、原始 UTF-8 hash、export→validate→import round-trip；
 - target workspace 只来自 current caller；
-- rollback/exception injection、显式 Session、controller 无 SQLAlchemy；
-- dependency manifest/leak/missing 语义；
+- 官方 import status/内部 commit exception injection、显式 Session、controller 无 SQLAlchemy；
+- dependency manifest 与 DSL 一致、preflight missing/private/timeout/daemon unavailable，
+  且无 post-import dependency rejection；
+- unknown legacy status fail closed、row version 每次可观察 mutation 递增；
+- snapshot→asset/pointer 完整性查询和禁止删除；
+- structured log/response/JSONL canary 泄漏检查；
 - B3 精确 7 routes、无 DELETE/延期高风险 routes；
 - B4 精确 8 routes；
 - contract generation、semantic generated diff、二次生成稳定；
 - static migration graph 唯一 `b416e5c4e702`；
 - `git diff --check` 与 scope checker。
 
-### 16.2 隔离 PostgreSQL 副本/B8 必须执行
+### 17.2 隔离 PostgreSQL 副本/B8 必须执行
 
 - 四起点：空库、官方 1.16 head、旧企业 `e2f0a9b7c6d5`、B2 merge head；
-- 实际 DDL/check/index/unique、row/shared locks、并发 approve/unlist/copy、死锁测试；
+- 实际 DDL/check/index/unique、row locks，以及并发 submit/review/backfill 的真实
+  PostgreSQL 死锁/锁顺序测试；
 - migration 前后旧表行数/status/source_app_id/created/updated/reviewed 时间；
 - 回填 inventory → dry-run → apply → retry → failure recovery；
 - 来源 normal/deleted/abnormal/tenant mismatch fixture；
 - 旧 approved 无 snapshot 在回填前隐藏，回填后可复制；
-- Redis/plugin dependency integration 和失败残留清理；
-- 官方 import 创建 App 的完整 transaction/rollback；
+- Redis/plugin dependency preflight integration 与官方 TTL/生命周期；
+- 官方 import 创建 App、InstalledApp、Site、Workflow、signal、Redis 的状态证据，以及
+  internal-commit 后 FAILED 的已知残留/reconciliation 证据；
 - A workspace 提交、admin 审核、B current workspace 复制并运行；
 - 备份恢复回滚；不得在实际 volume 原地演练。
 
 Integration tests 按仓库约定为 CI/隔离环境，不冒充本地已运行。MySQL 仅在将来声明支持时
 条件执行；本轮发布阻断数据库为 PostgreSQL。
 
-### 16.3 风险
+### 17.3 已知限制与非阻断风险
 
-P1：
-
-1. DSL export 的未来字段可能绕过已知 sanitizer；以版本化、fail-closed validator 和 canary
+1. `ACCEPTED_KNOWN_LIMITATION`：官方 import 内部 commit 后仍可能 FAILED；预分配
+   import app ID 和结构化日志支持受控 reconciliation，但 B4 不宣称原子化也不自动删除。
+2. DSL export 的未来字段可能绕过已知 sanitizer；以版本化、fail-closed validator 和 canary
    tests 缓解。
-2. App import 同时涉及 Redis dependency marker；DB rollback 不能自动回滚 Redis，必须用本次
-   app ID best-effort 清理并在隔离环境验证。
-3. 旧 approved 行在独立回填前不可公开，升级窗口存在功能暂时不可用；通过 inventory、
-   dry-run、分批重试和明确发布门禁控制。
+3. 旧 approved 行在独立回填前不可公开；通过 inventory、dry-run、分批 retry 和发布门禁控制。
+4. 无物理 FK 依赖 service/inventory/B8 invariant；未来删除能力必须重审。
+5. page-number pagination 在高并发写入时可能跨页漂移；稳定排序/id tie-breaker 只保证可复现。
 
-P2：
+## 18. Review finding disposition 与最终验收
 
-1. 无物理 FK 依赖 service invariant；这是为保留来源删除后的历史而接受的限制。
-2. page-number pagination 在高并发写入时可能跨页漂移；稳定排序/id tie-breaker 可复现顺序，
-   B5 首版接受。
-3. shared lock 下 dependency preflight 可能延长 copy transaction；以 timeout、多个 copy 共享锁
-   和 PostgreSQL integration test 控制。
+人工决定 P1-1 **方案 B 已落实**：不加 legacy status CHECK、不改未知 status，应用层
+fail closed，migration 将未知行初始化为隐藏且待人工处理的 B4 状态。
 
-## 17. 人工门禁与最终验收
+| Finding | disposition | 修订章节 | Builder 验证 |
+| --- | --- | --- | --- |
+| P0-1 copy/内部 commit | `ACCEPTED_KNOWN_LIMITATION` | §9 copy、§10、§17.3 | B4-B 证明全部自有校验在 import 前且零 DB 写入；无 post-import dependency rejection；覆盖四种 Import status、预分配 ID 和 internal-commit 后 FAILED reconciliation |
+| P0-2 锁顺序 | `CLOSED` | §9、§10、§17.2 | B4-B unit lock-order assertion；真实 PostgreSQL submit/review/backfill 并发死锁测试 |
+| P1-1 legacy status | `CLOSED` | §5.1、§11、§16 B4-A | 未知 status fixture upgrade 不失败、不改原值、不公开；DDL 无 legacy status CHECK |
+| P1-2 row_version | `CLOSED` | §6.2、§10、§12 | 锁后比较 expected/current；每个可观察 mutation +1；retry 使用最新版本 |
+| P1-3 post-import 副作用 | `ACCEPTED_KNOWN_LIMITATION` | §9 copy、§10、§17.3 | 删除完整 rollback 承诺；记录 App/InstalledApp/Site/Workflow/signal/Redis 与受控 reconciliation 证据 |
+| P1-4 DSL/hash | `CLOSED` | §5.2、§9 | 原 export 逐字保存、UTF-8 hash、无 dump、round-trip |
+| P1-5 Redis/dependencies | `CLOSED` | §8、§9、§10 | DSL/manifest 一致；仅 preflight；timeout/daemon/private 稳定错误；无 Redis 补偿宣称 |
+| P2-1 无 FK | `CLOSED` | §5.3、§17 | orphan/pointer ownership 查询、service/migration/B8 invariant、禁止 delete |
+| P2-2 hash 类型 | `CLOSED` | §5.2、§16 B4-A | model/DDL 精确断言 `VARCHAR(64)` |
+| P2-3 回填 runner | `CLOSED` | §12、§15、§16 B4-B | 版本化 command、默认 dry-run、apply/ID/retry/JSONL/manifest tests |
+| P2-4 审计/泄漏 | `CLOSED` | §13 | event matrix、level/ID allowlist、canary log/response/JSONL 测试 |
+
+Review finding 的阻断剩余数为 **P0=0、P1=0、P2=0**。上述两个
+`ACCEPTED_KNOWN_LIMITATION` 是同一官方 import 内部 commit 根因的诚实边界，不是未解决的
+B4 自有设计检查；如 Builder 无法维持该边界，立即转为 `B4_BLOCKED`。
+
+B4-A 在本计划 Reviewer PASS 且精确起点登记后允许启动；B4-B 仅在 B4-A Reviewer 接受
+commit 后允许启动；B4-C 仅在 B4-B Reviewer 接受 commit 后允许启动。B4-C 若暴露 B3
+defect 必须暂停交回 B3 Fixer。
 
 人工/Reviewer 必须确认：
 
