@@ -2759,3 +2759,212 @@ class TenantCreditPool(TypeBase):
 
     def has_sufficient_credits(self, required_credits: int) -> bool:
         return self.remaining_credits >= required_credits
+
+
+# -- Enterprise Marketplace --------------------------------------------------
+
+
+class EnterpriseMarketplaceAssetPublicationStatus(StrEnum):
+    """Publication lifecycle for marketplace assets.
+
+    * unpublished – not visible to public list/detail/copy
+    * published   – visible; pointer ``published_snapshot_id`` must reference
+                    a non-deleted snapshot row whose ``asset_id`` matches
+    * unlisted    – previously published but taken down; snapshot rows preserved
+    """
+
+    UNPUBLISHED = "unpublished"
+    PUBLISHED = "published"
+    UNLISTED = "unlisted"
+
+
+class EnterpriseMarketplaceAssetSnapshotState(StrEnum):
+    """Operational state of the snapshot generation / backfill pipeline.
+
+    * none              – no snapshot attempt has been made
+    * ready             – snapshot exists and is confirmed valid
+    * backfill_pending  – legacy approved row waiting for offline backfill
+    * source_missing    – source App was deleted / not found
+    * failed            – snapshot generation failed with a stable error_code
+    """
+
+    NONE = "none"
+    READY = "ready"
+    BACKFILL_PENDING = "backfill_pending"
+    SOURCE_MISSING = "source_missing"
+    FAILED = "failed"
+
+
+class EnterpriseMarketplaceAsset(TypeBase):
+    """Main enterprise marketplace asset row.
+
+    Soft-references a source App (``source_app_id``, ``source_tenant_id``)
+    without physical FKs so that historical rows survive App/Tenant/Account
+    deletion. The ``published_snapshot_id`` is an audit pointer to the
+    currently published snapshot; its ``asset_id`` must match.
+
+    Row deletion is forbidden. Cascade delete is never configured.
+    """
+
+    __tablename__ = "enterprise_marketplace_assets"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="enterprise_marketplace_asset_pkey"),
+        sa.UniqueConstraint("source_app_id", name="unique_enterprise_marketplace_source_app"),
+        sa.Index("enterprise_marketplace_asset_source_tenant_id_idx", "source_tenant_id"),
+        sa.Index("enterprise_marketplace_asset_status_idx", "status", "updated_at"),
+        sa.Index(
+            "enterprise_marketplace_asset_publication_idx",
+            "publication_status",
+            "updated_at",
+            "id",
+        ),
+        sa.Index(
+            "enterprise_marketplace_asset_submitter_idx",
+            "source_tenant_id",
+            "submitter_account_id",
+            "updated_at",
+            "id",
+        ),
+        sa.CheckConstraint(
+            "publication_status IN ('unpublished', 'published', 'unlisted')",
+            name="ck_marketplace_asset_publication_status",
+        ),
+        sa.CheckConstraint(
+            "snapshot_state IN ('none', 'ready', 'backfill_pending', 'source_missing', 'failed')",
+            name="ck_marketplace_asset_snapshot_state",
+        ),
+        sa.CheckConstraint(
+            "next_snapshot_version >= 1",
+            name="ck_marketplace_asset_next_snapshot_version",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
+
+    # ── Required fields (no default in __init__) ──
+    source_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    source_app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    submitter_account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    title: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+
+    # ── Fields with defaults ──
+    tags: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)
+    reviewer_account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    status: Mapped[str] = mapped_column(
+        sa.String(32), nullable=False, default="pending", server_default=sa.text("'pending'")
+    )
+    description: Mapped[str] = mapped_column(LongText, nullable=False, default="", server_default=sa.text("''"))
+    category: Mapped[str] = mapped_column(
+        sa.String(255), nullable=False, default="General", server_default=sa.text("'General'")
+    )
+    scenario: Mapped[str] = mapped_column(LongText, nullable=False, default="", server_default=sa.text("''"))
+    allow_show_workspace_name: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
+    )
+    review_note: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    publication_status: Mapped[EnterpriseMarketplaceAssetPublicationStatus] = mapped_column(
+        EnumText(EnterpriseMarketplaceAssetPublicationStatus, length=32),
+        nullable=False,
+        default=EnterpriseMarketplaceAssetPublicationStatus.UNPUBLISHED,
+        server_default=sa.text("'unpublished'"),
+    )
+    published_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    next_snapshot_version: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, default=1, server_default=sa.text("1")
+    )
+    row_version: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, default=0, server_default=sa.text("0")
+    )
+    snapshot_state: Mapped[EnterpriseMarketplaceAssetSnapshotState] = mapped_column(
+        EnumText(EnterpriseMarketplaceAssetSnapshotState, length=32),
+        nullable=False,
+        default=EnterpriseMarketplaceAssetSnapshotState.NONE,
+        server_default=sa.text("'none'"),
+    )
+    snapshot_error_code: Mapped[str | None] = mapped_column(sa.String(64), nullable=True, default=None)
+
+    # ── Auto-generated timestamps ──
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None, init=False)
+
+
+class EnterpriseMarketplaceAssetSnapshot(TypeBase):
+    """Append-only, immutable snapshot of a marketplace asset's DSL at review approval time.
+
+    Rows are never updated or deleted. The owning asset references the current
+    published version via ``published_snapshot_id`` (a soft audit pointer, not a FK).
+    The unique constraint ``(asset_id, snapshot_version)`` ensures at-most-one
+    snapshot per version.
+
+    ``content_sha256`` captures the SHA-256 lowercase hex digest of the
+    original ``export_dsl`` UTF-8 bytes. The column is ``VARCHAR(64)``, never
+    ``CHAR(64)``.
+    """
+
+    __tablename__ = "enterprise_marketplace_asset_snapshots"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="enterprise_marketplace_snapshot_pkey"),
+        sa.UniqueConstraint(
+            "asset_id", "snapshot_version",
+            name="enterprise_marketplace_snapshot_asset_version_uq",
+        ),
+        sa.Index("enterprise_marketplace_snapshot_asset_frozen_idx", "asset_id", "frozen_at", "id"),
+        sa.Index("enterprise_marketplace_snapshot_sha256_idx", "content_sha256"),
+        sa.CheckConstraint(
+            "snapshot_version >= 1",
+            name="ck_marketplace_snapshot_version",
+        ),
+        sa.CheckConstraint(
+            "char_length(content_sha256) = 64",
+            name="ck_marketplace_snapshot_content_sha256_length",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
+
+    # ── Required fields (no default) ──
+    asset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    snapshot_version: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    dsl_content: Mapped[str] = mapped_column(LongText, nullable=False)
+    dsl_version: Mapped[str] = mapped_column(sa.String(32), nullable=False)
+    content_sha256: Mapped[str] = mapped_column(sa.VARCHAR(64), nullable=False)
+    frozen_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False)
+    source_app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    source_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    submitter_account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    reviewer_account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    title: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    app_name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    app_mode: Mapped[str] = mapped_column(sa.String(32), nullable=False)
+
+    # ── Fields with defaults ──
+    tags: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)
+    dependencies: Mapped[list[dict[str, Any]]] = mapped_column(
+        sa.JSON, nullable=False, default_factory=list
+    )
+    source_tenant_name: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
+    description: Mapped[str] = mapped_column(LongText, nullable=False, default="", server_default=sa.text("''"))
+    category: Mapped[str] = mapped_column(
+        sa.String(255), nullable=False, default="General", server_default=sa.text("'General'")
+    )
+    scenario: Mapped[str] = mapped_column(LongText, nullable=False, default="", server_default=sa.text("''"))
+    allow_show_workspace_name: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
+    )
+    app_description: Mapped[str] = mapped_column(LongText, nullable=False, default="", server_default=sa.text("''"))
+    app_icon_type: Mapped[str | None] = mapped_column(sa.String(32), nullable=True, default=None)
+    app_icon: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    app_icon_background: Mapped[str | None] = mapped_column(sa.String(32), nullable=True, default=None)
