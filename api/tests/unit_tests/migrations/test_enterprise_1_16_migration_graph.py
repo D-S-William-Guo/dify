@@ -33,6 +33,7 @@ C8F3 = "c8f3d9d4a1be"
 F1A1 = "f1a14e1e9b41"
 E2F0 = "e2f0a9b7c6d5"
 A71E = "a71e16c0de01"
+B416E = "b416e5c4e702"
 OFFICIAL_116_HEAD = "7a1c2d9e4b60"
 OFFICIAL_115_HEAD = "d9e8f7a6b5c4"
 RECOMMENDED_APP_CATEGORIES = "a4f2d8c9b731"
@@ -113,11 +114,11 @@ class TestNewMergeParents:
 
 
 class TestSingleHead:
-    def test_graph_has_exactly_one_head_and_it_is_a71e16c0de01(
+    def test_graph_has_exactly_one_final_head_and_it_is_b416e5c4e702(
         self, script_directory: ScriptDirectory
     ) -> None:
         heads = script_directory.get_heads()
-        assert heads == [A71E]
+        assert heads == [B416E]
 
 
 class TestEmptyMergeIsNoop:
