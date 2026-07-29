@@ -243,8 +243,11 @@ def marketplace_snapshots(
     No DSL, email, token, credential, connection string, SQL, or internal
     exception text is emitted.  The manifest records asset ID, old status,
     source classification, before/after row version, result code, and the
-    first 12 hex chars of the content SHA-256.
+    full content SHA-256.
     """
+    _SUCCESS_CODES = frozenset({"ok", "dry_run_ok"})
+    _SKIPPED_CODES = frozenset({"ready_skip", "ineligible"})
+
     asset_ids = _collect_asset_ids(list(asset_id), id_file, retry_manifest)
 
     run_id = str(uuid.uuid4())
@@ -291,26 +294,33 @@ def marketplace_snapshots(
         status_acc: dict[str, int] = {}
         state_acc: dict[str, int] = {}
         source_acc: dict[str, int] = {}
-        processed = 0
-        consecutive_errors = 0
+        attempted = 0
+        succeeded = 0
+        skipped = 0
+        failed = 0
+        consecutive_failures = 0
         total_assets = len(asset_ids)
 
         for aid in asset_ids:
-            if consecutive_errors >= error_threshold:
+            if consecutive_failures >= error_threshold:
                 click.echo(f"Error threshold {error_threshold} reached, halting.", err=True)
                 break
 
             try:
+                asset_rv = None
                 with Session(db.engine, expire_on_commit=False) as asset_session:
                     svc = EnterpriseMarketplaceService(asset_session)
                     asset_obj = asset_session.get(EnterpriseMarketplaceAsset, aid)
                     if asset_obj is None:
                         _write_entry({"asset_id": aid, "result_code": "not_found",
-                                      "dry_run": not apply, "run_id": run_id})
-                        consecutive_errors += 1
+                                       "dry_run": not apply, "run_id": run_id})
+                        attempted += 1
+                        failed += 1
+                        consecutive_failures += 1
                         continue
 
                     expected_rv = asset_obj.row_version
+                    asset_rv = asset_obj.row_version
                     result = svc.backfill_legacy_snapshot(
                         asset_id=aid, dry_run=not apply,
                         expected_row_version=expected_rv)
@@ -340,24 +350,44 @@ def marketplace_snapshots(
                     if result.hash_fingerprint:
                         entry["hash_fingerprint"] = result.hash_fingerprint
                     _write_entry(entry)
-                    consecutive_errors = 0
-                    processed += 1
+
+                    attempted += 1
+                    if result.result_code in _SUCCESS_CODES:
+                        succeeded += 1
+                        consecutive_failures = 0
+                    elif result.result_code in _SKIPPED_CODES:
+                        skipped += 1
+                        consecutive_failures = 0
+                    else:
+                        failed += 1
+                        consecutive_failures += 1
+
             except Exception:
-                consecutive_errors += 1
+                attempted += 1
+                failed += 1
+                consecutive_failures += 1
                 _write_entry({
                     "asset_id": aid, "result_code": "error",
                     "dry_run": not apply, "run_id": run_id,
                 })
-                logger.error("marketplace.backfill_failed", extra={
+                log_extra: dict[str, Any] = {
                     "run_id": run_id, "asset_id": aid,
                     "error_code": "unexpected_error",
-                })
+                }
+                if asset_rv is not None:
+                    log_extra["row_version"] = asset_rv
+                logger.error("marketplace.backfill_failed", extra=log_extra)
 
+        remaining = total_assets - attempted
         summary = {
             "run_id": run_id,
             "total": total_assets,
-            "processed": processed,
-            "failed": total_assets - processed,
+            "attempted": attempted,
+            "succeeded": succeeded,
+            "skipped": skipped,
+            "failed": failed,
+            "remaining": remaining,
+            "processed": attempted,
             "inventory_status_counts": inv_status,
             "inventory_state_counts": inv_state,
             "status_counts": status_acc,
@@ -374,9 +404,10 @@ def marketplace_snapshots(
 
         logger.info("marketplace.backfill_completed", extra={
             "run_id": run_id,
-            "processed": processed,
-            "failed": total_assets - processed,
-            "manifest_sha256": final_hash[:12],
+            "succeeded": succeeded,
+            "skipped": skipped,
+            "failed": failed,
+            "manifest_sha256": final_hash,
         })
 
     finally:
@@ -402,16 +433,29 @@ def _collect_asset_ids(cli_ids, id_file, retry_manifest_path):
     return deduped
 
 
+_RETRYABLE_RESULT_CODES = frozenset({
+    "queued",
+    "error",
+    "source_missing",
+    "source_unavailable",
+    "export_failed",
+    "parse_failed",
+    "validation_failed",
+    "private_dependency",
+    "tenant_mismatch",
+    "state_changed",
+    "reviewer_missing",
+    "source_id_changed",
+    "pointer_missing",
+    "snapshot_missing",
+    "pointer_mismatch",
+    "version_invalid",
+    "snapshot_source_changed",
+    "hash_mismatch",
+})
+
+
 def _parse_retry_manifest(path):
-    retryable_codes = frozenset({
-        "queued", "error", "source_missing", "failed",
-        "export_failed", "parse_failed", "validation_failed",
-        "private_dependency", "source_unavailable", "tenant_mismatch",
-    })
-    final_codes = frozenset({
-        "ok", "dry_run_ok", "ready_skip", "ineligible", "not_found",
-    })
-    # Per-asset last status
     last_status: dict[str, str] = {}
     try:
         with open(path) as fh:
@@ -422,7 +466,7 @@ def _parse_retry_manifest(path):
                     obj = json.loads(line)
                 except json.JSONDecodeError:
                     raise click.ClickException(f"Malformed JSON in retry manifest: {path}")
-                if "summary" in obj and "total" in obj:
+                if "total" in obj and "asset_id" not in obj:
                     continue
                 aid = obj.get("asset_id")
                 if not aid: continue
@@ -434,7 +478,7 @@ def _parse_retry_manifest(path):
         raise click.ClickException(f"Failed to read retry manifest: {path}")
     ids = []
     for aid, code in sorted(last_status.items()):
-        if code in retryable_codes:
+        if code in _RETRYABLE_RESULT_CODES:
             ids.append(aid)
     return ids
 

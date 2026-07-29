@@ -105,7 +105,8 @@ class TestCLI:
              patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
             result = runner.invoke(cmd, [])
         assert result.exit_code == 0
-        assert "a1" in result.stdout
+        ids = _asset_ids_in_output(result.stdout)
+        assert "a1" in ids
 
     def test_dry_run_no_commit(self, runner, cmd):
         mock_db = self._mock_db()
@@ -191,7 +192,7 @@ class TestCLI:
              patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
              patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
             result = runner.invoke(cmd, ["--asset-id", "nf-1"])
-        assert "not_found" in result.stdout
+        assert "not_found" in _result_codes_in_output(result.stdout)
 
     def test_output_0600(self, runner, cmd, tmp_path):
         out = tmp_path / "out.jsonl"
@@ -266,7 +267,8 @@ class TestCLI:
              patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
             result = runner.invoke(cmd, ["--retry-manifest", str(mf)])
         assert result.exit_code == 0
-        assert "r1" in result.stdout
+        ids = _asset_ids_in_output(result.stdout)
+        assert "r1" in ids
 
     def test_retry_malformed_fail_closed(self, runner, cmd, tmp_path):
         mf = tmp_path / "bad.jsonl"
@@ -341,3 +343,434 @@ class TestCLI:
                 except AttributeError:
                     continue
                 assert "db.session" not in code
+
+    def test_retry_manifest_respects_last_status(self, runner, cmd, tmp_path):
+        mf = tmp_path / "prev.jsonl"
+        mf.write_text(
+            json.dumps({"asset_id": "r1", "result_code": "queued"}) + "\n" +
+            json.dumps({"asset_id": "r1", "result_code": "ok"}) + "\n")
+        mock_db = self._mock_db()
+        mock_svc, mock_bf = self._patch_all()
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        self._make_asset_ctx(asset_sess, "x")
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd, ["--retry-manifest", str(mf)])
+        ids = _asset_ids_in_output(result.stdout)
+        assert "r1" not in ids
+
+    def test_retry_manifest_queued_only_retries(self, runner, cmd, tmp_path):
+        mf = tmp_path / "prev.jsonl"
+        mf.write_text(json.dumps({"asset_id": "r1", "result_code": "queued"}) + "\n")
+        mock_db = self._mock_db()
+        mock_svc, mock_bf = self._patch_all()
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        self._make_asset_ctx(asset_sess, "r1")
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd, ["--retry-manifest", str(mf)])
+        ids = _asset_ids_in_output(result.stdout)
+        assert "r1" in ids
+
+    def test_queued_entries_written(self, runner, cmd):
+        mock_db = self._mock_db()
+        mock_svc, mock_bf = self._patch_all()
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        self._make_asset_ctx(asset_sess, "a1")
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd, ["--asset-id", "a1"])
+        codes = _result_codes_in_output(result.stdout)
+        assert "queued" in codes
+
+    def test_interrupt_recovery_remaining_ids_retryable(self, runner, cmd, tmp_path):
+        mf = tmp_path / "prev.jsonl"
+        mf.write_text(
+            json.dumps({"asset_id": "a1", "result_code": "queued"}) + "\n" +
+            json.dumps({"asset_id": "a2", "result_code": "queued"}) + "\n" +
+            json.dumps({"asset_id": "a1", "result_code": "ok"}) + "\n")
+        mock_db = self._mock_db()
+        mock_svc, mock_bf = self._patch_all()
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        self._make_asset_ctx(asset_sess, "a2")
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd, ["--retry-manifest", str(mf)])
+        ids = _asset_ids_in_output(result.stdout)
+        assert "a2" in ids
+        assert "a1" not in ids
+
+    def test_cli_failed_event_logged(self, runner, cmd, caplog, tmp_path):
+        mock_db = self._mock_db()
+        mock_svc = MagicMock()
+        mock_inst = MagicMock()
+        mock_inst.backfill_legacy_snapshot.side_effect = Exception("boom")
+        mock_inst.list_all_asset_ids.return_value = []
+        mock_inst.count_by_state.return_value = {}
+        mock_inst.count_by_status.return_value = {}
+        mock_svc.return_value = mock_inst
+
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        asset_sess.get.return_value = _asset(id="e1", row_version=0)
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc), \
+             caplog.at_level("ERROR", logger="marketplace.backfill"):
+            runner.invoke(cmd, ["--asset-id", "e1",
+                                "--output", str(tmp_path / "o.jsonl")])
+        failed_events = [r for r in caplog.records if "backfill_failed" in r.getMessage()]
+        assert len(failed_events) >= 1
+        for event in failed_events:
+            assert "boom" not in event.getMessage()
+            assert "CANARY" not in event.getMessage()
+
+    def test_run_level_logs_no_canary(self, runner, cmd, caplog, tmp_path):
+        from services.enterprise_marketplace_service import SANITIZER_CANARY_SECRET
+        mock_db = self._mock_db()
+        mock_svc, mock_bf = self._patch_all(
+            list_all_asset_ids=["a1"])
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        self._make_asset_ctx(asset_sess, "a1")
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc), \
+             caplog.at_level("INFO", logger="marketplace.backfill"):
+            runner.invoke(cmd, ["--asset-id", "a1", "--output", str(tmp_path / "o.jsonl")])
+        for record in caplog.records:
+            msg = record.getMessage()
+            assert "CANARY" not in msg
+            assert SANITIZER_CANARY_SECRET.lower() not in msg.lower()
+
+    def test_business_failure_triggers_threshold(self, runner, cmd):
+        mock_db = self._mock_db()
+        mock_svc = MagicMock()
+        mock_inst = MagicMock()
+        mock_inst.list_all_asset_ids.return_value = []
+        mock_inst.count_by_state.return_value = {}
+        mock_inst.count_by_status.return_value = {}
+        mbf = MagicMock()
+        mbf.return_value = MagicMock(
+            asset_id="e1", dry_run=True,
+            old_snapshot_state="backfill_pending",
+            new_snapshot_state="failed",
+            old_row_version=0, new_row_version=0,
+            legacy_status="approved",
+            result_code="validation_failed",
+            hash_fingerprint=None)
+        mock_inst.backfill_legacy_snapshot = mbf
+        mock_svc.return_value = mock_inst
+
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        asset_sess.get.return_value = _asset(id="e1", row_version=0)
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd,
+                                   ["--asset-id", "e1", "--asset-id", "e2",
+                                    "--error-threshold", "1"])
+        assert "Error threshold" in result.stderr
+
+    def test_success_resets_consecutive_failures(self, runner, cmd):
+        mock_db = self._mock_db()
+        mock_svc = MagicMock()
+        mock_inst = MagicMock()
+        mock_inst.list_all_asset_ids.return_value = []
+        mock_inst.count_by_state.return_value = {}
+        mock_inst.count_by_status.return_value = {}
+
+        codes = ["validation_failed", "ok", "validation_failed", "ok"]
+        def mk_result(**kw):
+            return MagicMock(
+                asset_id=kw.get("aid", "a"), dry_run=kw.get("dry", True),
+                old_snapshot_state="backfill_pending",
+                new_snapshot_state=kw.get("ns", "ready"),
+                old_row_version=0, new_row_version=0,
+                legacy_status="approved",
+                result_code=kw.get("rc", "ok"),
+                hash_fingerprint=None)
+
+        results = [
+            mk_result(rc="validation_failed", ns="failed"),
+            mk_result(rc="ok", ns="ready", dry=False, nrv=1),
+            mk_result(rc="validation_failed", ns="failed"),
+            mk_result(rc="ok", ns="ready", dry=False, nrv=1),
+        ]
+        mock_inst.backfill_legacy_snapshot.side_effect = results
+        mock_svc.return_value = mock_inst
+
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        asset_sess.get.return_value = _asset(id="a", row_version=0)
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd,
+                                   ["--asset-id", "a1", "--asset-id", "a2",
+                                    "--asset-id", "a3", "--asset-id", "a4",
+                                    "--error-threshold", "2"])
+        assert result.exit_code == 0
+
+    def test_summary_has_accurate_fields(self, runner, cmd):
+        mock_db = self._mock_db()
+        mock_svc, mock_bf = self._patch_all(
+            list_all_asset_ids=["a1", "a2", "a3", "a4"],
+            count_by_state={"backfill_pending": 4},
+            count_by_status={"approved": 4})
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        self._make_asset_ctx(asset_sess, "a1")
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd, [])
+        lines = result.stdout.strip().split("\n")
+        summary = json.loads(lines[-1])
+        assert "attempted" in summary
+        assert "succeeded" in summary
+        assert "skipped" in summary
+        assert "failed" in summary
+        assert "remaining" in summary
+        assert "processed" in summary
+        assert summary["total"] >= summary["attempted"]
+
+    def test_not_found_is_failure_in_summary(self, runner, cmd):
+        mock_db = self._mock_db()
+        mock_svc = MagicMock()
+        mock_inst = MagicMock()
+        mock_inst.list_all_asset_ids.return_value = []
+        mock_inst.count_by_state.return_value = {}
+        mock_inst.count_by_status.return_value = {}
+        mock_inst.backfill_legacy_snapshot = MagicMock()
+
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        asset_sess.get.return_value = None
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        mock_svc.return_value = mock_inst
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd, ["--asset-id", "nf-1"])
+        lines = result.stdout.strip().split("\n")
+        summary = json.loads(lines[-1])
+        assert summary["failed"] >= 1
+
+    def test_retry_manifest_skip_summary_guard(self, runner, cmd, tmp_path):
+        mf = tmp_path / "prev.jsonl"
+        mf.write_text(
+            json.dumps({"asset_id": "r1", "result_code": "error"}) + "\n" +
+            json.dumps({"total": 2, "succeeded": 1, "failed": 0}) + "\n")
+        mock_db = self._mock_db()
+        mock_svc, mock_bf = self._patch_all()
+        inv_sess = MagicMock()
+        inv_sess.execute.return_value.fetchall.return_value = []
+        asset_sess = MagicMock()
+        self._make_asset_ctx(asset_sess, "r1")
+        call_count = [0]
+
+        def sess_wrapper(*a, **kw):
+            call_count[0] += 1
+            return MagicMock(__enter__=MagicMock(return_value=(
+                inv_sess if call_count[0] == 1 else asset_sess)))
+
+        with patch("commands.data_migrate.db", mock_db), \
+             patch("commands.data_migrate.Session", side_effect=sess_wrapper), \
+             patch("commands.data_migrate.EnterpriseMarketplaceService", mock_svc):
+            result = runner.invoke(cmd, ["--retry-manifest", str(mf)])
+        assert result.exit_code == 0
+        ids = _asset_ids_in_output(result.stdout)
+        assert "r1" in ids
+
+    def test_parse_retry_manifest_all_retryable(self, tmp_path):
+        mf = tmp_path / "manifest.jsonl"
+        retryable = [
+            "queued", "error", "source_missing", "source_unavailable",
+            "export_failed", "parse_failed", "validation_failed",
+            "private_dependency", "tenant_mismatch", "state_changed",
+            "reviewer_missing", "source_id_changed", "pointer_missing",
+            "snapshot_missing", "pointer_mismatch", "version_invalid",
+            "snapshot_source_changed", "hash_mismatch",
+        ]
+        lines = []
+        for i, code in enumerate(retryable):
+            aid = f"r-{code}"
+            lines.append(json.dumps({"asset_id": aid, "result_code": code}))
+        lines.append(json.dumps({"result_code": "ok", "asset_id": "r-done"}))
+        mf.write_text("\n".join(lines) + "\n")
+        from commands.data_migrate import _parse_retry_manifest
+        result = _parse_retry_manifest(str(mf))
+        for code in retryable:
+            assert f"r-{code}" in result, f"retryable code {code} should be retried"
+
+    def test_parse_retry_manifest_final_codes_excluded(self, tmp_path):
+        mf = tmp_path / "manifest.jsonl"
+        final = ["ok", "dry_run_ok", "ready_skip", "ineligible", "not_found"]
+        lines = []
+        for code in final:
+            lines.append(json.dumps({"asset_id": f"f-{code}", "result_code": code}))
+        mf.write_text("\n".join(lines) + "\n")
+        from commands.data_migrate import _parse_retry_manifest
+        result = _parse_retry_manifest(str(mf))
+        for code in final:
+            assert f"f-{code}" not in result, f"final code {code} should not retry"
+
+    def test_parse_retry_manifest_failed_string_not_retried(self, tmp_path):
+        mf = tmp_path / "manifest.jsonl"
+        mf.write_text(json.dumps({"asset_id": "x", "result_code": "failed"}) + "\n")
+        from commands.data_migrate import _parse_retry_manifest
+        result = _parse_retry_manifest(str(mf))
+        assert "x" not in result
+
+    def test_parse_retry_manifest_unknown_code_not_retried(self, tmp_path):
+        mf = tmp_path / "manifest.jsonl"
+        mf.write_text(json.dumps({"asset_id": "x", "result_code": "ancient_magic"}) + "\n")
+        from commands.data_migrate import _parse_retry_manifest
+        result = _parse_retry_manifest(str(mf))
+        assert "x" not in result
+
+    def test_parse_retry_manifest_last_record_wins(self, tmp_path):
+        mf = tmp_path / "manifest.jsonl"
+        mf.write_text(
+            json.dumps({"asset_id": "a1", "result_code": "error"}) + "\n" +
+            json.dumps({"asset_id": "a1", "result_code": "ok"}) + "\n")
+        from commands.data_migrate import _parse_retry_manifest
+        result = _parse_retry_manifest(str(mf))
+        assert "a1" not in result
+
+    def test_parse_retry_manifest_summary_skipped(self, tmp_path):
+        mf = tmp_path / "manifest.jsonl"
+        mf.write_text(
+            json.dumps({"asset_id": "r1", "result_code": "error"}) + "\n" +
+            json.dumps({"total": 5, "succeeded": 3}) + "\n")
+        from commands.data_migrate import _parse_retry_manifest
+        result = _parse_retry_manifest(str(mf))
+        assert "r1" in result
+
+    def test_apply_mode_retry_source_missing_recovers(self, tmp_path):
+        mf = tmp_path / "manifest.jsonl"
+        mf.write_text(json.dumps({"asset_id": "a1", "result_code": "source_missing"}) + "\n")
+        from commands.data_migrate import _parse_retry_manifest
+        result = _parse_retry_manifest(str(mf))
+        assert "a1" in result
+
+    def test_apply_mode_retry_failed_recovers(self, tmp_path):
+        mf = tmp_path / "manifest.jsonl"
+        mf.write_text(json.dumps({"asset_id": "a1", "result_code": "hash_mismatch"}) + "\n")
+        from commands.data_migrate import _parse_retry_manifest
+        result = _parse_retry_manifest(str(mf))
+        assert "a1" in result
+
+
+def _asset_ids_in_output(stdout: str) -> set[str]:
+    ids: set[str] = set()
+    for line in stdout.strip().split("\n"):
+        if not line:
+            continue
+        d = json.loads(line)
+        aid = d.get("asset_id")
+        if aid:
+            ids.add(aid)
+    return ids
+
+
+def _result_codes_in_output(stdout: str) -> set[str]:
+    codes: set[str] = set()
+    for line in stdout.strip().split("\n"):
+        if not line:
+            continue
+        d = json.loads(line)
+        code = d.get("result_code")
+        if code:
+            codes.add(code)
+    return codes

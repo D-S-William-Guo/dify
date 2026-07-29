@@ -66,6 +66,7 @@ _ALLOWED_TRANSITIONS = {
 
 _BACKFILL_ELIGIBLE_STATUSES = frozenset({"approved"})
 _BACKFILL_ELIGIBLE_STATES = frozenset({"backfill_pending"})
+_BACKFILL_RETRYABLE_STATES = frozenset({"backfill_pending", "source_missing", "failed"})
 _SOURCE_UNIQUE_CONSTRAINT = "unique_enterprise_marketplace_source_app"
 
 SANITIZER_CANARY_SECRET = "CANARY_SECRET_VALUE_FOR_TESTING_ONLY"
@@ -120,7 +121,8 @@ class AssetSnapshotRow(NamedTuple):
     status: str; publication_status: str; snapshot_state: str
     title: str; description: str; category: str
     tags: list[str]; scenario: str; allow_show_workspace_name: bool
-    source_app_id: str | None; source_tenant_name: str | None
+    source_app_id: str | None; source_tenant_id: str | None
+    source_tenant_name: str | None
     submitter_account_id: str | None; reviewer_account_id: str | None
     row_version: int
     created_at: datetime; updated_at: datetime
@@ -129,6 +131,8 @@ class AssetSnapshotRow(NamedTuple):
     dsl_version: str | None; content_sha256: str | None
     dependencies: list[dict[str, Any]] | None
     frozen_at: datetime | None
+    snapshot_error_code: str | None; review_note: str | None
+    reviewed_at: datetime | None
 
 class PageResult(NamedTuple):
     items: list[AssetSnapshotRow]; page: int; limit: int; total: int; has_more: bool
@@ -146,13 +150,13 @@ class EnterpriseMarketplaceService:
                      expected_row_version=None):
         tid = account.current_tenant_id
         if tid is None: raise MarketplaceError("No current tenant")
-        if source_app.tenant_id != tid: raise SourceAppNotFound()
-        if source_app.status != "normal": raise SourceAppUnavailable()
-        self._lock_source_app(source_app.id, tid)
+        locked_app = self._lock_and_get_source_app(source_app.id, tid)
+        if locked_app.tenant_id != tid: raise SourceAppNotFound()
+        if locked_app.status != "normal": raise SourceAppUnavailable()
         asset = self._query_asset_by_source(source_app.id, for_update=True)
         if asset is None:
             return self._create_initial_submission(
-                source_app=source_app, account=account, tenant_id=tid,
+                source_app=locked_app, account=account, tenant_id=tid,
                 title=title, description=description, category=category,
                 tags=tags, scenario=scenario,
                 allow_show_workspace_name=allow_show_workspace_name)
@@ -171,7 +175,7 @@ class EnterpriseMarketplaceService:
         asset.review_note = None; asset.reviewed_at = None; asset.reviewer_account_id = None
         asset.row_version += 1; self._session.flush()
         logger.info(_LOG_SUBMIT_RESUBMITTED, extra={
-            "asset_id": asset.id, "source_app_id": source_app.id,
+            "asset_id": asset.id, "source_app_id": locked_app.id,
             "actor_account_id": account.id, "old_row_version": old_rv,
             "new_row_version": asset.row_version})
         return asset
@@ -227,9 +231,10 @@ class EnterpriseMarketplaceService:
         sha = hashlib.sha256(dsl_content.encode("utf-8")).hexdigest()
         next_v = asset.next_snapshot_version; asset.next_snapshot_version += 1
         app_data = data.get("app", {})
-        if not isinstance(app_data, dict): raise MarketplaceError("App must be mapping")
-        aname, amode = app_data.get("name", ""), app_data.get("mode", "")
-        if not aname or not amode: raise MarketplaceError("App name/mode required")
+        try:
+            aname, amode = self._validate_app_metadata(app_data)
+        except ValueError as e:
+            raise MarketplaceError(str(e))
         tname = None
         tenant = self._session.get(Tenant, stid)
         if tenant: tname = tenant.name
@@ -309,6 +314,8 @@ class EnterpriseMarketplaceService:
             raise SnapshotIntegrityError()
         if snap.source_app_id != asset.source_app_id: raise SnapshotIntegrityError()
         if snap.source_tenant_id != asset.source_tenant_id: raise SnapshotIntegrityError()
+        if snap.snapshot_version < 1: raise SnapshotIntegrityError()
+        if snap.snapshot_version >= asset.next_snapshot_version: raise SnapshotIntegrityError()
         if snap.dependencies:
             deps = self._parse_deps(snap.dependencies)
             for d in deps:
@@ -364,7 +371,7 @@ class EnterpriseMarketplaceService:
         if old_state == "ready":
             return self._bf_ready_skip(asset_id, dry_run, old_state, leg, old_rv,
                                         said, stid, expected_row_version)
-        if leg not in _BACKFILL_ELIGIBLE_STATUSES or old_state not in _BACKFILL_ELIGIBLE_STATES:
+        if leg not in _BACKFILL_ELIGIBLE_STATUSES or old_state not in _BACKFILL_RETRYABLE_STATES:
             return BackfillResult(asset_id=asset_id, dry_run=dry_run,
                 old_snapshot_state=old_state, new_snapshot_state=old_state,
                 old_row_version=old_rv, new_row_version=old_rv,
@@ -381,7 +388,7 @@ class EnterpriseMarketplaceService:
         self._check_row_version(a, expected_row_version)
         if a.source_app_id != said or a.source_tenant_id != stid:
             return self._bf_fail(asset_id, dry_run, old_state, leg, a, "tenant_mismatch")
-        if a.status != "approved" or self._snap_val(a) != "backfill_pending":
+        if a.status != "approved" or self._snap_val(a) not in _BACKFILL_RETRYABLE_STATES:
             return self._bf_fail(asset_id, dry_run, old_state, leg, a, "state_changed")
         if not a.reviewer_account_id:
             return self._bf_fail(asset_id, dry_run, old_state, leg, a, "reviewer_missing")
@@ -398,6 +405,8 @@ class EnterpriseMarketplaceService:
             dsl_ver = self._check_dsl_version(data.get("version", ""))
             self._validate_dsl_no_secrets(data)
             deps = self._extract_and_normalize_dependencies(data)
+            app_data = data.get("app", {})
+            aname, amode = self._validate_app_metadata(app_data)
         except SnapshotContainsSecret:
             return self._bf_fail(asset_id, dry_run, old_state, leg, a, "validation_failed")
         except NonportableResourceReference:
@@ -413,8 +422,6 @@ class EnterpriseMarketplaceService:
                 old_row_version=old_rv, new_row_version=a.row_version,
                 legacy_status=leg, result_code="dry_run_ok", hash_fingerprint=sha[:12])
         next_v = a.next_snapshot_version; a.next_snapshot_version += 1
-        app_data = data.get("app", {})
-        aname, amode = app_data.get("name", ""), app_data.get("mode", "")
         tname = None
         tenant = self._session.get(Tenant, stid)
         if tenant: tname = tenant.name
@@ -462,6 +469,8 @@ class EnterpriseMarketplaceService:
             return self._bf_fail(aid, dr, os, leg, a, "pointer_mismatch")
         if snap.snapshot_version < 1:
             return self._bf_fail(aid, dr, os, leg, a, "version_invalid")
+        if snap.snapshot_version >= a.next_snapshot_version:
+            return self._bf_fail(aid, dr, os, leg, a, "version_invalid")
         if snap.source_app_id != a.source_app_id or snap.source_tenant_id != a.source_tenant_id:
             return self._bf_fail(aid, dr, os, leg, a, "snapshot_source_changed")
         if hashlib.sha256(snap.dsl_content.encode("utf-8")).hexdigest() != snap.content_sha256:
@@ -481,7 +490,7 @@ class EnterpriseMarketplaceService:
                     old_snapshot_state=os, new_snapshot_state="failed",
                     old_row_version=old_rv, new_row_version=a.row_version,
                     legacy_status=leg, result_code="tenant_mismatch")
-            if a.status != "approved" or self._snap_val(a) != "backfill_pending":
+            if a.status != "approved" or self._snap_val(a) not in _BACKFILL_RETRYABLE_STATES:
                 return BackfillResult(asset_id=aid, dry_run=dr,
                     old_snapshot_state=os, new_snapshot_state=os,
                     old_row_version=old_rv, new_row_version=a.row_version,
@@ -506,7 +515,7 @@ class EnterpriseMarketplaceService:
                     old_snapshot_state=os, new_snapshot_state="failed",
                     old_row_version=old_rv, new_row_version=a.row_version,
                     legacy_status=leg, result_code="tenant_mismatch")
-            if a.status != "approved" or self._snap_val(a) != "backfill_pending":
+            if a.status != "approved" or self._snap_val(a) not in _BACKFILL_RETRYABLE_STATES:
                 return BackfillResult(asset_id=aid, dry_run=dr,
                     old_snapshot_state=os, new_snapshot_state=os,
                     old_row_version=old_rv, new_row_version=a.row_version,
@@ -666,13 +675,17 @@ class EnterpriseMarketplaceService:
             title=a.title, description=a.description or "", category=a.category,
             tags=list(a.tags) if a.tags else [], scenario=a.scenario or "",
             allow_show_workspace_name=a.allow_show_workspace_name,
-            source_app_id=a.source_app_id, source_tenant_name=None,
+            source_app_id=a.source_app_id, source_tenant_id=a.source_tenant_id,
+            source_tenant_name=None,
             submitter_account_id=a.submitter_account_id,
             reviewer_account_id=a.reviewer_account_id,
             row_version=a.row_version, created_at=a.created_at, updated_at=a.updated_at,
             app_name=None, app_description=None, app_mode=None,
             app_icon_type=None, app_icon=None, app_icon_background=None,
-            dsl_version=None, content_sha256=None, dependencies=None, frozen_at=None)
+            dsl_version=None, content_sha256=None, dependencies=None, frozen_at=None,
+            snapshot_error_code=a.snapshot_error_code,
+            review_note=a.review_note,
+            reviewed_at=a.reviewed_at)
 
     def _row_public(self, *, asset, snap):
         """All public fields from snapshot only. No fallback to mutable asset fields."""
@@ -688,7 +701,8 @@ class EnterpriseMarketplaceService:
             category=snap.category, tags=snap.tags,
             scenario=snap.scenario or "",
             allow_show_workspace_name=snap.allow_show_workspace_name,
-            source_app_id=None, source_tenant_name=st_name,
+            source_app_id=None, source_tenant_id=None,
+            source_tenant_name=st_name,
             submitter_account_id=None, reviewer_account_id=None,
             row_version=asset.row_version,
             created_at=snap.frozen_at, updated_at=snap.frozen_at,
@@ -696,7 +710,8 @@ class EnterpriseMarketplaceService:
             app_mode=snap.app_mode, app_icon_type=snap.app_icon_type,
             app_icon=snap.app_icon, app_icon_background=snap.app_icon_background,
             dsl_version=snap.dsl_version, content_sha256=snap.content_sha256,
-            dependencies=snap.dependencies, frozen_at=snap.frozen_at)
+            dependencies=snap.dependencies, frozen_at=snap.frozen_at,
+            snapshot_error_code=None, review_note=None, reviewed_at=None)
 
     # ── Internal helpers ──────────────────────────────────────────────
 
@@ -705,10 +720,6 @@ class EnterpriseMarketplaceService:
             App.id == app_id, App.tenant_id == tenant_id).with_for_update())
         if app is None: raise SourceAppNotFound()
         return app
-
-    def _lock_source_app(self, app_id, tenant_id):
-        self._session.execute(select(App.id).where(
-            App.id == app_id, App.tenant_id == tenant_id).with_for_update())
 
     def _get_asset(self, asset_id, *, for_update=False):
         stmt = select(EnterpriseMarketplaceAsset).where(EnterpriseMarketplaceAsset.id == asset_id)
@@ -765,6 +776,18 @@ class EnterpriseMarketplaceService:
         if status == ImportStatus.PENDING: raise MarketplaceError("DSL version pending")
         return version_str
 
+    @staticmethod
+    def _validate_app_metadata(app_data):
+        if not isinstance(app_data, dict):
+            raise ValueError("App must be mapping")
+        aname = app_data.get("name", "")
+        amode = app_data.get("mode", "")
+        if not isinstance(aname, str) or not aname.strip():
+            raise ValueError("App name must be a non-empty string")
+        if not isinstance(amode, str) or not amode.strip():
+            raise ValueError("App mode must be a non-empty string")
+        return aname.strip(), amode.strip()
+
     # ── Sanitizer ─────────────────────────────────────────────────────
 
     def _validate_dsl_no_secrets(self, data):
@@ -804,11 +827,21 @@ class EnterpriseMarketplaceService:
     def _check_owner_bound_key(self, kl, value):
         for p in _OWNER_BOUND_KEY_PATTERNS:
             if p in kl:
-                if isinstance(value, (str, list, dict, int)) and \
-                   (isinstance(value, (str, int)) and value) or \
-                   (isinstance(value, (list, dict)) and value):
-                    raise NonportableResourceReference()
-                return
+                if value is None:
+                    return
+                if isinstance(value, str):
+                    if value:
+                        raise NonportableResourceReference()
+                    return
+                if isinstance(value, list):
+                    if value:
+                        raise NonportableResourceReference()
+                    return
+                if isinstance(value, dict):
+                    if value:
+                        raise NonportableResourceReference()
+                    return
+                raise NonportableResourceReference()
 
     # ── Dependencies ──────────────────────────────────────────────────
 
@@ -820,7 +853,10 @@ class EnterpriseMarketplaceService:
         valid = []
         for d in rd:
             if not isinstance(d, dict): raise MarketplaceError("Each dep must be a dict")
-            pd = PluginDependency.model_validate(d)
+            try:
+                pd = PluginDependency.model_validate(d)
+            except PydanticValidationError:
+                raise MarketplaceError("Invalid dependency")
             if pd.type == PluginDependencyType.Package: raise PrivatePluginDependency()
             valid.append(pd)
         seen = set(); result = []
