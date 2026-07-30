@@ -222,6 +222,85 @@ class TestStateMachine:
 
 
 # ═══════════════════════════════════════════════════
+# B4-C Cross-stage: first-submit row-version guard
+# ═══════════════════════════════════════════════════
+
+class TestFirstSubmitRowVersion:
+    """No asset + non-None expected_row_version must fail closed."""
+
+    def test_no_asset_no_expected_version_creates(self):
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        s.scalar.side_effect = [source_app, None]
+        r = EnterpriseMarketplaceService(s).submit_asset(
+            source_app=source_app, account=_make_account(tid=tid),
+            title="X", description="D", category="C", tags=[], scenario="",
+            allow_show_workspace_name=False, expected_row_version=None)
+        assert r.status == "pending"; assert r.row_version == 1
+
+    def test_no_asset_expected_zero_raises(self):
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        s.scalar.side_effect = [source_app, None]
+        with patch("services.enterprise_marketplace_service.logger.info") as mock_log:
+            with pytest.raises(StaleAssetVersion):
+                EnterpriseMarketplaceService(s).submit_asset(
+                    source_app=source_app, account=_make_account(tid=tid),
+                    title="X", description="D", category="C", tags=[], scenario="",
+                    allow_show_workspace_name=False, expected_row_version=0)
+            mock_log.assert_not_called()
+        s.add.assert_not_called(); s.flush.assert_not_called()
+
+    def test_no_asset_expected_positive_raises(self):
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        s.scalar.side_effect = [source_app, None]
+        with patch("services.enterprise_marketplace_service.logger.info") as mock_log:
+            with pytest.raises(StaleAssetVersion):
+                EnterpriseMarketplaceService(s).submit_asset(
+                    source_app=source_app, account=_make_account(tid=tid),
+                    title="X", description="D", category="C", tags=[], scenario="",
+                    allow_show_workspace_name=False, expected_row_version=3)
+            mock_log.assert_not_called()
+        s.add.assert_not_called(); s.flush.assert_not_called()
+
+    def test_guard_after_lock_and_validation(self):
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        call_order = []
+
+        def track(stmt):
+            stmt_s = str(stmt).lower()
+            if "apps" in stmt_s and "for update" in stmt_s:
+                call_order.append("source_lock"); return source_app
+            if "enterprise_marketplace_assets" in stmt_s and "for update" in stmt_s:
+                call_order.append("asset_lock"); return None
+            return None
+        s.scalar.side_effect = track; s.execute.return_value = MagicMock()
+        with pytest.raises(StaleAssetVersion):
+            EnterpriseMarketplaceService(s).submit_asset(
+                source_app=source_app, account=_make_account(tid=tid),
+                title="X", description="D", category="C", tags=[], scenario="",
+                allow_show_workspace_name=False, expected_row_version=0)
+        assert "source_lock" in call_order
+        assert "asset_lock" in call_order
+        assert call_order.index("source_lock") < call_order.index("asset_lock")
+
+    def test_guard_after_tenant_status_check(self):
+        """StaleAssetVersion must NOT fire before tenant/status validation."""
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        deleted_app = _make_app(source_app.id, tid=tid, status="deleted")
+        s.scalar.side_effect = [deleted_app]
+        with pytest.raises(SourceAppUnavailable):
+            EnterpriseMarketplaceService(s).submit_asset(
+                source_app=source_app, account=_make_account(tid=tid),
+                title="X", description="D", category="C", tags=[], scenario="",
+                allow_show_workspace_name=False, expected_row_version=0)
+        assert s.scalar.call_count == 1
+
+
+# ═══════════════════════════════════════════════════
 # Sanitizer
 # ═══════════════════════════════════════════════════
 

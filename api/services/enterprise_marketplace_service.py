@@ -155,6 +155,8 @@ class EnterpriseMarketplaceService:
         if locked_app.status != "normal": raise SourceAppUnavailable()
         asset = self._query_asset_by_source(source_app.id, for_update=True)
         if asset is None:
+            if expected_row_version is not None:
+                raise StaleAssetVersion()
             return self._create_initial_submission(
                 source_app=locked_app, account=account, tenant_id=tid,
                 title=title, description=description, category=category,
