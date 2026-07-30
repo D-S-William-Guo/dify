@@ -167,6 +167,24 @@ class TestStateMachine:
         assert r.status == "pending"
 
     def test_unlisted_resubmit(self):
+        """Normal unlisted: approved/unlisted/ready → pending, no auto-republish."""
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        existing = _make_asset("approved", "unlisted", "ready", row_version=7,
+                               published_snapshot_id="snap-1")
+        s.scalar.side_effect = [source_app, existing]
+        r = EnterpriseMarketplaceService(s).submit_asset(
+            source_app=source_app, account=_make_account(tid=tid),
+            title="U", description="D", category="C", tags=[], scenario="",
+            allow_show_workspace_name=False, expected_row_version=7)
+        assert r.status == "pending"
+        assert r.publication_status == EnterpriseMarketplaceAssetPublicationStatus.UNLISTED
+        assert r.snapshot_state == EnterpriseMarketplaceAssetSnapshotState.READY
+        assert r.row_version == 8
+        assert r.published_snapshot_id == "snap-1"
+
+    def test_legacy_unlisted_resubmit(self):
+        """Legacy unlisted/unlisted resubmit still supported."""
         s = _make_session(); tid = str(uuid.uuid4())
         source_app = _make_app(tid=tid)
         existing = _make_asset("unlisted", "unlisted", "none", row_version=7)
@@ -176,6 +194,69 @@ class TestStateMachine:
             title="U", description="D", category="C", tags=[], scenario="",
             allow_show_workspace_name=False, expected_row_version=7)
         assert r.status == "pending"
+        assert r.row_version == 8
+
+    def test_approved_unpublished_resubmit(self):
+        """Legacy approved/unpublished/backfill_pending pre-backfill resubmit."""
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        existing = _make_asset("approved", "unpublished", "backfill_pending", row_version=3)
+        s.scalar.side_effect = [source_app, existing]
+        r = EnterpriseMarketplaceService(s).submit_asset(
+            source_app=source_app, account=_make_account(tid=tid),
+            title="L", description="D", category="C", tags=[], scenario="",
+            allow_show_workspace_name=False, expected_row_version=3)
+        assert r.status == "pending"
+        assert r.publication_status == EnterpriseMarketplaceAssetPublicationStatus.UNPUBLISHED
+        assert r.snapshot_state == EnterpriseMarketplaceAssetSnapshotState.BACKFILL_PENDING
+        assert r.row_version == 4
+        assert r.published_snapshot_id is None
+        snap_adds = [c[0][0] for c in s.add.call_args_list
+                     if c[0] and isinstance(c[0][0], EnterpriseMarketplaceAssetSnapshot)]
+        assert len(snap_adds) == 0
+
+    def test_unlisted_resubmit_stale_version(self):
+        """Wrong row_version on approved/unlisted → StaleAssetVersion, no write."""
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        existing = _make_asset("approved", "unlisted", "ready", row_version=7,
+                               published_snapshot_id="snap-1")
+        s.scalar.side_effect = [source_app, existing]
+        with patch("services.enterprise_marketplace_service.logger.info") as mock_log:
+            with pytest.raises(StaleAssetVersion):
+                EnterpriseMarketplaceService(s).submit_asset(
+                    source_app=source_app, account=_make_account(tid=tid),
+                    title="U", description="D", category="C", tags=[], scenario="",
+                    allow_show_workspace_name=False, expected_row_version=999)
+            resubmitted = [c for c in mock_log.call_args_list
+                           if c[0] and c[0][0] == "marketplace.submission_resubmitted"]
+            assert len(resubmitted) == 0
+        assert existing.status == "approved"
+        assert existing.publication_status == EnterpriseMarketplaceAssetPublicationStatus.UNLISTED
+        assert existing.snapshot_state == EnterpriseMarketplaceAssetSnapshotState.READY
+        assert existing.row_version == 7
+        s.flush.assert_not_called()
+
+    def test_approved_unpublished_resubmit_stale_version(self):
+        """Wrong row_version on approved/unpublished → StaleAssetVersion, no write."""
+        s = _make_session(); tid = str(uuid.uuid4())
+        source_app = _make_app(tid=tid)
+        existing = _make_asset("approved", "unpublished", "backfill_pending", row_version=3)
+        s.scalar.side_effect = [source_app, existing]
+        with patch("services.enterprise_marketplace_service.logger.info") as mock_log:
+            with pytest.raises(StaleAssetVersion):
+                EnterpriseMarketplaceService(s).submit_asset(
+                    source_app=source_app, account=_make_account(tid=tid),
+                    title="L", description="D", category="C", tags=[], scenario="",
+                    allow_show_workspace_name=False, expected_row_version=999)
+            resubmitted = [c for c in mock_log.call_args_list
+                           if c[0] and c[0][0] == "marketplace.submission_resubmitted"]
+            assert len(resubmitted) == 0
+        assert existing.status == "approved"
+        assert existing.publication_status == EnterpriseMarketplaceAssetPublicationStatus.UNPUBLISHED
+        assert existing.snapshot_state == EnterpriseMarketplaceAssetSnapshotState.BACKFILL_PENDING
+        assert existing.row_version == 3
+        s.flush.assert_not_called()
 
     def test_reject_pending(self):
         s = _make_session()

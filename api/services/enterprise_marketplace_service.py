@@ -59,6 +59,8 @@ _ALLOWED_TRANSITIONS = {
     ("pending", "unpublished"): frozenset({"pending", "approved", "rejected"}),
     ("pending", "published"): frozenset({"pending", "approved", "rejected"}),
     ("approved", "published"): frozenset({"pending", "rejected", "approved"}),
+    ("approved", "unpublished"): frozenset({"pending"}),
+    ("approved", "unlisted"): frozenset({"pending"}),
     ("rejected", "unpublished"): frozenset({"pending"}),
     ("rejected", "published"): frozenset({"pending"}),
     ("unlisted", "unlisted"): frozenset({"pending"}),
