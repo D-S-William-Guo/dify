@@ -20,6 +20,8 @@
 | 官方基线 tag | `1.16.0` |
 | 官方基线 commit | `5c6372d2f76d240265b92fd27c16bc772ffcb107` |
 | Alembic 最终 head | `b416e5c4e702`（唯一 head） |
+| Skill 源仓库 | `/home/ctyun/BigData/GitHub/codex-personal-skills` |
+| Skill v0.1 源 commit | `dfe8049` |
 | 工作区 | 干净 |
 | 本地与 origin | 已同步 |
 | 当前产品里程碑 | B0～B4 已闭环；B4 `B4_FINAL_ACCEPTED` |
@@ -50,12 +52,27 @@ git merge-base 1.16.0 HEAD
 
 当前不是立即启动 B5。
 
-先完成协作基础设施：
+协作基础设施当前状态：
 
-1. 创建通用 Claude Squad/worktree 协作 Skill v0.1；
-2. 创建 Dify 官方版本企业功能重放 Skill v0.1；
-3. 用新窗口验证：只读取本文与两个 Skill，能够准确恢复状态和生成下一阶段任务；
-4. 验证通过后，再为 B5 建立 Architect/Review/Builder 门禁。
+1. 通用 Claude Squad/worktree 协作 Skill v0.1：已创建并安装；
+2. Dify 官方版本企业功能重放 Skill v0.1：已创建并安装；
+3. 两个 Skill 已通过结构校验；Git 起点核验脚本已通过正向/负向测试；
+4. 当前待办：用新窗口验证只读取本文与两个 Skill 能否准确恢复状态和生成下一阶段任务；
+5. 验证通过后，再为 B5 建立 Architect/Review/Builder 门禁。
+
+Skill 路径：
+
+```text
+源：
+/home/ctyun/BigData/GitHub/codex-personal-skills/orchestrate-claude-squad
+/home/ctyun/BigData/GitHub/codex-personal-skills/replay-dify-enterprise
+
+Codex 自动发现链接：
+/home/ctyun/.codex/skills/orchestrate-claude-squad
+/home/ctyun/.codex/skills/replay-dify-enterprise
+```
+
+Skill 源仓库当前只有本地 Git commit，尚未配置远端；这不影响本机使用，但未来需要异机同步时应单独配置备份/远端。
 
 产品流水线的下一阶段才是：
 
@@ -402,12 +419,18 @@ git merge --ff-only ctyun/<instance-branch>
 3. B4_FINAL_REREVIEW.md 是否为 PASS；
 4. 不要启动 B5，不要修改业务代码。
 
-当前首要任务是：
+两个基础 Skill 已安装：
 
-1. 创建通用 Claude Squad/worktree 协作 Skill v0.1；
-2. 创建 Dify 官方版本企业功能重放 Skill v0.1；
-3. 验证新窗口能仅凭 CURRENT_STATE.md 和两个 Skill 恢复状态；
-4. 验证完成后，再规划 B5。
+- $orchestrate-claude-squad
+- $replay-dify-enterprise
+
+当前首要任务是验证新窗口恢复：
+
+1. 确认两个 Skill 在新窗口可见并能触发；
+2. 使用 $replay-dify-enterprise 恢复本项目的官方优先重放状态；
+3. 使用 $orchestrate-claude-squad 生成 B5 Architect 的任务契约草案；
+4. 只输出核验结果和任务草案，不创建实例、不修改代码；
+5. 验证通过后，再规划 B5。
 
 任何事实与文档不符时，先报告差异，不得自动 reset、merge、rebase、migration、Docker 或 volume。
 ```
