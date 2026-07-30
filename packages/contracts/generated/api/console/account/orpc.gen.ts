@@ -11,6 +11,7 @@ import {
   zGetAccountEducationResponse,
   zGetAccountEducationVerifyResponse,
   zGetAccountIntegratesResponse,
+  zGetAccountPlatformAdminStatusResponse,
   zGetAccountProfileResponse,
   zPostAccountAvatarBody,
   zPostAccountAvatarResponse,
@@ -332,6 +333,20 @@ export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getAccountPlatformAdminStatus',
+    path: '/account/platform-admin-status',
+    tags: ['console'],
+  })
+  .output(zGetAccountPlatformAdminStatusResponse)
+
+export const platformAdminStatus = {
+  get: get7,
+}
+
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getAccountProfile',
     path: '/account/profile',
     tags: ['console'],
@@ -339,7 +354,7 @@ export const get7 = oc
   .output(zGetAccountProfileResponse)
 
 export const profile = {
-  get: get7,
+  get: get8,
 }
 
 export const post14 = oc
@@ -368,6 +383,7 @@ export const account = {
   interfaceTheme,
   name,
   password,
+  platformAdminStatus,
   profile,
   timezone,
 }

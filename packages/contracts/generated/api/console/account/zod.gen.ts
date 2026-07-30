@@ -183,6 +183,14 @@ export const zAccountPasswordPayload = z.object({
 })
 
 /**
+ * PlatformAdminStatusResponse
+ */
+export const zPlatformAdminStatusResponse = z.object({
+  is_platform_admin: z.boolean(),
+  mutation_supported: z.boolean(),
+})
+
+/**
  * AccountTimezonePayload
  */
 export const zAccountTimezonePayload = z.object({
@@ -353,6 +361,11 @@ export const zPostAccountPasswordBody = zAccountPasswordPayload
  * Success
  */
 export const zPostAccountPasswordResponse = zAccountResponse
+
+/**
+ * Success
+ */
+export const zGetAccountPlatformAdminStatusResponse = zPlatformAdminStatusResponse
 
 /**
  * Success

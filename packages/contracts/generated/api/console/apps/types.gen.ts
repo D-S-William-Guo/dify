@@ -549,6 +549,50 @@ export type AppImportResponse = {
   warnings?: Array<DslImportWarning>
 }
 
+export type MarketplaceSubmissionPayload = {
+  allow_show_workspace_name?: boolean
+  category: string
+  description?: string
+  expected_row_version?: number | null
+  scenario?: string
+  tags?: Array<string>
+  title: string
+}
+
+export type MarketplaceAssetResponse = {
+  allow_show_workspace_name: boolean
+  asset_id: string
+  category: string
+  created_at: string
+  description: string
+  publication_status: string
+  review_note: string | null
+  reviewed_at: string | null
+  reviewer_account_id: string | null
+  row_version: number
+  scenario: string
+  snapshot_error_code: string | null
+  snapshot_state: string
+  source_app_id: string | null
+  source_tenant_id: string | null
+  status: string
+  submitter_account_id: string | null
+  tags: Array<string>
+  title: string
+  updated_at: string
+}
+
+export type MarketplaceErrorResponse = {
+  code: string
+  message: string
+  status: number
+}
+
+export type UnauthorizedResponse = {
+  code: string
+  message: string
+}
+
 export type AppExportResponse = {
   data: string
 }
@@ -4699,6 +4743,33 @@ export type PostAppsByAppIdCopyResponses = {
 
 export type PostAppsByAppIdCopyResponse =
   PostAppsByAppIdCopyResponses[keyof PostAppsByAppIdCopyResponses]
+
+export type PostAppsByAppIdEnterpriseMarketplaceSubmissionsData = {
+  body: MarketplaceSubmissionPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/enterprise-marketplace/submissions'
+}
+
+export type PostAppsByAppIdEnterpriseMarketplaceSubmissionsErrors = {
+  400: MarketplaceErrorResponse
+  401: UnauthorizedResponse
+  403: MarketplaceErrorResponse
+  404: MarketplaceErrorResponse
+  409: MarketplaceErrorResponse
+}
+
+export type PostAppsByAppIdEnterpriseMarketplaceSubmissionsError =
+  PostAppsByAppIdEnterpriseMarketplaceSubmissionsErrors[keyof PostAppsByAppIdEnterpriseMarketplaceSubmissionsErrors]
+
+export type PostAppsByAppIdEnterpriseMarketplaceSubmissionsResponses = {
+  201: MarketplaceAssetResponse
+}
+
+export type PostAppsByAppIdEnterpriseMarketplaceSubmissionsResponse =
+  PostAppsByAppIdEnterpriseMarketplaceSubmissionsResponses[keyof PostAppsByAppIdEnterpriseMarketplaceSubmissionsResponses]
 
 export type GetAppsByAppIdExportData = {
   body?: never

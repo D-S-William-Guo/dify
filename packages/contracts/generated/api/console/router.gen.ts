@@ -18,6 +18,7 @@ import { dataSource } from './data-source/orpc.gen'
 import { datasets } from './datasets/orpc.gen'
 import { emailCodeLogin } from './email-code-login/orpc.gen'
 import { emailRegister } from './email-register/orpc.gen'
+import { enterpriseMarketplace } from './enterprise-marketplace/orpc.gen'
 import { explore } from './explore/orpc.gen'
 import { features } from './features/orpc.gen'
 import { files } from './files/orpc.gen'
@@ -33,6 +34,7 @@ import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
 import { ping } from './ping/orpc.gen'
+import { platformAdmin } from './platform-admin/orpc.gen'
 import { rag } from './rag/orpc.gen'
 import { refreshToken } from './refresh-token/orpc.gen'
 import { remoteFiles } from './remote-files/orpc.gen'
@@ -74,6 +76,7 @@ const communityContract = {
   datasets,
   emailCodeLogin,
   emailRegister,
+  enterpriseMarketplace,
   explore,
   features,
   files,
@@ -89,6 +92,7 @@ const communityContract = {
   notion,
   oauth,
   ping,
+  platformAdmin,
   rag,
   refreshToken,
   remoteFiles,

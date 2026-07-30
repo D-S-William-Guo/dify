@@ -334,6 +334,66 @@ export const zNewAppResponse = z.object({
 })
 
 /**
+ * MarketplaceSubmissionPayload
+ */
+export const zMarketplaceSubmissionPayload = z.object({
+  allow_show_workspace_name: z.boolean().optional().default(false),
+  category: z.string().min(1).max(255),
+  description: z.string().max(5000).optional().default(''),
+  expected_row_version: z.int().nullish(),
+  scenario: z.string().max(5000).optional().default(''),
+  tags: z.array(z.string().min(1).max(64)).max(10).optional().default([]),
+  title: z.string().min(1).max(255),
+})
+
+/**
+ * MarketplaceAssetResponse
+ *
+ * Admin / my-submissions asset view – no DSL.
+ */
+export const zMarketplaceAssetResponse = z.object({
+  allow_show_workspace_name: z.boolean(),
+  asset_id: z.string(),
+  category: z.string(),
+  created_at: z.iso.datetime(),
+  description: z.string(),
+  publication_status: z.string(),
+  review_note: z.string().nullable(),
+  reviewed_at: z.iso.datetime().nullable(),
+  reviewer_account_id: z.string().nullable(),
+  row_version: z.int(),
+  scenario: z.string(),
+  snapshot_error_code: z.string().nullable(),
+  snapshot_state: z.string(),
+  source_app_id: z.string().nullable(),
+  source_tenant_id: z.string().nullable(),
+  status: z.string(),
+  submitter_account_id: z.string().nullable(),
+  tags: z.array(z.string()),
+  title: z.string(),
+  updated_at: z.iso.datetime(),
+})
+
+/**
+ * MarketplaceErrorResponse
+ */
+export const zMarketplaceErrorResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.int(),
+})
+
+/**
+ * UnauthorizedResponse
+ *
+ * Matches the official login_required unauthorized_handler shape.
+ */
+export const zUnauthorizedResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+})
+
+/**
  * AppExportResponse
  */
 export const zAppExportResponse = z.object({
@@ -5295,6 +5355,17 @@ export const zPostAppsByAppIdCopyPath = z.object({
 })
 
 export const zPostAppsByAppIdCopyResponse = z.union([zAppDetailWithSite, zAppImportResponse])
+
+export const zPostAppsByAppIdEnterpriseMarketplaceSubmissionsBody = zMarketplaceSubmissionPayload
+
+export const zPostAppsByAppIdEnterpriseMarketplaceSubmissionsPath = z.object({
+  app_id: z.uuid(),
+})
+
+/**
+ * Created
+ */
+export const zPostAppsByAppIdEnterpriseMarketplaceSubmissionsResponse = zMarketplaceAssetResponse
 
 export const zGetAppsByAppIdExportPath = z.object({
   app_id: z.uuid(),

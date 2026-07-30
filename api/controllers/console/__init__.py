@@ -32,14 +32,17 @@ for module_name in RESOURCE_MODULES:
 
 # Ensure resource modules are imported so route decorators are evaluated.
 # Import other controllers
+# Import enterprise marketplace controller
 from . import (
     apikey,
+    enterprise_marketplace,
     extension,
     feature,
     human_input_form,
     init_validate,
     notification,
     ping,
+    platform_admin,
     setup,
     spec,
     version,
@@ -186,6 +189,7 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "enterprise_marketplace",
     "extension",
     "external",
     "feature",
@@ -210,6 +214,7 @@ __all__ = [
     "ops_trace",
     "parameter",
     "ping",
+    "platform_admin",
     "plugin",
     "rag_pipeline",
     "rag_pipeline_datasets",

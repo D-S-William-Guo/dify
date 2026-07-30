@@ -125,6 +125,11 @@ export type AccountPasswordPayload = {
   repeat_new_password: string
 }
 
+export type PlatformAdminStatusResponse = {
+  is_platform_admin: boolean
+  mutation_supported: boolean
+}
+
 export type AccountTimezonePayload = {
   timezone: string
 }
@@ -418,6 +423,20 @@ export type PostAccountPasswordResponses = {
 
 export type PostAccountPasswordResponse =
   PostAccountPasswordResponses[keyof PostAccountPasswordResponses]
+
+export type GetAccountPlatformAdminStatusData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/account/platform-admin-status'
+}
+
+export type GetAccountPlatformAdminStatusResponses = {
+  200: PlatformAdminStatusResponse
+}
+
+export type GetAccountPlatformAdminStatusResponse =
+  GetAccountPlatformAdminStatusResponses[keyof GetAccountPlatformAdminStatusResponses]
 
 export type GetAccountProfileData = {
   body?: never

@@ -28,6 +28,10 @@ export const contractLoaders = {
     import('./email-code-login/orpc.gen').then(({ emailCodeLogin }) => ({ emailCodeLogin })),
   emailRegister: () =>
     import('./email-register/orpc.gen').then(({ emailRegister }) => ({ emailRegister })),
+  enterpriseMarketplace: () =>
+    import('./enterprise-marketplace/orpc.gen').then(({ enterpriseMarketplace }) => ({
+      enterpriseMarketplace,
+    })),
   explore: () => import('./explore/orpc.gen').then(({ explore }) => ({ explore })),
   features: () => import('./features/orpc.gen').then(({ features }) => ({ features })),
   files: () => import('./files/orpc.gen').then(({ files }) => ({ files })),
@@ -49,6 +53,8 @@ export const contractLoaders = {
   notion: () => import('./notion/orpc.gen').then(({ notion }) => ({ notion })),
   oauth: () => import('./oauth/orpc.gen').then(({ oauth }) => ({ oauth })),
   ping: () => import('./ping/orpc.gen').then(({ ping }) => ({ ping })),
+  platformAdmin: () =>
+    import('./platform-admin/orpc.gen').then(({ platformAdmin }) => ({ platformAdmin })),
   rag: () => import('./rag/orpc.gen').then(({ rag }) => ({ rag })),
   refreshToken: () =>
     import('./refresh-token/orpc.gen').then(({ refreshToken }) => ({ refreshToken })),
