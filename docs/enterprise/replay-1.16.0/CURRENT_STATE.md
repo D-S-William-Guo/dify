@@ -12,6 +12,7 @@
 | --- | --- |
 | 本地仓库 | `/home/ctyun/BigData/GitHub/dify-enterprise-1.16.0` |
 | 候选分支 | `codex/enterprise-candidate-1.16.0-20260718` |
+| B5 Plan checkpoint | `c0c398f423135dcd118b2dce8be4d6c91562c1a7`（B5 Plan Rereview） |
 | B4 产品 checkpoint | `9c4c0356f3f2374c22b383ba96331e1dd92505fd` |
 | 交接文档 commit | 使用 `git log -1 --format=%H -- docs/enterprise/replay-1.16.0/CURRENT_STATE.md` 获取，避免文件自引用 commit |
 | 远端跟踪 | `origin/codex/enterprise-candidate-1.16.0-20260718` |
@@ -21,11 +22,11 @@
 | 官方基线 commit | `5c6372d2f76d240265b92fd27c16bc772ffcb107` |
 | Alembic 最终 head | `b416e5c4e702`（唯一 head） |
 | Skill 源仓库 | `/home/ctyun/BigData/GitHub/codex-personal-skills` |
-| Skill 源 commit | `2651320`（安全半自动化版） |
-| Claude Squad 定制 commit | `3f480f6`（governed workflow safeguards） |
+| Skill 源 commit | `2f59bef9ab56167f5ce1d065a48ec764bbae00f4`（含事件驱动实例清理节奏） |
+| Claude Squad 定制 commit | `90806c22a6bf4c859fc4bf17e18814a103868bc0`（含 governed workflow safeguards 与 Codex wheel/tmux scrollback 修复） |
 | 工作区 | 干净 |
 | 本地与 origin | 已同步 |
-| 当前产品里程碑 | B0～B4 已闭环；B4 `B4_FINAL_ACCEPTED` |
+| 当前产品里程碑 | B0～B4 已闭环；B5 Plan `PASS`；`BLOCKED_PENDING_CONTRACT_FIX` |
 
 禁止向 `upstream/langgenius/dify` 推送企业候选或创建企业 PR。企业分支只推送到用户 fork `origin`。
 
@@ -51,17 +52,17 @@ git merge-base 1.16.0 HEAD
 
 ## 2. 当前工作顺序
 
-当前已完成新窗口恢复验证和协作 Skill 安全半自动化升级，可以启动 B5 Architect 门禁；尚未授权 B5 Builder。
+当前已完成 B5 Architect → Plan Reviewer → Plan Fixer → Plan Rereviewer；B5 Plan 已接受，但 B5 前端链仍被 contract completeness findings 阻断，尚未授权任何 B5 Builder。
 
 协作基础设施当前状态：
 
 1. 通用 Claude Squad/worktree 协作 Skill：已升级到安全半自动化版并安装；
 2. Dify 官方版本企业功能重放 Skill：已创建并安装；
 3. 两个 Skill 已通过结构校验；Git 起点核验脚本已通过正向/负向测试；
-4. Claude Squad 已安装 `3f480f6` 构建并启用 `"governed_mode": true`；
+4. Claude Squad 源 checkpoint 为 `90806c22a6bf4c859fc4bf17e18814a103868bc0`，并启用 `"governed_mode": true`；
 5. dirty worktree 下 `c`/`p`/`D` 会拒绝危险操作；`D` 会明确提示是否删除本地分支；
-6. 当前无 Claude Squad 实例、B5 分支或额外 worktree；
-7. 下一动作是生成并人工创建 B5 Architect，不得直接启动 B5 Builder。
+6. B5 Plan 角色链实例已在 checkpoint push 后清理；当前无 Claude Squad 实例、B5 分支或额外 worktree；
+7. 下一角色是独立 contract-owner Fixer，同时修复 B3 typed error unions 与 B4 review reachable 422；其后必须独立 Contract Reviewer；不得直接启动 B5-E 或其他 B5 Builder。
 
 Skill 路径：
 
@@ -212,6 +213,38 @@ Alembic unique head = b416e5c4e702
 - `B4_FINAL_REVIEW.md`
 - `B4_FINAL_REREVIEW.md`
 
+### B5：前端实施计划门禁
+
+当前候选 checkpoint：`c0c398f423135dcd118b2dce8be4d6c91562c1a7`
+
+已完成：
+
+- Architect：`d5b365093ef7272b3cbb36a4ac16ba595f96f2ca`；
+- Plan Reviewer：`dfa98c711aee15226e3eabd3b2320d3557aa8e2c`；
+- Plan Fixer：`325fb52608890dcfafab72f2dbb3f40069f02f80`；
+- Plan Rereviewer：`c0c398f423135dcd118b2dce8be4d6c91562c1a7`，结论 `PASS`、`PLAN_ACCEPTED=yes`。
+
+已关闭的计划 findings：
+
+- `B5PR-01`：采用 `MOVE_B5_E_BEFORE_B5_A`，先落盘并独立审查全部 23 locale；
+- `B5PR-02`：采用 `B5_C_OWNS_DEDICATED_RESUBMIT_DIALOG`，消除 B5-C 对 B5-D 的前向依赖。
+
+已记录的产品/实施决定：
+
+- `CONTRACT_FIX_REQUIRED`；
+- `I18N_OPTION_B_APPROVED`；
+- B5-E 是 23 个 locale `common.json` 的唯一 writer；
+- 实际串行顺序为 contract 修复门禁 → B5-E → B5-A → B5-B → B5-C → B5-D。
+
+Plan PASS 只接受计划，不代表前端实现获批。当前仍为
+`BLOCKED_PENDING_CONTRACT_FIX`，并保持 `B5_BUILDER_NOT_AUTHORIZED`。
+
+主要报告：
+
+- `B5_IMPLEMENTATION_PLAN.md`
+- `B5_IMPLEMENTATION_PLAN_REVIEW.md`
+- `B5_IMPLEMENTATION_PLAN_REREVIEW.md`
+
 ## 4. B4 最终契约摘要
 
 ### B3 route
@@ -251,6 +284,20 @@ POST /console/api/platform-admin/enterprise-marketplace/assets/<asset_id>/unlist
 - domain errors：`MarketplaceErrorResponse {code, message, status}`；
 - B5 只消费 `packages/contracts/generated/api/console/**`；
 - B5 不得重新生成或手写 Console response types。
+
+### B5 发现的后置 contract completeness findings
+
+以下 findings 不推翻 B3/B4 已接受的后端行为，但必须在 B5 消费 contracts 前修复：
+
+1. B3 platform-admin/status generated contracts 缺少与真实可达错误响应对应的 typed
+   error unions；`PlatformAdminErrorResponse` 未完整进入 generated contracts。
+2. B4 marketplace review 路由实际可达 `422` domain errors，但 OpenAPI 路由声明和
+   `PostPlatformAdminEnterpriseMarketplaceAssetsByAssetIdReviewsErrors` 均缺少 `422`。
+
+独立 contract-owner Fixer 必须从官方 generator 链修正声明、补充行为/契约测试，并作为
+该轮 generated artifacts 的唯一 owner 执行 deterministic contract generation；第二次
+generation 必须无 diff。禁止前端 direct fetch、手写 response/error types 或 legacy
+loader workaround。修复必须经独立 Contract Reviewer PASS 并集成后，才允许启动 B5-E。
 
 ## 5. 仍未完成的运行与升级验证
 
@@ -303,40 +350,54 @@ POST /console/api/platform-admin/enterprise-marketplace/assets/<asset_id>/unlist
 
 这些风险不得因为 B4 PASS 而被删除或降级。
 
-## 7. B5 启动边界
+## 7. B5 当前门禁与下一任务
 
-B5 启动前必须先由 Architect 基于本 checkpoint 形成精确任务单，并由独立 Reviewer 审查。
-
-产品代码 checkpoint：
+B5 实施计划已由 Architect → Plan Reviewer → Plan Fixer → Plan Rereviewer 完成并接受。
+已接受的 B5 Plan checkpoint 为：
 
 ```text
-9c4c0356f3f2374c22b383ba96331e1dd92505fd
+c0c398f423135dcd118b2dce8be4d6c91562c1a7
 ```
 
-实际创建 B5 Architect 时，必须重新读取候选分支当前 40 位 HEAD，并把该值写入任务单。这个 HEAD 必须包含上述 B4 checkpoint，且 B4 后只能多出已审核的治理/交接文档提交；不要把 `9c4c...` 机械填成未来任务的起点。
+该 checkpoint 包含 B4 产品 checkpoint
+`9c4c0356f3f2374c22b383ba96331e1dd92505fd`，并包含全部已接受的 B5 计划与复审报告。
+交接文档不能自引用其未来 commit；恢复时以 `git rev-parse HEAD` 取得当前候选精确 SHA，
+要求本地与 origin 相同且包含上述 B5 Plan checkpoint。
 
-B5 目标：
+### 下一角色：independent contract-owner Fixer
 
-- 平台管理员和智慧广场前端；
-- generated contract queries/mutations；
-- Jotai/feature state；
-- 权限入口和导航；
-- submit/review/copy/error/empty/loading/retry UI；
-- `platformAdmin.*` 和 `enterpriseMarketplace.*` i18n；
-- 行为测试、type-check。
+该 Fixer 只负责关闭两个已确认 contract findings：
 
-B5 禁止：
+1. B3 platform-admin/status typed error unions；
+2. B4 marketplace review reachable `422` declaration/generated error union。
 
-- 修改 `api/**`；
-- 修改 migration/model/service/controller；
-- 修改 `docker/**`；
-- 修改 `dify-agent/**`；
-- 修改或重新生成 `packages/contracts/**`；
-- 手写 Console response types；
-- 使用旧 app context 或 legacy contract loader；
-- 未审批扩大 locale 或共享组件范围。
+Fixer 必须从创建时新的候选精确 40 位 SHA 开始，并先核验 branch/HEAD/clean/B4
+ancestor。允许范围应限于确有必要的 API contract declarations、对应 tests、OpenAPI/
+generated contracts；generated artifacts 只有该 Fixer 可以生成。不得修改前端、Docker、
+migration、model/schema、业务状态机、数据库、容器、vector、volume 或外部服务。
 
-建议先建立 `B5_IMPLEMENTATION_PLAN.md`，经 Architect → Reviewer → Fixer（如需）→ Rereviewer 门禁后，再拆 Builder。
+Fixer dirty diff 必须先由协调者检查；未经单独授权不得 commit/amend/push。其提交集成后，
+必须从包含 Fixer commit 的新精确 SHA 创建独立 Contract Reviewer。Reviewer 必须核验真实
+reachable statuses、generated typed unions、focused backend tests、contract generation
+determinism、scope 与无 frontend workaround。
+
+### 后续串行门禁
+
+```text
+contract-owner Fixer
+→ independent Contract Reviewer
+→ CHANGES_REQUIRED 时 finding-scoped Contract Fixer / independent Rereviewer
+→ contract PASS fast-forwarded and checkpoint recorded
+→ B5-E all-23-locale foundation
+→ B5-A → B5-B → B5-C → B5-D
+```
+
+在 Contract Reviewer/Rereviewer PASS 且修复集成前：
+
+- `BLOCKED_PENDING_CONTRACT_FIX`；
+- `B5_BUILDER_NOT_AUTHORIZED`；
+- 不得启动 B5-E；
+- 不得通过 direct fetch、手写 Console response/error types 或 legacy loader 绕过。
 
 ## 8. Claude Squad / worktree 协作 SOP
 
@@ -425,17 +486,21 @@ git merge --ff-only ctyun/<instance-branch>
 1. 仓库、分支、HEAD、origin 是否与文档一致；
 2. 工作区是否干净；
 3. B4_FINAL_REREVIEW.md 是否为 PASS；
-4. 当前是否不存在 B5 分支、额外 worktree 和 Claude Squad 实例；
-5. Skill 源 commit 是否包含 2651320，Claude Squad 源 commit 是否包含 3f480f6；
-6. 只恢复协调状态，不修改业务代码，不创建实例。
+4. B5_IMPLEMENTATION_PLAN_REREVIEW.md 是否为 PASS、PLAN_ACCEPTED=yes，同时保持
+   BLOCKED_PENDING_CONTRACT_FIX 和 B5_BUILDER_NOT_AUTHORIZED；
+5. 当前是否不存在 B5 分支、额外 worktree 和 Claude Squad 实例；
+6. Skill 源 commit 是否包含 2f59bef9ab56167f5ce1d065a48ec764bbae00f4，
+   Claude Squad 源 commit 是否包含 90806c22a6bf4c859fc4bf17e18814a103868bc0；
+7. 只恢复协调状态，不修改业务代码，不创建实例。
 
 核验通过后：
 
-1. 依据 CURRENT_STATE.md 第 7 节和 B4 最终 contracts，制定 B5 Architect 的精确只读任务；
-2. 使用最新版 $orchestrate-claude-squad 生成 N 表单字段和完整任务契约；
-3. B5 Architect 只能分析并编写 B5_IMPLEMENTATION_PLAN.md，不得实现前端；
+1. 依据 CURRENT_STATE.md 第 7 节、B5_IMPLEMENTATION_PLAN.md 和最终 Rereview，
+   制定 independent contract-owner Fixer 的精确任务；
+2. Fixer 同时关闭 B3 typed error unions 与 B4 review reachable 422，不得做 frontend workaround；
+3. 使用最新版 $orchestrate-claude-squad 生成 N 表单字段和完整任务契约；
 4. 把任务契约交给我人工确认后再创建 Claude Squad 实例；
-5. 不得直接启动 B5 Builder。
+5. 不得直接启动 B5-E 或其他 B5 Builder。
 
 任何事实与文档不符时，先报告差异，不得自动 reset、merge、rebase、migration、Docker 或 volume。
 ```
@@ -455,14 +520,18 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-B4 已合并并推送，所有 B4 实例已经清理。当前：
+B5 Plan checkpoint 已合并并推送，Architect/Plan Reviewer/Plan Fixer/Plan Rereviewer
+实例均已按事件驱动清理门禁删除。当前：
 
 - Claude Squad `instances: []`；
 - 无 `ctyun/replay-116-b5-*` 分支；
 - 无额外 worktree；
-- B5 尚未启动。
+- 候选分支与 origin 已同步，并包含 B5 Plan checkpoint
+  `c0c398f423135dcd118b2dce8be4d6c91562c1a7`；当前精确 HEAD 以恢复命令取得；
+- 下一角色是 independent contract-owner Fixer；
+- `B5_BUILDER_NOT_AUTHORIZED`。
 
-开始 B5 前执行：
+创建 contract-owner Fixer 前执行：
 
 ```bash
 git worktree prune
@@ -470,4 +539,7 @@ git worktree list
 git status --short --branch
 ```
 
-预期只保留候选主目录；候选分支与 origin 同步，且包含 B4 checkpoint `9c4c0356f3f2374c22b383ba96331e1dd92505fd`。随后以候选分支新的完整 40 位 HEAD 作为 B5 Architect 起点。
+预期只保留候选主目录；候选分支与 origin 同步，且包含 B4 checkpoint
+`9c4c0356f3f2374c22b383ba96331e1dd92505fd` 和 B5 Plan Rereview checkpoint
+`c0c398f423135dcd118b2dce8be4d6c91562c1a7`。随后以创建时重新读取的候选完整
+40 位 HEAD 作为 contract-owner Fixer 起点，不得使用移动的“latest HEAD”。
