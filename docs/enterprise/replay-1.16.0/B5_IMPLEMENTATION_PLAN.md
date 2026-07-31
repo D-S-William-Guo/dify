@@ -4,20 +4,35 @@
 
 当前结论：**BLOCKED_PENDING_CONTRACT_FIX**。
 
-本文件是可独立 Review 的实施计划，不是 Builder 授权。协调者已记录两项决定：
+本文件是可独立 Review 的实施计划，不是 Builder 授权。协调者已记录以下决定：
 
 1. `CONTRACT_FIX_REQUIRED`：B3 的 platform-admin/status typed error unions 和 B4
    marketplace review reachable 422 必须由独立 contract-owner Fixer 修复，并由独立
    Reviewer 验证；修复完成前 B5 保持阻断。
 2. `I18N_OPTION_B_APPROVED`：B5 i18n allowlist 扩大到全部 23 个 supported locale 的
    `common.json`；B5-E 是唯一 writer 和翻译质量 owner，且完成后必须独立 Review。
+3. `MOVE_B5_E_BEFORE_B5_A`（I18N_EXECUTION_ORDER，B5PR-01 disposition）：B5-E 的执行
+   门禁移到 B5-A 之前。B5-E 先创建完整且已批准的 `platformAdmin.*` /
+   `enterpriseMarketplace.*` key inventory（§8.4），完成全部 23 个 supported locale
+   parity、正确本地化、非英文无英文占位和 `i18n:check`，经独立 B5-E Reviewer /
+   i18n Fixer? / Rereviewer PASS 且 fast-forward 后，B5-A/B/C/D 才只读消费 typed
+   keys。B5-A/B/C/D 一律禁止修改 locale/i18n 文件。后续 Builder 若发现缺 key，必须
+   停止并交独立 i18n Fixer/Review，不得越权添加。编号 B5-A..B5-E 表示 ownership
+   package，不表示执行先后。
+4. `B5_C_OWNS_DEDICATED_RESUBMIT_DIALOG`（B5PR-02 disposition）：新增计划文件项
+   `web/features/enterprise-marketplace/resubmit-marketplace-dialog.tsx`，唯一
+   owner=B5-C；`resubmit-action.tsx` 只依赖该 B5-C dialog，不依赖 B5-D 的
+   `submit-marketplace-dialog.tsx`。B5-D 继续负责 app-card 首次提交入口、首次提交
+   dialog 和 focused tests。409 必须保留 draft、invalidate/refetch、显示 conflict，
+   禁止自动重放 mutation。
 
 当前唯一未关闭的前置阻断是 contract 修复。B5 不修改 API 或 generated contracts，
 不使用临时 fetch、手写 DTO/error type 或其他前端 workaround；B5-E 不得向非英文
-locale 复制英文占位。
+locale 复制英文占位；B5-A/B/C/D 不得向任何 locale/i18n 文件预写或改写 key。
 
 contract 修复经独立 Review、计划经独立 Plan Review 且协调者另行授权后，B5 才可按
-本文 §12 的严格串行拓扑执行。任何 Builder 仍须从“包含已接受计划、已接受 contract
+本文 §12 的严格串行拓扑执行（contract PASS 后先 B5-E 全 23-locale foundation，再
+B5-A → B5-B → B5-C → B5-D）。任何 Builder 仍须从“包含已接受计划、已接受 contract
 修复和本文件记录决定”的新 40 位精确 SHA 开始。
 
 ## 1. Current-state recovery
@@ -182,8 +197,8 @@ Main-nav：
 | role update | account-setting member menu/role selector pattern | `ChangeMemberRoleDialog` | row/dialog local state；owner/unsupported disabled |
 | marketplace browse | Explore card/grid/search/skeleton/empty patterns | `MarketplaceBrowsePage`、`MarketplaceCard`、`MarketplaceFilters` | URL owns filters；query owns server data |
 | marketplace detail/copy | Explore detail/app icon/button patterns | `MarketplaceDetailPage`、`CopyAssetAction`、`CopyResultDialog` | copy owner shows warnings before/with navigation |
-| submissions | apps list/card patterns | `MySubmissionsPage`、`SubmissionStatus`、`ResubmitAction` | resubmit dialog owns form draft/version |
-| app-card submit | official `AppCardOperationsMenu` | `SubmitMarketplaceDialog` | app-card only opens surface；dialog owns mutation |
+| submissions | apps list/card patterns | `MySubmissionsPage`、`SubmissionStatus`、`ResubmitAction`、`ResubmitMarketplaceDialog` | B5-C 专用 resubmit dialog 持有 form draft/current `expected_row_version`；409 保留 draft 并 refetch，禁止自动重放 |
+| app-card submit | official `AppCardOperationsMenu` | `SubmitMarketplaceDialog`（首次提交 only） | app-card only opens surface；B5-D first-submit dialog owns mutation；resubmit 走 B5-C 专用 dialog，不经 app-card |
 | admin marketplace | table/filter/dialog patterns | `MarketplaceReviewPage`、`ReviewDialog`、`UnlistDialog` | row action captures current row_version |
 
 所有新 overlay 只从 `@langgenius/dify-ui/*` 导入。禁止 legacy modal/dialog/drawer、
@@ -245,6 +260,9 @@ Pagination 切换使用 `keepPreviousData`；搜索 submit/debounce 后 page 重
 所有 key 位于 `common.json`，不新增 namespace 文件。状态 code 到 key 的映射必须穷尽已生成/
 批准 code；后端 `message` 不直接当主要 UI 文案，避免内部/未本地化文本泄漏。
 
+§8.4 是完整且已批准的 key inventory：它是 B5-E 的实现基准（全 23 个 locale 逐 key
+落盘），也是 B5-A/B/C/D typed 消费的唯一定义。
+
 ### 8.2 当前 locale inventory
 
 仓库有 23 个目录且 `languages.ts` 中 23 个均 `supported: true`：
@@ -284,6 +302,180 @@ i18n Reviewer 检查 key parity、命名空间、语义和本地化质量；`CHA
 finding-scoped B5-E Fixer 修改上述 allowlist，随后独立 Rereviewer PASS。此决定不解除
 contract 阻断，也不构成任何 B5 Builder 授权。
 
+### 8.4 RECORDED_DECISION — 完整且已批准的 key inventory
+
+下表是完整且已批准的 `platformAdmin.*` / `enterpriseMarketplace.*` key inventory，
+即 B5PR-01 要求的 "approved namespace/key set" 产物。B5-E 必须把下表每个 key 精确
+创建到全部 23 个 `common.json`，不得缩减；B5-A/B/C/D 只能消费下表存在的 typed keys。
+
+#### platformAdmin.* inventory
+
+| Key | 用途 / 消费 surface |
+| --- | --- |
+| `platformAdmin.nav.label` | main-nav 平台管理员入口标题 |
+| `platformAdmin.workspaces.title` | workspace list 页面标题 |
+| `platformAdmin.workspaces.searchPlaceholder` | 列表搜索占位 |
+| `platformAdmin.workspaces.searchButton` | 搜索按钮 |
+| `platformAdmin.workspaces.filterAll` | status 过滤全部 |
+| `platformAdmin.workspaces.filterNormal` | status 过滤 normal |
+| `platformAdmin.workspaces.filterArchived` | status 过滤 archive |
+| `platformAdmin.workspaces.loading` | 列表 loading |
+| `platformAdmin.workspaces.empty` | 空结果 |
+| `platformAdmin.workspaces.error` | 列表错误文案 |
+| `platformAdmin.workspaces.retry` | 重试动作 |
+| `platformAdmin.workspaceDetail.title` | workspace detail 页面标题 |
+| `platformAdmin.renameWorkspace.title` | 重命名 dialog 标题 |
+| `platformAdmin.renameWorkspace.nameLabel` | 名称字段 label |
+| `platformAdmin.renameWorkspace.namePlaceholder` | 名称占位 |
+| `platformAdmin.renameWorkspace.nameRequired` | 必填校验 |
+| `platformAdmin.renameWorkspace.save` | 保存按钮 |
+| `platformAdmin.renameWorkspace.cancel` | 取消 |
+| `platformAdmin.renameWorkspace.success` | 成功提示 |
+| `platformAdmin.renameWorkspace.conflict` | 409 冲突文案 |
+| `platformAdmin.members.title` | member list 标题 |
+| `platformAdmin.members.loading` | member loading |
+| `platformAdmin.members.empty` | member 空结果 |
+| `platformAdmin.members.error` | member 错误文案 |
+| `platformAdmin.members.retry` | 重试动作 |
+| `platformAdmin.members.roleLabel` | 角色列 label |
+| `platformAdmin.roles.owner` | 角色 owner |
+| `platformAdmin.roles.admin` | 角色 admin |
+| `platformAdmin.roles.member` | 角色 member |
+| `platformAdmin.ownerBadge` | owner 标记 |
+| `platformAdmin.invite.title` | invite dialog 标题 |
+| `platformAdmin.invite.recipientsLabel` | 收件人 label |
+| `platformAdmin.invite.recipientsPlaceholder` | 收件人占位 |
+| `platformAdmin.invite.roleLabel` | 邀请角色 label |
+| `platformAdmin.invite.languageLabel` | 邀请语言 label |
+| `platformAdmin.invite.send` | 发送按钮 |
+| `platformAdmin.invite.cancel` | 取消 |
+| `platformAdmin.invite.success` | 整体成功提示 |
+| `platformAdmin.invite.resultTitle` | 逐邮箱结果标题 |
+| `platformAdmin.invite.status.pending` | 邀请 pending 状态 |
+| `platformAdmin.invite.status.activated` | 邀请 activated 状态 |
+| `platformAdmin.invite.delivery.sent` | email_delivery sent |
+| `platformAdmin.invite.delivery.failed` | email_delivery failed |
+| `platformAdmin.changeRole.title` | 角色变更 dialog 标题 |
+| `platformAdmin.changeRole.confirmMessage` | 变更确认文案 |
+| `platformAdmin.changeRole.save` | 保存 |
+| `platformAdmin.changeRole.cancel` | 取消 |
+| `platformAdmin.changeRole.success` | 成功提示 |
+| `platformAdmin.rbacUnavailable.title` | RBAC unavailable 标题 |
+| `platformAdmin.rbacUnavailable.message` | RBAC unavailable 说明 |
+| `platformAdmin.errors.unauthorized` | 401 安全通用文案 |
+| `platformAdmin.errors.permissionDenied` | 403 fail-closed |
+| `platformAdmin.errors.notFound` | 404 |
+| `platformAdmin.errors.conflict` | 409 |
+| `platformAdmin.errors.serviceUnavailable` | 503 可重试 |
+| `platformAdmin.errors.loading` | 通用 loading |
+
+#### enterpriseMarketplace.* inventory
+
+| Key | 用途 / 消费 surface |
+| --- | --- |
+| `enterpriseMarketplace.nav.label` | main-nav 智慧广场入口标题 |
+| `enterpriseMarketplace.browse.title` | browse 页面标题 |
+| `enterpriseMarketplace.browse.searchPlaceholder` | 搜索占位 |
+| `enterpriseMarketplace.browse.searchButton` | 搜索按钮 |
+| `enterpriseMarketplace.browse.categoryAll` | 分类全部 |
+| `enterpriseMarketplace.browse.loading` | 列表 loading |
+| `enterpriseMarketplace.browse.empty` | 空结果 |
+| `enterpriseMarketplace.browse.error` | 列表错误文案 |
+| `enterpriseMarketplace.browse.retry` | 重试动作 |
+| `enterpriseMarketplace.card.copy` | card 复制按钮 |
+| `enterpriseMarketplace.card.viewDetail` | card 查看详情 |
+| `enterpriseMarketplace.detail.title` | detail 页面标题 |
+| `enterpriseMarketplace.detail.notFound` | 404 |
+| `enterpriseMarketplace.detail.error` | 错误文案 |
+| `enterpriseMarketplace.detail.retry` | 重试 |
+| `enterpriseMarketplace.detail.copy` | 复制按钮 |
+| `enterpriseMarketplace.detail.description` | 描述 label |
+| `enterpriseMarketplace.detail.category` | 分类 label |
+| `enterpriseMarketplace.detail.scenario` | 场景 label |
+| `enterpriseMarketplace.detail.tags` | 标签 label |
+| `enterpriseMarketplace.copy.confirmTitle` | 复制确认 dialog 标题 |
+| `enterpriseMarketplace.copy.confirmMessage` | 复制确认文案 |
+| `enterpriseMarketplace.copy.confirm` | 确认按钮 |
+| `enterpriseMarketplace.copy.cancel` | 取消 |
+| `enterpriseMarketplace.copy.processing` | 复制进行中 |
+| `enterpriseMarketplace.copy.success` | 复制成功 |
+| `enterpriseMarketplace.copy.warningsTitle` | 警告列表标题 |
+| `enterpriseMarketplace.copy.navigateToApp` | 跳转新 app 动作 |
+| `enterpriseMarketplace.copy.error.validation` | 422 |
+| `enterpriseMarketplace.copy.error.conflict` | 409 |
+| `enterpriseMarketplace.copy.error.serviceUnavailable` | 503 |
+| `enterpriseMarketplace.copy.error.notFound` | 404 |
+| `enterpriseMarketplace.copy.error.permissionDenied` | 403 |
+| `enterpriseMarketplace.submissions.title` | submissions 页面标题 |
+| `enterpriseMarketplace.submissions.loading` | loading |
+| `enterpriseMarketplace.submissions.empty` | 空结果 |
+| `enterpriseMarketplace.submissions.emptyCta` | 空结果 CTA |
+| `enterpriseMarketplace.submissions.error` | 错误文案 |
+| `enterpriseMarketplace.submissions.retry` | 重试 |
+| `enterpriseMarketplace.submissions.resubmit` | resubmit 动作 |
+| `enterpriseMarketplace.status.pending` | 状态 pending |
+| `enterpriseMarketplace.status.approved` | 状态 approved |
+| `enterpriseMarketplace.status.rejected` | 状态 rejected |
+| `enterpriseMarketplace.status.published` | 状态 published |
+| `enterpriseMarketplace.status.unpublished` | 状态 unpublished |
+| `enterpriseMarketplace.status.unlisted` | 状态 unlisted |
+| `enterpriseMarketplace.status.snapshotError` | 快照异常标记 |
+| `enterpriseMarketplace.submitDialog.title` | B5-D 首次提交 dialog 标题 |
+| `enterpriseMarketplace.submitDialog.description` | B5-D 首次提交说明 |
+| `enterpriseMarketplace.submitDialog.confirm` | B5-D 提交按钮 |
+| `enterpriseMarketplace.submitDialog.cancel` | B5-D 取消 |
+| `enterpriseMarketplace.submitDialog.success` | B5-D 成功提示 |
+| `enterpriseMarketplace.resubmitDialog.title` | B5-C resubmit dialog 标题 |
+| `enterpriseMarketplace.resubmitDialog.description` | B5-C resubmit 说明（含当前版本提示） |
+| `enterpriseMarketplace.resubmitDialog.confirm` | B5-C 重新提交按钮 |
+| `enterpriseMarketplace.resubmitDialog.cancel` | B5-C 取消 |
+| `enterpriseMarketplace.resubmitDialog.success` | B5-C 成功提示 |
+| `enterpriseMarketplace.resubmitDialog.conflict` | B5-C 409 冲突标题 |
+| `enterpriseMarketplace.resubmitDialog.conflictMessage` | B5-C 409 保留 draft/refetch 说明 |
+| `enterpriseMarketplace.review.title` | review 页/对话框标题 |
+| `enterpriseMarketplace.review.approve` | 批准动作 |
+| `enterpriseMarketplace.review.reject` | 拒绝动作 |
+| `enterpriseMarketplace.review.reviewNoteLabel` | 审核意见 label |
+| `enterpriseMarketplace.review.reviewNotePlaceholder` | 审核意见占位 |
+| `enterpriseMarketplace.review.confirm` | 确认按钮 |
+| `enterpriseMarketplace.review.cancel` | 取消 |
+| `enterpriseMarketplace.review.success` | 成功提示 |
+| `enterpriseMarketplace.review.error.validation` | 422 |
+| `enterpriseMarketplace.review.error.conflict` | 409 |
+| `enterpriseMarketplace.review.error.serviceUnavailable` | 503 |
+| `enterpriseMarketplace.unlist.title` | unlist dialog 标题 |
+| `enterpriseMarketplace.unlist.confirmMessage` | unlist 确认文案 |
+| `enterpriseMarketplace.unlist.confirm` | 确认 |
+| `enterpriseMarketplace.unlist.cancel` | 取消 |
+| `enterpriseMarketplace.unlist.success` | 成功提示 |
+| `enterpriseMarketplace.unlist.error.conflict` | 409 |
+| `enterpriseMarketplace.errors.unauthorized` | 401 安全通用文案 |
+| `enterpriseMarketplace.errors.permissionDenied` | 403 fail-closed |
+| `enterpriseMarketplace.errors.notFound` | 404 |
+| `enterpriseMarketplace.errors.conflict` | 409 通用 |
+| `enterpriseMarketplace.errors.validation` | 422 通用 |
+| `enterpriseMarketplace.errors.serviceUnavailable` | 503 可重试 |
+| `enterpriseMarketplace.errors.staleAssetVersion` | stale_asset_version 具体文案 |
+
+### 8.5 RECORDED_DECISION — I18N_EXECUTION_ORDER (MOVE_B5_E_BEFORE_B5_A)
+
+协调者已接受 B5PR-01 的 disposition `MOVE_B5_E_BEFORE_B5_A`：
+
+- §8.4 的 key inventory 是完整且已批准的 `platformAdmin.*` / `enterpriseMarketplace.*`
+  key 定义，是 B5-E 的精确实现基准；B5-E 不得缩减、不得依赖 en-US fallback 之外的
+  额外 key，也不得向非英文 locale 复制英文占位。
+- B5-E 执行门禁排在 B5-A 之前：contract PASS/fast-forward 后第一个执行的 Builder 是
+  B5-E。B5-E 必须在 23 个 locale 全部创建 §8.4 inventory、通过 23-locale
+  `i18n:check`、提供正确本地化内容，并经独立 B5-E Reviewer / i18n Fixer? / Rereviewer
+  PASS 且 fast-forward 后，B5-A/B/C/D 才允许开始。
+- B5-A/B/C/D 只读消费 §8.4 typed keys，禁止修改任何 locale/i18n 文件（§11 denylist；
+  §8.3 23 个文件唯一 writer=B5-E）。
+- 后续 Builder 若发现 §8.4 缺 key：立即停止，交独立 i18n Fixer/Review 补充 inventory
+  （必要时经 finding-scoped Plan Fixer 修订 §8.4）与对应 23 个 locale 文件，独立
+  Review 后再恢复；Builder 不得越权添加。
+- 编号 B5-A..B5-E 表示 ownership package，不表示执行先后；实际执行顺序
+  B5-E → B5-A → B5-B → B5-C → B5-D。
+
 ## 9. Test matrix
 
 | Observable behavior | Focused Vitest / RTL |
@@ -298,12 +490,12 @@ contract 阻断，也不构成任何 B5 Builder 授权。
 | browse pagination/search/category/sort and empty/retry | marketplace browse spec |
 | detail 404 and copy 409/422/503 | detail/copy spec |
 | copy button pending cannot activate twice；warnings visible；app_id navigation | copy action spec |
-| submit app-card entry permission；first submit omits version | app-card + submit dialog specs |
-| resubmit includes current `expected_row_version` | submissions spec |
+| first submit（B5-D）仅从 app-card 打开、首次提交省略 version；成功后 invalidate submissions | B5-D app-card + submit-marketplace-dialog specs |
+| resubmit（B5-C）专用 dialog 携带当前 `expected_row_version`；409 保留 draft、invalidate/refetch、显示 conflict、禁止自动重放 | B5-C submissions + resubmit-marketplace-dialog specs |
 | review/unlist send current version；success consumes new version/invalidation | admin marketplace spec |
-| stale conflict refetches and does not auto retry | review/resubmit specs |
+| stale conflict refetches and does not auto retry | review/resubmit/submissions specs |
 | form labels, dialog focus/escape, disabled/loading semantics | owning dialog specs with semantic queries/userEvent |
-| 23 locale key parity、prefix、无 hardcoded user copy | all-locale i18n check + code review |
+| B5-E 门禁先于 B5-A：§8.4 inventory 全量落盘、23 locale key parity、prefix、无 hardcoded user copy、`i18n:check` | all-locale i18n check + code review |
 | 非英文 locale 是正确本地化内容、无英文占位或 fallback 依赖 | B5-E independent Reviewer 逐 locale 语义 review |
 
 后续 Builder/Reviewer 精确命令：
@@ -343,82 +535,91 @@ pnpm --dir web i18n:check --file common --lang \
 
 | Exact file | Owner | Read-only dependency | Shared conflict | Merge order |
 | --- | --- | --- | --- | --- |
-| `web/service/client.ts` | B5-A | generated router/types | 全 B5 唯一 writer | 1 |
-| `web/app/components/main-nav/routes.ts` | B5-A | current route pattern | main-nav 唯一 writer | 1 |
-| `web/app/components/main-nav/index.tsx` | B5-A | platform state | main-nav 唯一 writer | 1 |
-| `web/app/components/main-nav/__tests__/index.spec.tsx` | B5-A | test helpers | main-nav 唯一 writer | 1 |
-| `web/features/platform-admin/state.ts` | B5-A | account contract/Jotai | feature state 唯一 writer | 1 |
-| `web/features/platform-admin/errors.ts` | B5-A | fixed generated B3 error types | blocked until contract fix | 1 |
-| `web/features/platform-admin/__tests__/state.spec.tsx` | B5-A | fresh QueryClient | none | 1 |
-| `web/features/platform-admin/README.md` | B5-A | skill module boundary | feature README 唯一 writer | 1 |
-| `web/app/(commonLayout)/platform-admin/workspaces/page.tsx` | B5-B | B5-A status guard | new | 2 |
-| `web/app/(commonLayout)/platform-admin/workspaces/[workspaceId]/page.tsx` | B5-B | B5-A status guard | new | 2 |
-| `web/features/platform-admin/workspace-list-page.tsx` | B5-B | generated queries | new | 2 |
-| `web/features/platform-admin/workspace-detail-page.tsx` | B5-B | generated queries | new | 2 |
-| `web/features/platform-admin/workspace-filters.tsx` | B5-B | nuqs | new | 2 |
-| `web/features/platform-admin/workspace-table.tsx` | B5-B | dify-ui | new | 2 |
-| `web/features/platform-admin/member-table.tsx` | B5-B | generated response | new | 2 |
-| `web/features/platform-admin/rbac-unavailable-banner.tsx` | B5-B | mutation flags | new | 2 |
-| `web/features/platform-admin/rename-workspace-dialog.tsx` | B5-B | Form/Dialog/query | new | 2 |
-| `web/features/platform-admin/invite-members-dialog.tsx` | B5-B | Form/Dialog/query | new | 2 |
-| `web/features/platform-admin/invitation-result-list.tsx` | B5-B | generated result type | new | 2 |
-| `web/features/platform-admin/change-member-role-dialog.tsx` | B5-B | generated roles | new | 2 |
-| `web/features/platform-admin/__tests__/workspace-list-page.spec.tsx` | B5-B | RTL | new | 2 |
-| `web/features/platform-admin/__tests__/workspace-detail-page.spec.tsx` | B5-B | RTL | new | 2 |
-| `web/features/platform-admin/__tests__/member-mutations.spec.tsx` | B5-B | RTL | new | 2 |
-| `web/app/(commonLayout)/enterprise-marketplace/page.tsx` | B5-C | main-nav route | new | 3 |
-| `web/app/(commonLayout)/enterprise-marketplace/[assetId]/page.tsx` | B5-C | route params | new | 3 |
-| `web/app/(commonLayout)/enterprise-marketplace/submissions/page.tsx` | B5-C | route | new | 3 |
-| `web/app/(commonLayout)/platform-admin/enterprise-marketplace/page.tsx` | B5-C | admin state | new | 3 |
-| `web/features/enterprise-marketplace/README.md` | B5-C | module boundary | feature README 唯一 writer | 3 |
-| `web/features/enterprise-marketplace/errors.ts` | B5-C | generated marketplace errors | blocked until review 422 fix | 3 |
-| `web/features/enterprise-marketplace/marketplace-filters.tsx` | B5-C | nuqs | new | 3 |
-| `web/features/enterprise-marketplace/marketplace-card.tsx` | B5-C | AppIcon/card pattern | new | 3 |
-| `web/features/enterprise-marketplace/browse-page.tsx` | B5-C | generated public list | new | 3 |
-| `web/features/enterprise-marketplace/detail-page.tsx` | B5-C | generated detail | new | 3 |
-| `web/features/enterprise-marketplace/copy-asset-action.tsx` | B5-C | copy mutation/router | new | 3 |
-| `web/features/enterprise-marketplace/copy-result-dialog.tsx` | B5-C | warnings | new | 3 |
-| `web/features/enterprise-marketplace/my-submissions-page.tsx` | B5-C | submissions query | new | 3 |
-| `web/features/enterprise-marketplace/submission-status.tsx` | B5-C | generated fields | new | 3 |
-| `web/features/enterprise-marketplace/resubmit-action.tsx` | B5-C | submit dialog | new | 3 |
-| `web/features/enterprise-marketplace/admin-review-page.tsx` | B5-C | admin query | new | 3 |
-| `web/features/enterprise-marketplace/review-dialog.tsx` | B5-C | row_version | new | 3 |
-| `web/features/enterprise-marketplace/unlist-dialog.tsx` | B5-C | row_version | new | 3 |
-| `web/features/enterprise-marketplace/__tests__/browse-page.spec.tsx` | B5-C | RTL | new | 3 |
-| `web/features/enterprise-marketplace/__tests__/detail-copy.spec.tsx` | B5-C | RTL | new | 3 |
-| `web/features/enterprise-marketplace/__tests__/submissions.spec.tsx` | B5-C | RTL | new | 3 |
-| `web/features/enterprise-marketplace/__tests__/admin-review.spec.tsx` | B5-C | RTL | new | 3 |
-| `web/app/components/apps/app-card.tsx` | B5-D | B5-C dialog | apps app-card 唯一 writer | 4 |
-| `web/app/components/apps/__tests__/app-card.spec.tsx` | B5-D | current app card fixtures | apps test 唯一 writer | 4 |
-| `web/features/enterprise-marketplace/submit-marketplace-dialog.tsx` | B5-D | generated submit mutation | new | 4 |
-| `web/features/enterprise-marketplace/__tests__/submit-marketplace-dialog.spec.tsx` | B5-D | RTL | new | 4 |
-| `web/i18n/ar-TN/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/de-DE/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/en-US/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/es-ES/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/fa-IR/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/fr-FR/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/hi-IN/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/id-ID/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/it-IT/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/ja-JP/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/ko-KR/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/nl-NL/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/pl-PL/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/pt-BR/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/ro-RO/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/ru-RU/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/sl-SI/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/th-TH/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/tr-TR/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/uk-UA/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/vi-VN/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/zh-Hans/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
-| `web/i18n/zh-Hant/common.json` | B5-E | approved namespace/key set | i18n 唯一 writer/质量 owner | 5 |
+| `web/service/client.ts` | B5-A | generated router/types | 全 B5 唯一 writer | 2 |
+| `web/app/components/main-nav/routes.ts` | B5-A | current route pattern | main-nav 唯一 writer | 2 |
+| `web/app/components/main-nav/index.tsx` | B5-A | platform state | main-nav 唯一 writer | 2 |
+| `web/app/components/main-nav/__tests__/index.spec.tsx` | B5-A | test helpers | main-nav 唯一 writer | 2 |
+| `web/features/platform-admin/state.ts` | B5-A | account contract/Jotai | feature state 唯一 writer | 2 |
+| `web/features/platform-admin/errors.ts` | B5-A | fixed generated B3 error types | blocked until contract fix | 2 |
+| `web/features/platform-admin/__tests__/state.spec.tsx` | B5-A | fresh QueryClient | none | 2 |
+| `web/features/platform-admin/README.md` | B5-A | skill module boundary | feature README 唯一 writer | 2 |
+| `web/app/(commonLayout)/platform-admin/workspaces/page.tsx` | B5-B | B5-A status guard | new | 3 |
+| `web/app/(commonLayout)/platform-admin/workspaces/[workspaceId]/page.tsx` | B5-B | B5-A status guard | new | 3 |
+| `web/features/platform-admin/workspace-list-page.tsx` | B5-B | generated queries | new | 3 |
+| `web/features/platform-admin/workspace-detail-page.tsx` | B5-B | generated queries | new | 3 |
+| `web/features/platform-admin/workspace-filters.tsx` | B5-B | nuqs | new | 3 |
+| `web/features/platform-admin/workspace-table.tsx` | B5-B | dify-ui | new | 3 |
+| `web/features/platform-admin/member-table.tsx` | B5-B | generated response | new | 3 |
+| `web/features/platform-admin/rbac-unavailable-banner.tsx` | B5-B | mutation flags | new | 3 |
+| `web/features/platform-admin/rename-workspace-dialog.tsx` | B5-B | Form/Dialog/query | new | 3 |
+| `web/features/platform-admin/invite-members-dialog.tsx` | B5-B | Form/Dialog/query | new | 3 |
+| `web/features/platform-admin/invitation-result-list.tsx` | B5-B | generated result type | new | 3 |
+| `web/features/platform-admin/change-member-role-dialog.tsx` | B5-B | generated roles | new | 3 |
+| `web/features/platform-admin/__tests__/workspace-list-page.spec.tsx` | B5-B | RTL | new | 3 |
+| `web/features/platform-admin/__tests__/workspace-detail-page.spec.tsx` | B5-B | RTL | new | 3 |
+| `web/features/platform-admin/__tests__/member-mutations.spec.tsx` | B5-B | RTL | new | 3 |
+| `web/app/(commonLayout)/enterprise-marketplace/page.tsx` | B5-C | main-nav route | new | 4 |
+| `web/app/(commonLayout)/enterprise-marketplace/[assetId]/page.tsx` | B5-C | route params | new | 4 |
+| `web/app/(commonLayout)/enterprise-marketplace/submissions/page.tsx` | B5-C | route | new | 4 |
+| `web/app/(commonLayout)/platform-admin/enterprise-marketplace/page.tsx` | B5-C | admin state | new | 4 |
+| `web/features/enterprise-marketplace/README.md` | B5-C | module boundary | feature README 唯一 writer | 4 |
+| `web/features/enterprise-marketplace/errors.ts` | B5-C | generated marketplace errors | blocked until review 422 fix | 4 |
+| `web/features/enterprise-marketplace/marketplace-filters.tsx` | B5-C | nuqs | new | 4 |
+| `web/features/enterprise-marketplace/marketplace-card.tsx` | B5-C | AppIcon/card pattern | new | 4 |
+| `web/features/enterprise-marketplace/browse-page.tsx` | B5-C | generated public list | new | 4 |
+| `web/features/enterprise-marketplace/detail-page.tsx` | B5-C | generated detail | new | 4 |
+| `web/features/enterprise-marketplace/copy-asset-action.tsx` | B5-C | copy mutation/router | new | 4 |
+| `web/features/enterprise-marketplace/copy-result-dialog.tsx` | B5-C | warnings | new | 4 |
+| `web/features/enterprise-marketplace/my-submissions-page.tsx` | B5-C | submissions query | new | 4 |
+| `web/features/enterprise-marketplace/submission-status.tsx` | B5-C | generated fields | new | 4 |
+| `web/features/enterprise-marketplace/resubmit-action.tsx` | B5-C | B5-C resubmit-marketplace-dialog | new | 4 |
+| `web/features/enterprise-marketplace/resubmit-marketplace-dialog.tsx` | B5-C | generated submission mutation/current row_version | new | 4 |
+| `web/features/enterprise-marketplace/admin-review-page.tsx` | B5-C | admin query | new | 4 |
+| `web/features/enterprise-marketplace/review-dialog.tsx` | B5-C | row_version | new | 4 |
+| `web/features/enterprise-marketplace/unlist-dialog.tsx` | B5-C | row_version | new | 4 |
+| `web/features/enterprise-marketplace/__tests__/browse-page.spec.tsx` | B5-C | RTL | new | 4 |
+| `web/features/enterprise-marketplace/__tests__/detail-copy.spec.tsx` | B5-C | RTL | new | 4 |
+| `web/features/enterprise-marketplace/__tests__/submissions.spec.tsx` | B5-C | RTL | new | 4 |
+| `web/features/enterprise-marketplace/__tests__/admin-review.spec.tsx` | B5-C | RTL | new | 4 |
+| `web/app/components/apps/app-card.tsx` | B5-D | B5-D submit-marketplace-dialog（首次提交） | apps app-card 唯一 writer | 5 |
+| `web/app/components/apps/__tests__/app-card.spec.tsx` | B5-D | current app card fixtures | apps test 唯一 writer | 5 |
+| `web/features/enterprise-marketplace/submit-marketplace-dialog.tsx` | B5-D | generated submit mutation（首次提交 only） | new | 5 |
+| `web/features/enterprise-marketplace/__tests__/submit-marketplace-dialog.spec.tsx` | B5-D | RTL | new | 5 |
+| `web/i18n/ar-TN/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/de-DE/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/en-US/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/es-ES/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/fa-IR/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/fr-FR/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/hi-IN/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/id-ID/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/it-IT/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/ja-JP/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/ko-KR/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/nl-NL/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/pl-PL/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/pt-BR/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/ro-RO/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/ru-RU/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/sl-SI/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/th-TH/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/tr-TR/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/uk-UA/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/vi-VN/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/zh-Hans/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
+| `web/i18n/zh-Hant/common.json` | B5-E | §8.4 approved key inventory | i18n 唯一 writer/质量 owner | 1 |
 
 `web/app/components/header/account-setting/**` 和 `web/app/components/explore/**` 在 B5 中
 read-only；没有 Builder 可写。`web/context/account-state.ts`、
 `workspace-state.ts`、`permission-state.ts` 也保持 read-only。
+
+本表 Merge order 即执行顺序：B5-E 门禁先于 B5-A（`MOVE_B5_E_BEFORE_B5_A`），随后
+B5-A → B5-B → B5-C → B5-D。B5-C/B5-D 共享同一个 generated submission mutation
+（`apps.byAppId.enterpriseMarketplace.submissions.post`），其 shared invalidation 只由
+B5-A 的 `web/service/client.ts` 定义一次；`submit-marketplace-dialog.tsx` 与
+`resubmit-marketplace-dialog.tsx` 互不 import。B5-C 不得写 `submit-marketplace-dialog.tsx`
+或 `app-card.tsx`；B5-D 不得写任何 `resubmit-*` 文件。B5-A/B/C/D 均不得写任何
+locale/i18n 文件（§11、§8.5）。
 
 ## 11. Global denylist
 
@@ -434,6 +635,10 @@ read-only；没有 Builder 可写。`web/context/account-state.ts`、
 - 旧 app context、legacy contract loader、direct
   `fetch('/console/api/...')`、手写 Console response/error types；
 - §8.3 精确列出的 23 个文件以外的 locale/i18n 文件；
+- B5-A/B/C/D 对任何 locale/i18n 文件的写操作（只读消费 §8.4 typed keys；缺 key 时
+  必须停止并交独立 i18n Fixer/Review，不得越权添加）；
+- B5-D 写 `web/features/enterprise-marketplace/resubmit-*`、B5-C 写
+  `web/features/enterprise-marketplace/submit-marketplace-dialog.tsx`；
 - 真实 `.env`、secret、数据库、Redis、vector、container、volume 或外部服务写操作。
 
 若需要 denylist 文件才能实现，Builder 必须停止并报告，不得扩 scope。
@@ -447,22 +652,25 @@ independent contract-owner Fixer repairs B3 typed errors + B4 review 422
 → independent Contract Reviewer
 → CHANGES_REQUIRED: finding-scoped Contract Fixer → independent Contract Rereviewer
 → contract PASS fast-forwarded to candidate and exact SHA recorded
-→ B5-A contract/state/client/main-nav
+→ B5-E all-23-locale foundation: §8.4 approved platformAdmin.*/enterpriseMarketplace.*
+  key inventory 全量落盘, 23-locale parity, 正确本地化, 非英文无英文占位, i18n:check
+→ independent B5-E Reviewer → i18n Fixer? → independent B5-E Rereviewer
+→ B5-A contract/state/client/main-nav（只读消费 §8.4 typed keys）
 → Code Reviewer → Fixer? → Rereviewer
-→ B5-B platform-admin UI
+→ B5-B platform-admin UI（只读消费 §8.4 typed keys）
 → Code Reviewer → Fixer? → Rereviewer
-→ B5-C marketplace pages
+→ B5-C marketplace pages + dedicated resubmit dialog（只读消费 §8.4 typed keys）
 → Code Reviewer → Fixer? → Rereviewer
-→ B5-D app-card submit integration
+→ B5-D app-card first-submit entry + first-submit dialog（只读消费 §8.4 typed keys）
 → Code Reviewer → Fixer? → Rereviewer
-→ B5-E all-23-locale single writer and translation quality owner
-→ independent B5-E Reviewer → Fixer? → independent B5-E Rereviewer
 → full frontend regression/browser gate
 → Final Reviewer → Fixer? → Final Rereviewer
 ```
 
 后继 Builder 只从前一 Rereviewer PASS 且已 fast-forward 到候选分支的精确 SHA 开始。
-不得预填未来 SHA；不得并行启动。`I18N_OPTION_B_APPROVED` 已关闭选择问题，但
+不得预填未来 SHA；不得并行启动。`I18N_OPTION_B_APPROVED` 已关闭选择问题；
+`MOVE_B5_E_BEFORE_B5_A` 使 B5-E 门禁排在 B5-A 之前——编号 B5-A..B5-E 表示 ownership
+package，不表示执行先后，实际执行顺序 B5-E → B5-A → B5-B → B5-C → B5-D；
 `CONTRACT_FIX_REQUIRED` 未经独立 Reviewer PASS 前整个 B5 链不启动。
 
 ### B5-A allowlist
@@ -476,17 +684,20 @@ independent contract-owner Fixer repairs B3 typed errors + B4 review 422
 - `web/features/platform-admin/errors.ts`
 - `web/features/platform-admin/__tests__/state.spec.tsx`
 
-Denylist：除上列外全仓；尤其 account-setting/apps/explore/i18n/contracts/API。
+Denylist：除上列外全仓；尤其 account-setting/apps/explore/i18n/contracts/API。B5-A
+只读消费 §8.4 approved typed keys；不得向任何 locale/i18n 文件添加或修改 key。
 
 ### B5-B allowlist
 
 仅 §10 中 owner=B5-B 的 15 个精确文件。Denylist：B5-A files、marketplace/apps/i18n、
-全局 denylist。
+全局 denylist。B5-B 只读消费 §8.4 typed keys；不得写任何 locale/i18n 文件。
 
 ### B5-C allowlist
 
-仅 §10 中 owner=B5-C 的 22 个精确文件。Denylist：main-nav/client/platform workspace
-files/apps/i18n、全局 denylist。
+仅 §10 中 owner=B5-C 的 23 个精确文件（含 `resubmit-marketplace-dialog.tsx`，不含
+B5-D 的 `submit-marketplace-dialog.tsx`）。Denylist：main-nav/client/platform
+workspace files/apps/i18n、全局 denylist。B5-C 只读消费 §8.4 typed keys；不得写任何
+locale/i18n 文件，不得依赖 B5-D 的 `submit-marketplace-dialog.tsx`。
 
 ### B5-D allowlist
 
@@ -495,9 +706,11 @@ files/apps/i18n、全局 denylist。
 - `web/features/enterprise-marketplace/submit-marketplace-dialog.tsx`
 - `web/features/enterprise-marketplace/__tests__/submit-marketplace-dialog.spec.tsx`
 
-Denylist：其余全部；尤其 client/main-nav/explore/account-setting/i18n/contracts。
+Denylist：其余全部；尤其 client/main-nav/explore/account-setting/i18n/contracts、
+`resubmit-*`。B5-D 只负责首次提交入口与首次提交 dialog；不得创建/修改任何
+`resubmit-*` 文件（B5-C 独占），不得写任何 locale/i18n 文件。
 
-### B5-E allowlist
+### B5-E allowlist（执行门禁先于 B5-A；编号表示 ownership package，不表示执行先后）
 
 只允许以下 23 个 exact files：
 
@@ -526,9 +739,11 @@ Denylist：其余全部；尤其 client/main-nav/explore/account-setting/i18n/co
 - `web/i18n/zh-Hant/common.json`
 
 Denylist：所有 TS/TSX、其他 locale/i18n files、contracts/API/Docker。B5-E 是 shared
-i18n 唯一 writer 和翻译质量 owner；不得向非英文 locale 复制英文占位。B5-E 完成后
-必须通过独立 B5-E Reviewer；有 finding 时经限定 Fixer 和独立 Rereviewer 后才可进入
-全量前端验证。
+i18n 唯一 writer 和翻译质量 owner；不得向非英文 locale 复制英文占位。B5-E 按 §8.4
+approved key inventory 实现全部 23 个 locale 并通过 23-locale `i18n:check`；PASS 并
+fast-forward 后 B5-A/B/C/D 才只读消费 typed keys。B5-E 完成后必须通过独立 B5-E
+Reviewer；有 finding 时经 i18n Fixer 和独立 Rereviewer 后才可进入后续 Builder。后续
+Builder 发现缺 key 时必须停止并交独立 i18n Fixer/Review，不得越权添加。
 
 每个 Builder：
 
@@ -557,9 +772,17 @@ i18n 唯一 writer 和翻译质量 owner；不得向非英文 locale 复制英�
    `BLOCKED_PENDING_CONTRACT_FIX` 保持有效。B5 禁止任何 frontend workaround。
 2. `I18N_OPTION_B_APPROVED`：B5-E 独占 §8.3 的 23 个 exact `common.json`，负责正确
    本地化内容和翻译质量；禁止向非英文 locale 复制英文占位，完成后必须独立 Review。
+3. `MOVE_B5_E_BEFORE_B5_A`（B5PR-01 disposition）：§8.4 是完整且已批准的 key
+   inventory；B5-E 执行门禁先于 B5-A，全 23 个 locale 落盘并独立 Review PASS 后，
+   B5-A/B/C/D 才只读消费 typed keys；B5-A/B/C/D 禁止修改 locale/i18n；缺 key 时
+   Builder 停止并交独立 i18n Fixer/Review，不得越权添加。
+4. `B5_C_OWNS_DEDICATED_RESUBMIT_DIALOG`（B5PR-02 disposition）：
+   `resubmit-marketplace-dialog.tsx` 唯一 owner=B5-C；`resubmit-action.tsx` 只依赖该
+   dialog，不依赖 B5-D 的 `submit-marketplace-dialog.tsx`；409 保留 draft、refetch、
+   显示 conflict，禁止自动重放 mutation。
 
-上述两项决定均已关闭决策问题。i18n 选择已关闭；contract 修复决定已形成，但其修复与
-独立 Review 尚未完成，因此仍是当前技术门禁。
+上述决定均已关闭决策问题。i18n 选择与执行顺序已关闭；contract 修复决定已形成，但其
+修复与独立 Review 尚未完成，因此仍是当前技术门禁。
 
 ### 13.3 Stop conditions
 
@@ -568,7 +791,11 @@ i18n 唯一 writer 和翻译质量 owner；不得向非英文 locale 复制英�
 - Builder 需要 API/contracts/generated 修改；
 - contract Fixer/Reviewer 未证明 B3 typed errors 和 B4 review 422 均已修复；
 - B5-E 需要写 §8.3 以外 locale/i18n 文件，或无法提供正确本地化内容；
-- 两个 Builder 文件所有权重叠；
+- B5-A/B/C/D 需要修改任何 locale/i18n 文件，或需要 §8.4 inventory 之外的新 key
+  （须停止并交独立 i18n Fixer/Review）；
+- B5-C 依赖 B5-D 文件（如 `submit-marketplace-dialog.tsx`），或 B5-D 写任何
+  `resubmit-*` 文件；
+- 两个 Builder 文件所有权重叠（含 submit/resubmit dialog 越界写）；
 - 需要恢复旧 1.15 service/model/hooks/context；
 - 需要 direct fetch 或手写 response/error type；
 - 需要修改 account-setting/explore shared files 而未重新 Review ownership；
@@ -641,8 +868,10 @@ pnpm --dir web type-check
 pnpm check
 ```
 
-并执行 §8 固定的 all-23-locale i18n 命令与 §9 browser checklist。B5-E 还必须完成
-独立翻译质量 Review，确认非英文 locale 无英文占位或 fallback 依赖。不得运行
+B5-E 门禁先于 B5-A 运行：B5-E 全 23 个 locale 落盘 §8.4 inventory 后，先执行 §8 固定
+的 all-23-locale i18n 命令，再由独立 B5-E Reviewer 完成逐 locale 翻译质量 Review，
+确认非英文 locale 无英文占位或 fallback 依赖；PASS 并 fast-forward 后 B5-A/B/C/D 才
+开始。后续各 Builder 阶段 gate 再执行 §9 browser checklist。不得运行
 `gen-api-contract` 作为 B5 validation；contracts 的 deterministic generation 属于独立
 contract Fixer/Reviewer。
 
@@ -663,7 +892,9 @@ contract Fixer/Reviewer。
 - [ ] review/unlist 使用 `expected_row_version`，成功后依赖新 version/invalidation。
 - [ ] server state 不复制进 Jotai；URL/client/server state ownership 清楚。
 - [ ] shared invalidation 只有 `web/service/client.ts` writer。
-- [ ] main-nav、apps app-card、feature state、i18n 均唯一 writer。
+- [ ] main-nav、apps app-card、feature state、i18n、submit/resubmit dialog 均唯一
+  writer（`resubmit-marketplace-dialog.tsx` 只属 B5-C，`submit-marketplace-dialog.tsx`
+  只属 B5-D）。
 - [ ] account-setting/explore shared files read-only。
 - [ ] Builder allowlist 是 exact files，denylist 含 API/Docker/migration/contracts。
 - [ ] i18n 23 locale inventory 和自动同步机制真实。
@@ -671,6 +902,12 @@ contract Fixer/Reviewer。
   contract-owner Fixer/Reviewer 门禁，不存在 frontend workaround。
 - [ ] `I18N_OPTION_B_APPROVED` 已记录，23 个 exact `common.json` 均属于 B5-E，且无
   allowlist 缩减、扩大或目录通配。
+- [ ] `MOVE_B5_E_BEFORE_B5_A` 已记录：§8.4 是完整且已批准的 key inventory；B5-E 门禁
+  先于 B5-A；A/B/C/D 只读消费 typed keys、禁止修改 locale/i18n；缺 key 走独立 i18n
+  Fixer/Review。
+- [ ] `B5_C_OWNS_DEDICATED_RESUBMIT_DIALOG` 已记录：`resubmit-action.tsx` 只依赖
+  B5-C 的 `resubmit-marketplace-dialog.tsx`，无对 B5-D `submit-marketplace-dialog.tsx`
+  的前向依赖；409 保留 draft/refetch/conflict、禁止自动重放。
 - [ ] B5-E 是 i18n 唯一 writer/翻译质量 owner；非英文 locale 禁止英文占位，完成后有
   独立 Reviewer/Fixer/Rereviewer 门禁。
 - [ ] tests 是可观察 behavior，不是 source-string/implementation assertion。
@@ -692,10 +929,13 @@ Architect dirty plan
 → independent Contract Reviewer
 → CHANGES_REQUIRED: finding-scoped Contract Fixer → independent Contract Rereviewer
 → contract PASS fast-forwarded and exact SHA recorded
-→ only then coordinator may authorize B5-A
+→ only then coordinator may authorize B5-E（all-23-locale foundation，§8.4 inventory）
+→ independent B5-E Reviewer → i18n Fixer? → independent B5-E Rereviewer
+→ B5-E fast-forwarded；then B5-A → B5-B → B5-C → B5-D（每步独立 Reviewer/Fixer?/Rereviewer）
 ```
 
-`RECORDED_DECISION`：`CONTRACT_FIX_REQUIRED`、`I18N_OPTION_B_APPROVED`。
+`RECORDED_DECISION`：`CONTRACT_FIX_REQUIRED`、`I18N_OPTION_B_APPROVED`、
+`MOVE_B5_E_BEFORE_B5_A`、`B5_C_OWNS_DEDICATED_RESUBMIT_DIALOG`。
 
 当前门禁：**BLOCKED_PENDING_CONTRACT_FIX**。
 
