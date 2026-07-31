@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-07-30（Asia/Shanghai）
+更新时间：2026-07-31（Asia/Shanghai）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
@@ -21,7 +21,8 @@
 | 官方基线 commit | `5c6372d2f76d240265b92fd27c16bc772ffcb107` |
 | Alembic 最终 head | `b416e5c4e702`（唯一 head） |
 | Skill 源仓库 | `/home/ctyun/BigData/GitHub/codex-personal-skills` |
-| Skill v0.1 源 commit | `dfe8049` |
+| Skill 源 commit | `2651320`（安全半自动化版） |
+| Claude Squad 定制 commit | `3f480f6`（governed workflow safeguards） |
 | 工作区 | 干净 |
 | 本地与 origin | 已同步 |
 | 当前产品里程碑 | B0～B4 已闭环；B4 `B4_FINAL_ACCEPTED` |
@@ -50,15 +51,17 @@ git merge-base 1.16.0 HEAD
 
 ## 2. 当前工作顺序
 
-当前不是立即启动 B5。
+当前已完成新窗口恢复验证和协作 Skill 安全半自动化升级，可以启动 B5 Architect 门禁；尚未授权 B5 Builder。
 
 协作基础设施当前状态：
 
-1. 通用 Claude Squad/worktree 协作 Skill v0.1：已创建并安装；
-2. Dify 官方版本企业功能重放 Skill v0.1：已创建并安装；
+1. 通用 Claude Squad/worktree 协作 Skill：已升级到安全半自动化版并安装；
+2. Dify 官方版本企业功能重放 Skill：已创建并安装；
 3. 两个 Skill 已通过结构校验；Git 起点核验脚本已通过正向/负向测试；
-4. 当前待办：用新窗口验证只读取本文与两个 Skill 能否准确恢复状态和生成下一阶段任务；
-5. 验证通过后，再为 B5 建立 Architect/Review/Builder 门禁。
+4. Claude Squad 已安装 `3f480f6` 构建并启用 `"governed_mode": true`；
+5. dirty worktree 下 `c`/`p`/`D` 会拒绝危险操作；`D` 会明确提示是否删除本地分支；
+6. 当前无 Claude Squad 实例、B5 分支或额外 worktree；
+7. 下一动作是生成并人工创建 B5 Architect，不得直接启动 B5 Builder。
 
 Skill 路径：
 
@@ -74,7 +77,7 @@ Codex 自动发现链接：
 
 Skill 源仓库当前只有本地 Git commit，尚未配置远端；这不影响本机使用，但未来需要异机同步时应单独配置备份/远端。
 
-产品流水线的下一阶段才是：
+产品流水线的下一阶段是：
 
 ```text
 B5 平台管理员与智慧广场前端
@@ -408,29 +411,31 @@ git merge --ff-only ctyun/<instance-branch>
 新窗口可直接使用：
 
 ```text
-请先读取：
+请使用：
+
+- $replay-dify-enterprise
+- $orchestrate-claude-squad
+
+先读取：
 
 /home/ctyun/BigData/GitHub/dify-enterprise-1.16.0/docs/enterprise/replay-1.16.0/CURRENT_STATE.md
 
-然后只读核验：
+然后只读恢复并核验：
 
 1. 仓库、分支、HEAD、origin 是否与文档一致；
 2. 工作区是否干净；
 3. B4_FINAL_REREVIEW.md 是否为 PASS；
-4. 不要启动 B5，不要修改业务代码。
+4. 当前是否不存在 B5 分支、额外 worktree 和 Claude Squad 实例；
+5. Skill 源 commit 是否包含 2651320，Claude Squad 源 commit 是否包含 3f480f6；
+6. 只恢复协调状态，不修改业务代码，不创建实例。
 
-两个基础 Skill 已安装：
+核验通过后：
 
-- $orchestrate-claude-squad
-- $replay-dify-enterprise
-
-当前首要任务是验证新窗口恢复：
-
-1. 确认两个 Skill 在新窗口可见并能触发；
-2. 使用 $replay-dify-enterprise 恢复本项目的官方优先重放状态；
-3. 使用 $orchestrate-claude-squad 生成 B5 Architect 的任务契约草案；
-4. 只输出核验结果和任务草案，不创建实例、不修改代码；
-5. 验证通过后，再规划 B5。
+1. 依据 CURRENT_STATE.md 第 7 节和 B4 最终 contracts，制定 B5 Architect 的精确只读任务；
+2. 使用最新版 $orchestrate-claude-squad 生成 N 表单字段和完整任务契约；
+3. B5 Architect 只能分析并编写 B5_IMPLEMENTATION_PLAN.md，不得实现前端；
+4. 把任务契约交给我人工确认后再创建 Claude Squad 实例；
+5. 不得直接启动 B5 Builder。
 
 任何事实与文档不符时，先报告差异，不得自动 reset、merge、rebase、migration、Docker 或 volume。
 ```
@@ -448,17 +453,16 @@ git merge --ff-only ctyun/<instance-branch>
 
 只有发现矛盾或需要追溯设计理由时，才继续读取较早的 Review/Fixer 文档。
 
-## 11. 当前实例清理
+## 11. 当前实例状态
 
-B4 已合并并推送。以下实例可安全删除：
+B4 已合并并推送，所有 B4 实例已经清理。当前：
 
-- `replay-116-b4-c-builder`
-- `replay-116-b4-cross-fixer`
-- `replay-116-b4-final-reviewer`
-- `replay-116-b4-final-fixer`
-- `replay-116-b4-final-rereviewer`
+- Claude Squad `instances: []`；
+- 无 `ctyun/replay-116-b5-*` 分支；
+- 无额外 worktree；
+- B5 尚未启动。
 
-删除实例后执行：
+开始 B5 前执行：
 
 ```bash
 git worktree prune
@@ -466,4 +470,4 @@ git worktree list
 git status --short --branch
 ```
 
-预期只保留候选主目录；候选分支与 origin 同步，且包含 B4 checkpoint `9c4c0356f3f2374c22b383ba96331e1dd92505fd`。
+预期只保留候选主目录；候选分支与 origin 同步，且包含 B4 checkpoint `9c4c0356f3f2374c22b383ba96331e1dd92505fd`。随后以候选分支新的完整 40 位 HEAD 作为 B5 Architect 起点。
