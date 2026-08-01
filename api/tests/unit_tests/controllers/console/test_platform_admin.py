@@ -1,6 +1,8 @@
 import ast
 import inspect
+import json
 from contextlib import nullcontext
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -29,6 +31,18 @@ def _innermost(method):
     while hasattr(method, "__wrapped__"):
         method = method.__wrapped__
     return method
+
+
+def _load_console_openapi():
+    """Return the generated console OpenAPI spec dict."""
+    repo_root = Path(__file__).resolve().parents[5]
+    spec_path = repo_root / "packages" / "contracts" / "openapi" / "console-openapi.json"
+    return json.loads(spec_path.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def console_openapi():
+    return _load_console_openapi()
 
 
 def test_platform_admin_controller_defines_exact_seven_method_route_pairs() -> None:
@@ -231,3 +245,75 @@ def test_status_endpoint_does_not_require_current_tenant_or_initialization() -> 
     assert "login_required" in wrappers
     assert "account_initialization_required" not in wrappers
     assert "platform_admin_current_tenant_required" not in wrappers
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OpenAPI semantic tests (read from generated console-openapi.json)
+# ═══════════════════════════════════════════════════════════════════════════
+
+B3_EXPECTED_ERRORS = {
+    ("get", "/account/platform-admin-status"): {401},
+    ("get", "/platform-admin/workspaces"): {400, 401, 403, 409},
+    ("get", "/platform-admin/workspaces/{workspace_id}"): {401, 403, 404, 409},
+    ("patch", "/platform-admin/workspaces/{workspace_id}"): {400, 401, 403, 404, 409},
+    ("get", "/platform-admin/workspaces/{workspace_id}/members"): {401, 403, 404, 409},
+    (
+        "post",
+        "/platform-admin/workspaces/{workspace_id}/members/invitations",
+    ): {400, 401, 403, 404, 409, 503},
+    (
+        "patch",
+        "/platform-admin/workspaces/{workspace_id}/members/{member_id}/role",
+    ): {400, 401, 403, 404, 409, 503},
+}
+
+
+def test_openapi_b3_operations_have_expected_error_status_sets(console_openapi) -> None:
+    paths = console_openapi["paths"]
+    for (method, path), expected_errors in B3_EXPECTED_ERRORS.items():
+        operation = paths[path][method]
+        responses = operation.get("responses", {})
+        status_codes = {int(k) for k in responses if k.isdigit()}
+        success = 201 if method == "post" and path.endswith("/invitations") else 200
+        assert status_codes == (expected_errors | {success}), (
+            f"Unexpected response statuses for {method.upper()} {path}: {sorted(status_codes)}"
+        )
+
+
+def test_openapi_b3_error_response_schema_shapes(console_openapi) -> None:
+    paths = console_openapi["paths"]
+    for (method, path), _expected in B3_EXPECTED_ERRORS.items():
+        responses = paths[path][method].get("responses", {})
+        for status in sorted(str(code) for code in _expected if code != 401):
+            content = responses[status].get("content", {})
+            app_json = content.get("application/json", {})
+            ref = app_json.get("schema", {}).get("$ref", "")
+            assert "PlatformAdminErrorResponse" in ref, (
+                f"Error {status} in {method} {path} should reference "
+                f"PlatformAdminErrorResponse but got: {ref}"
+            )
+
+
+def test_openapi_b3_401_uses_unauthorized_response(console_openapi) -> None:
+    paths = console_openapi["paths"]
+    for (method, path), _expected in B3_EXPECTED_ERRORS.items():
+        responses = paths[path][method].get("responses", {})
+        resp401 = responses.get("401", {})
+        content = resp401.get("content", {})
+        app_json = content.get("application/json", {})
+        ref = app_json.get("schema", {}).get("$ref", "")
+        assert "UnauthorizedResponse" in ref, (
+            f"401 in {method} {path} should reference UnauthorizedResponse but got: {ref}"
+        )
+        assert "PlatformAdminErrorResponse" not in ref, (
+            f"401 in {method} {path} incorrectly references PlatformAdminErrorResponse"
+        )
+
+
+def test_openapi_platform_admin_error_response_schema(console_openapi) -> None:
+    schemas = console_openapi["components"]["schemas"]
+    err_schema = schemas.get("PlatformAdminErrorResponse")
+    assert err_schema is not None, "PlatformAdminErrorResponse not in schemas"
+    props = err_schema.get("properties", {})
+    assert isinstance(props, dict)
+    assert set(props) == {"code", "message", "status"}, f"Unexpected props: {set(props)}"

@@ -78,6 +78,15 @@ export const zMarketplaceUnlistPayload = z.object({
 })
 
 /**
+ * PlatformAdminErrorResponse
+ */
+export const zPlatformAdminErrorResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.int(),
+})
+
+/**
  * PlatformAdminWorkspaceRenamePayload
  */
 export const zPlatformAdminWorkspaceRenamePayload = z.object({

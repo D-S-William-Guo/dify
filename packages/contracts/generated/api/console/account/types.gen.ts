@@ -130,6 +130,11 @@ export type PlatformAdminStatusResponse = {
   mutation_supported: boolean
 }
 
+export type UnauthorizedResponse = {
+  code: string
+  message: string
+}
+
 export type AccountTimezonePayload = {
   timezone: string
 }
@@ -430,6 +435,13 @@ export type GetAccountPlatformAdminStatusData = {
   query?: never
   url: '/account/platform-admin-status'
 }
+
+export type GetAccountPlatformAdminStatusErrors = {
+  401: UnauthorizedResponse
+}
+
+export type GetAccountPlatformAdminStatusError =
+  GetAccountPlatformAdminStatusErrors[keyof GetAccountPlatformAdminStatusErrors]
 
 export type GetAccountPlatformAdminStatusResponses = {
   200: PlatformAdminStatusResponse

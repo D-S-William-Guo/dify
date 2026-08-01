@@ -172,6 +172,27 @@ class PlatformAdminErrorResponse(ResponseModel):
     status: int
 
 
+_ERR_400 = "Invalid request"
+_ERR_403 = "Permission denied"
+_ERR_404 = "Not found"
+_ERR_409 = "Conflict"
+_ERR_503 = "Service unavailable"
+
+
+def _err_response(status: int, description: str):
+    """Register a PlatformAdminErrorResponse for the given HTTP status."""
+
+    def decorator(f):
+        return console_ns.response(status, description, console_ns.models["PlatformAdminErrorResponse"])(f)
+
+    return decorator
+
+
+def _auth_401(f):
+    """Register 401 with the official UnauthorizedResponse schema (no status field)."""
+    return console_ns.response(401, "Authentication required", console_ns.models["UnauthorizedResponse"])(f)
+
+
 register_schema_models(
     console_ns,
     PlatformAdminWorkspaceListQuery,
@@ -217,6 +238,7 @@ def _response(model: type[ResponseModel], value: object) -> dict[str, object]:
 @console_ns.route("/account/platform-admin-status")
 class PlatformAdminStatusApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PlatformAdminStatusResponse.__name__])
+    @_auth_401
     @setup_required
     @login_required
     def get(self):
@@ -235,6 +257,10 @@ class PlatformAdminStatusApi(Resource):
 class PlatformAdminWorkspaceListApi(Resource):
     @console_ns.doc(params=query_params_from_model(PlatformAdminWorkspaceListQuery))
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PlatformAdminWorkspacePaginationResponse.__name__])
+    @_err_response(400, _ERR_400)
+    @_auth_401
+    @_err_response(403, _ERR_403)
+    @_err_response(409, _ERR_409)
     @setup_required
     @login_required
     @platform_admin_required
@@ -257,6 +283,10 @@ class PlatformAdminWorkspaceListApi(Resource):
 @console_ns.route("/platform-admin/workspaces/<uuid:workspace_id>")
 class PlatformAdminWorkspaceApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PlatformAdminWorkspaceResponse.__name__])
+    @_auth_401
+    @_err_response(403, _ERR_403)
+    @_err_response(404, _ERR_404)
+    @_err_response(409, _ERR_409)
     @setup_required
     @login_required
     @platform_admin_required
@@ -271,6 +301,11 @@ class PlatformAdminWorkspaceApi(Resource):
 
     @console_ns.expect(console_ns.models[PlatformAdminWorkspaceRenamePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PlatformAdminWorkspaceResponse.__name__])
+    @_err_response(400, _ERR_400)
+    @_auth_401
+    @_err_response(403, _ERR_403)
+    @_err_response(404, _ERR_404)
+    @_err_response(409, _ERR_409)
     @setup_required
     @login_required
     @platform_admin_required
@@ -292,6 +327,10 @@ class PlatformAdminWorkspaceApi(Resource):
 @console_ns.route("/platform-admin/workspaces/<uuid:workspace_id>/members")
 class PlatformAdminWorkspaceMembersApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PlatformAdminMemberListResponse.__name__])
+    @_auth_401
+    @_err_response(403, _ERR_403)
+    @_err_response(404, _ERR_404)
+    @_err_response(409, _ERR_409)
     @setup_required
     @login_required
     @platform_admin_required
@@ -312,6 +351,12 @@ class PlatformAdminWorkspaceMembersApi(Resource):
 class PlatformAdminWorkspaceInvitationsApi(Resource):
     @console_ns.expect(console_ns.models[PlatformAdminMemberInvitePayload.__name__])
     @console_ns.response(HTTPStatus.CREATED, "Created", console_ns.models[PlatformAdminMemberInviteResponse.__name__])
+    @_err_response(400, _ERR_400)
+    @_auth_401
+    @_err_response(403, _ERR_403)
+    @_err_response(404, _ERR_404)
+    @_err_response(409, _ERR_409)
+    @_err_response(503, _ERR_503)
     @setup_required
     @login_required
     @platform_admin_required
@@ -336,6 +381,12 @@ class PlatformAdminWorkspaceInvitationsApi(Resource):
 class PlatformAdminWorkspaceMemberRoleApi(Resource):
     @console_ns.expect(console_ns.models[PlatformAdminMemberRoleUpdatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PlatformAdminMemberRoleUpdateResponse.__name__])
+    @_err_response(400, _ERR_400)
+    @_auth_401
+    @_err_response(403, _ERR_403)
+    @_err_response(404, _ERR_404)
+    @_err_response(409, _ERR_409)
+    @_err_response(503, _ERR_503)
     @setup_required
     @login_required
     @platform_admin_required

@@ -822,3 +822,17 @@ def test_openapi_success_status_codes(console_openapi) -> None:
         for method, op in paths[p].items():
             if method in ("get", "post") and method not in ("parameters",):
                 assert "200" in op.get("responses", {}), f"{method} {p} missing 200"
+
+
+def test_openapi_review_operation_includes_422_domain_error(console_openapi) -> None:
+    paths = console_openapi["paths"]
+    review_path = "/platform-admin/enterprise-marketplace/assets/{asset_id}/reviews"
+    assert review_path in paths, f"Path {review_path} not found in OpenAPI"
+    responses = paths[review_path]["post"].get("responses", {})
+    assert "422" in responses, f"Review operation missing 422 response: {sorted(responses)}"
+    content = responses["422"].get("content", {})
+    app_json = content.get("application/json", {})
+    ref = app_json.get("schema", {}).get("$ref", "")
+    assert "MarketplaceErrorResponse" in ref, (
+        f"Review 422 should reference MarketplaceErrorResponse but got: {ref}"
+    )

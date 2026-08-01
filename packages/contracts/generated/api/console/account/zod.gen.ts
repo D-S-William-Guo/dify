@@ -191,6 +191,16 @@ export const zPlatformAdminStatusResponse = z.object({
 })
 
 /**
+ * UnauthorizedResponse
+ *
+ * Matches the official login_required unauthorized_handler shape.
+ */
+export const zUnauthorizedResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+})
+
+/**
  * AccountTimezonePayload
  */
 export const zAccountTimezonePayload = z.object({

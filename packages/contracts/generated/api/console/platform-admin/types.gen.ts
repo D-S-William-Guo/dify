@@ -65,6 +65,12 @@ export type PlatformAdminWorkspacePaginationResponse = {
   total: number
 }
 
+export type PlatformAdminErrorResponse = {
+  code: string
+  message: string
+  status: number
+}
+
 export type PlatformAdminWorkspaceResponse = {
   created_at: string
   id: string
@@ -184,6 +190,7 @@ export type PostPlatformAdminEnterpriseMarketplaceAssetsByAssetIdReviewsErrors =
   403: MarketplaceErrorResponse
   404: MarketplaceErrorResponse
   409: MarketplaceErrorResponse
+  422: MarketplaceErrorResponse
 }
 
 export type PostPlatformAdminEnterpriseMarketplaceAssetsByAssetIdReviewsError =
@@ -235,6 +242,16 @@ export type GetPlatformAdminWorkspacesData = {
   url: '/platform-admin/workspaces'
 }
 
+export type GetPlatformAdminWorkspacesErrors = {
+  400: PlatformAdminErrorResponse
+  401: UnauthorizedResponse
+  403: PlatformAdminErrorResponse
+  409: PlatformAdminErrorResponse
+}
+
+export type GetPlatformAdminWorkspacesError =
+  GetPlatformAdminWorkspacesErrors[keyof GetPlatformAdminWorkspacesErrors]
+
 export type GetPlatformAdminWorkspacesResponses = {
   200: PlatformAdminWorkspacePaginationResponse
 }
@@ -250,6 +267,16 @@ export type GetPlatformAdminWorkspacesByWorkspaceIdData = {
   query?: never
   url: '/platform-admin/workspaces/{workspace_id}'
 }
+
+export type GetPlatformAdminWorkspacesByWorkspaceIdErrors = {
+  401: UnauthorizedResponse
+  403: PlatformAdminErrorResponse
+  404: PlatformAdminErrorResponse
+  409: PlatformAdminErrorResponse
+}
+
+export type GetPlatformAdminWorkspacesByWorkspaceIdError =
+  GetPlatformAdminWorkspacesByWorkspaceIdErrors[keyof GetPlatformAdminWorkspacesByWorkspaceIdErrors]
 
 export type GetPlatformAdminWorkspacesByWorkspaceIdResponses = {
   200: PlatformAdminWorkspaceResponse
@@ -267,6 +294,17 @@ export type PatchPlatformAdminWorkspacesByWorkspaceIdData = {
   url: '/platform-admin/workspaces/{workspace_id}'
 }
 
+export type PatchPlatformAdminWorkspacesByWorkspaceIdErrors = {
+  400: PlatformAdminErrorResponse
+  401: UnauthorizedResponse
+  403: PlatformAdminErrorResponse
+  404: PlatformAdminErrorResponse
+  409: PlatformAdminErrorResponse
+}
+
+export type PatchPlatformAdminWorkspacesByWorkspaceIdError =
+  PatchPlatformAdminWorkspacesByWorkspaceIdErrors[keyof PatchPlatformAdminWorkspacesByWorkspaceIdErrors]
+
 export type PatchPlatformAdminWorkspacesByWorkspaceIdResponses = {
   200: PlatformAdminWorkspaceResponse
 }
@@ -282,6 +320,16 @@ export type GetPlatformAdminWorkspacesByWorkspaceIdMembersData = {
   query?: never
   url: '/platform-admin/workspaces/{workspace_id}/members'
 }
+
+export type GetPlatformAdminWorkspacesByWorkspaceIdMembersErrors = {
+  401: UnauthorizedResponse
+  403: PlatformAdminErrorResponse
+  404: PlatformAdminErrorResponse
+  409: PlatformAdminErrorResponse
+}
+
+export type GetPlatformAdminWorkspacesByWorkspaceIdMembersError =
+  GetPlatformAdminWorkspacesByWorkspaceIdMembersErrors[keyof GetPlatformAdminWorkspacesByWorkspaceIdMembersErrors]
 
 export type GetPlatformAdminWorkspacesByWorkspaceIdMembersResponses = {
   200: PlatformAdminMemberListResponse
@@ -299,6 +347,18 @@ export type PostPlatformAdminWorkspacesByWorkspaceIdMembersInvitationsData = {
   url: '/platform-admin/workspaces/{workspace_id}/members/invitations'
 }
 
+export type PostPlatformAdminWorkspacesByWorkspaceIdMembersInvitationsErrors = {
+  400: PlatformAdminErrorResponse
+  401: UnauthorizedResponse
+  403: PlatformAdminErrorResponse
+  404: PlatformAdminErrorResponse
+  409: PlatformAdminErrorResponse
+  503: PlatformAdminErrorResponse
+}
+
+export type PostPlatformAdminWorkspacesByWorkspaceIdMembersInvitationsError =
+  PostPlatformAdminWorkspacesByWorkspaceIdMembersInvitationsErrors[keyof PostPlatformAdminWorkspacesByWorkspaceIdMembersInvitationsErrors]
+
 export type PostPlatformAdminWorkspacesByWorkspaceIdMembersInvitationsResponses = {
   201: PlatformAdminMemberInviteResponse
 }
@@ -315,6 +375,18 @@ export type PatchPlatformAdminWorkspacesByWorkspaceIdMembersByMemberIdRoleData =
   query?: never
   url: '/platform-admin/workspaces/{workspace_id}/members/{member_id}/role'
 }
+
+export type PatchPlatformAdminWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors = {
+  400: PlatformAdminErrorResponse
+  401: UnauthorizedResponse
+  403: PlatformAdminErrorResponse
+  404: PlatformAdminErrorResponse
+  409: PlatformAdminErrorResponse
+  503: PlatformAdminErrorResponse
+}
+
+export type PatchPlatformAdminWorkspacesByWorkspaceIdMembersByMemberIdRoleError =
+  PatchPlatformAdminWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors[keyof PatchPlatformAdminWorkspacesByWorkspaceIdMembersByMemberIdRoleErrors]
 
 export type PatchPlatformAdminWorkspacesByWorkspaceIdMembersByMemberIdRoleResponses = {
   200: PlatformAdminMemberRoleUpdateResponse

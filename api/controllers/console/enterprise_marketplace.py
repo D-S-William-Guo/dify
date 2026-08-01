@@ -571,6 +571,7 @@ class MarketplaceReviewApi(Resource):
     @_err_response(403, _ERR_403)
     @_err_response(404, _ERR_404)
     @_err_response(409, _ERR_409)
+    @_err_response(422, _ERR_422)
     @setup_required
     @login_required
     @platform_admin_required
