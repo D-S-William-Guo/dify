@@ -59,6 +59,7 @@ class MarketplaceHTTPError(BaseHTTPException):
 
 # ── Request DTOs ────────────────────────────────────────────────────────
 
+
 class MarketplaceSubmissionPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -160,8 +161,10 @@ class MarketplaceAdminAssetListQuery(BaseModel):
 
 # ── Response DTOs ───────────────────────────────────────────────────────
 
+
 class MarketplaceAssetResponse(ResponseModel):
     """Admin / my-submissions asset view – no DSL."""
+
     asset_id: str
     status: str
     publication_status: str
@@ -194,6 +197,7 @@ class MarketplaceAssetPaginationResponse(ResponseModel):
 
 class MarketplaceSnapshotResponse(ResponseModel):
     """Public asset view – frozen snapshot fields, no audit leak."""
+
     asset_id: str
     snapshot_id: str | None
     snapshot_version: int | None
@@ -232,6 +236,7 @@ class MarketplaceSnapshotPaginationResponse(ResponseModel):
 
 class MarketplaceSnapshotDetailResponse(ResponseModel):
     """Public single-asset detail – identical to list-item shape."""
+
     asset_id: str
     snapshot_id: str | None
     snapshot_version: int | None
@@ -276,6 +281,7 @@ class MarketplaceErrorResponse(ResponseModel):
 
 class UnauthorizedResponse(ResponseModel):
     """Matches the official login_required unauthorized_handler shape."""
+
     code: str
     message: str
 
@@ -308,6 +314,7 @@ register_response_schema_models(
 
 # ── Error response decorators ───────────────────────────────────────────
 
+
 def _err_response(status: int, description: str):
     """Decorator registering a MarketplaceErrorResponse for the given HTTP status."""
 
@@ -323,6 +330,7 @@ def _auth_401(f):
 
 
 # ── Internal helpers ────────────────────────────────────────────────────
+
 
 def _validated_payload(model: type[BaseModel]) -> BaseModel:
     try:
@@ -370,6 +378,7 @@ def _raise_marketplace_error(error: MarketplaceError) -> None:
 
 # ── Route 1: POST /apps/<uuid:app_id>/enterprise-marketplace/submissions ─
 
+
 @console_ns.route("/apps/<uuid:app_id>/enterprise-marketplace/submissions")
 class MarketplaceSubmissionApi(Resource):
     @console_ns.expect(console_ns.models[MarketplaceSubmissionPayload.__name__])
@@ -408,6 +417,7 @@ class MarketplaceSubmissionApi(Resource):
 
 # ── Route 2: GET /enterprise-marketplace/submissions ────────────────────
 
+
 @console_ns.route("/enterprise-marketplace/submissions")
 class MarketplaceMySubmissionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(MarketplaceMySubmissionListQuery))
@@ -439,12 +449,11 @@ class MarketplaceMySubmissionsApi(Resource):
 
 # ── Route 3: GET /enterprise-marketplace/assets ─────────────────────────
 
+
 @console_ns.route("/enterprise-marketplace/assets")
 class MarketplacePublicAssetsApi(Resource):
     @console_ns.doc(params=query_params_from_model(MarketplacePublicAssetListQuery))
-    @console_ns.response(
-        HTTPStatus.OK, "Success", console_ns.models[MarketplaceSnapshotPaginationResponse.__name__]
-    )
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MarketplaceSnapshotPaginationResponse.__name__])
     @_err_response(400, _ERR_400)
     @_auth_401
     @setup_required
@@ -469,6 +478,7 @@ class MarketplacePublicAssetsApi(Resource):
 
 # ── Route 4: GET /enterprise-marketplace/assets/<uuid:asset_id> ─────────
 
+
 @console_ns.route("/enterprise-marketplace/assets/<uuid:asset_id>")
 class MarketplacePublicAssetDetailApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MarketplaceSnapshotDetailResponse.__name__])
@@ -489,6 +499,7 @@ class MarketplacePublicAssetDetailApi(Resource):
 
 
 # ── Route 5: POST /enterprise-marketplace/assets/<uuid:asset_id>/copies ─
+
 
 @console_ns.route("/enterprise-marketplace/assets/<uuid:asset_id>/copies")
 class MarketplaceCopyApi(Resource):
@@ -528,6 +539,7 @@ class MarketplaceCopyApi(Resource):
 
 # ── Route 6: GET /platform-admin/enterprise-marketplace/assets ──────────
 
+
 @console_ns.route("/platform-admin/enterprise-marketplace/assets")
 class MarketplaceAdminAssetsApi(Resource):
     @console_ns.doc(params=query_params_from_model(MarketplaceAdminAssetListQuery))
@@ -561,6 +573,7 @@ class MarketplaceAdminAssetsApi(Resource):
 
 
 # ── Route 7: POST /platform-admin/enterprise-marketplace/assets/<uuid:asset_id>/reviews
+
 
 @console_ns.route("/platform-admin/enterprise-marketplace/assets/<uuid:asset_id>/reviews")
 class MarketplaceReviewApi(Resource):
@@ -603,6 +616,7 @@ class MarketplaceReviewApi(Resource):
 
 
 # ── Route 8: POST /platform-admin/enterprise-marketplace/assets/<uuid:asset_id>/unlist
+
 
 @console_ns.route("/platform-admin/enterprise-marketplace/assets/<uuid:asset_id>/unlist")
 class MarketplaceUnlistApi(Resource):

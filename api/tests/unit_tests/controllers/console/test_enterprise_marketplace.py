@@ -43,7 +43,8 @@ def _load_specs_module():
     api_dir = Path(__file__).resolve().parents[4]
     script_path = api_dir / "dev" / "generate_swagger_specs.py"
     spec = importlib.util.spec_from_file_location("generate_swagger_specs", script_path)
-    assert spec and spec.loader
+    assert spec
+    assert spec.loader
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
@@ -53,6 +54,7 @@ def _load_specs_module():
 # ═══════════════════════════════════════════════════════════════════════════
 # Route definition tests (AST)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def test_enterprise_marketplace_controller_defines_exact_eight_method_route_pairs() -> None:
     expected = {
@@ -110,6 +112,7 @@ def test_enterprise_marketplace_has_no_delete_routes() -> None:
 # Real Flask route tests (url_map + DELETE requests)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 @pytest.fixture(scope="module")
 def spec_app():
     module = _load_specs_module()
@@ -138,25 +141,24 @@ def test_real_url_map_has_b3_seven_and_b4_eight_routes(spec_app) -> None:
     }
 
     console_rules = [
-        rule for rule in spec_app.url_map.iter_rules()
+        rule
+        for rule in spec_app.url_map.iter_rules()
         if rule.rule.startswith("/console/api") and "static" not in rule.rule
     ]
-    all_console = {(method, rule.rule) for rule in console_rules for method in rule.methods if method != "OPTIONS" and method != "HEAD"}
+    all_console = {
+        (method, rule.rule) for rule in console_rules for method in rule.methods if method not in {"OPTIONS", "HEAD"}
+    }
 
     b3_actual = {(m, p) for (m, p) in all_console if "platform-admin" in p and "marketplace" not in p}
     b4_actual = {(m, p) for (m, p) in all_console if "marketplace" in p and "plugin" not in p}
 
     b3_missing = b3_expected - b3_actual
     b3_extra = b3_actual - b3_expected
-    assert b3_actual == b3_expected, (
-        f"B3 mismatch — missing: {b3_missing}, extra: {b3_extra}"
-    )
+    assert b3_actual == b3_expected, f"B3 mismatch — missing: {b3_missing}, extra: {b3_extra}"
 
     b4_missing = b4_expected - b4_actual
     b4_extra = b4_actual - b4_expected
-    assert b4_actual == b4_expected, (
-        f"B4 mismatch — missing: {b4_missing}, extra: {b4_extra}"
-    )
+    assert b4_actual == b4_expected, f"B4 mismatch — missing: {b4_missing}, extra: {b4_extra}"
 
 
 def test_real_url_map_has_no_delete_for_marketplace(spec_app) -> None:
@@ -183,29 +185,32 @@ def test_real_url_map_has_no_dangerous_routes(spec_app) -> None:
 
 def test_real_delete_marketplace_asset_returns_405(spec_app) -> None:
     with spec_app.test_client() as client:
-        resp = client.delete("/console/api/enterprise-marketplace/assets"
-                             "/00000000-0000-0000-0000-000000000001")
+        resp = client.delete("/console/api/enterprise-marketplace/assets/00000000-0000-0000-0000-000000000001")
         assert resp.status_code == 405, f"Expected 405, got {resp.status_code}"
 
 
 def test_real_delete_admin_marketplace_asset_returns_404(spec_app) -> None:
     with spec_app.test_client() as client:
-        resp = client.delete("/console/api/platform-admin/enterprise-marketplace/assets"
-                             "/00000000-0000-0000-0000-000000000001")
+        resp = client.delete(
+            "/console/api/platform-admin/enterprise-marketplace/assets/00000000-0000-0000-0000-000000000001"
+        )
         assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
 
 
 def test_real_delete_admin_workspace_member_returns_404(spec_app) -> None:
     with spec_app.test_client() as client:
-        resp = client.delete("/console/api/platform-admin/workspaces"
-                             "/00000000-0000-0000-0000-000000000001"
-                             "/members/00000000-0000-0000-0000-000000000002")
+        resp = client.delete(
+            "/console/api/platform-admin/workspaces"
+            "/00000000-0000-0000-0000-000000000001"
+            "/members/00000000-0000-0000-0000-000000000002"
+        )
         assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Admin array query tests (real Flask request context)
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def test_admin_query_status_single_value() -> None:
     app = Flask(__name__)
@@ -277,6 +282,7 @@ def test_admin_query_combined_array_and_scalar() -> None:
 # DTO count tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_enterprise_marketplace_defines_exact_dto_counts() -> None:
     all_names = {
         name
@@ -292,6 +298,7 @@ def test_enterprise_marketplace_defines_exact_dto_counts() -> None:
 # ═══════════════════════════════════════════════════════════════════════════
 # Decorator order tests
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def test_submit_decorator_order() -> None:
     method = em.MarketplaceSubmissionApi.post
@@ -364,6 +371,7 @@ def test_copy_decorator_order() -> None:
 # DTO validation tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_submission_payload_validates_title_bounds() -> None:
     with pytest.raises(ValidationError):
         em.MarketplaceSubmissionPayload.model_validate({"title": "", "category": "Cat"})
@@ -380,9 +388,7 @@ def test_submission_payload_allows_null_expected_row_version() -> None:
 
 def test_submission_payload_rejects_negative_row_version() -> None:
     with pytest.raises(ValidationError):
-        em.MarketplaceSubmissionPayload.model_validate(
-            {"title": "T", "category": "C", "expected_row_version": -1}
-        )
+        em.MarketplaceSubmissionPayload.model_validate({"title": "T", "category": "C", "expected_row_version": -1})
 
 
 def test_review_payload_only_allows_approved_or_rejected() -> None:
@@ -478,6 +484,7 @@ def test_sort_only_allowed_values() -> None:
 # Error mapping tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_http_error_data_contract() -> None:
     error = MarketplaceHTTPError("asset_not_found", "Not found", 404)
     assert error.data == {"code": "asset_not_found", "message": "Not found", "status": 404}
@@ -488,15 +495,18 @@ def test_404_errors(domain_error) -> None:
     assert domain_error.status_code == 404
 
 
-@pytest.mark.parametrize("domain_error", [
-    SubmissionAlreadyPending(),
-    InvalidStatusTransition(),
-    AssetAlreadyUnlisted(),
-    StaleAssetVersion(),
-    SourceAppUnavailable(),
-    SnapshotNotReady(),
-    SnapshotIntegrityError(),
-])
+@pytest.mark.parametrize(
+    "domain_error",
+    [
+        SubmissionAlreadyPending(),
+        InvalidStatusTransition(),
+        AssetAlreadyUnlisted(),
+        StaleAssetVersion(),
+        SourceAppUnavailable(),
+        SnapshotNotReady(),
+        SnapshotIntegrityError(),
+    ],
+)
 def test_409_errors(domain_error) -> None:
     assert domain_error.status_code == 409
 
@@ -523,24 +533,46 @@ def test_raise_marketplace_error_preserves_code_message_status() -> None:
 # Response DTO field isolation tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_admin_response_includes_audit_fields() -> None:
     fields = set(em.MarketplaceAssetResponse.model_fields)
-    for f in ("source_app_id", "source_tenant_id", "submitter_account_id",
-              "reviewer_account_id", "review_note", "snapshot_error_code", "reviewed_at"):
+    for f in (
+        "source_app_id",
+        "source_tenant_id",
+        "submitter_account_id",
+        "reviewer_account_id",
+        "review_note",
+        "snapshot_error_code",
+        "reviewed_at",
+    ):
         assert f in fields
 
 
 def test_public_snapshot_response_excludes_audit_fields() -> None:
     fields = set(em.MarketplaceSnapshotResponse.model_fields)
-    for f in ("source_app_id", "source_tenant_id", "submitter_account_id",
-              "reviewer_account_id", "review_note", "snapshot_error_code"):
+    for f in (
+        "source_app_id",
+        "source_tenant_id",
+        "submitter_account_id",
+        "reviewer_account_id",
+        "review_note",
+        "snapshot_error_code",
+    ):
         assert f not in fields
 
 
 def test_public_snapshot_response_includes_snapshot_fields() -> None:
     fields = set(em.MarketplaceSnapshotResponse.model_fields)
-    for f in ("snapshot_id", "snapshot_version", "app_name", "app_mode",
-              "dsl_version", "content_sha256", "dependencies", "frozen_at"):
+    for f in (
+        "snapshot_id",
+        "snapshot_version",
+        "app_name",
+        "app_mode",
+        "dsl_version",
+        "content_sha256",
+        "dependencies",
+        "frozen_at",
+    ):
         assert f in fields
 
 
@@ -560,22 +592,37 @@ def test_copy_response_only_has_required_fields() -> None:
 # Controller behavior tests
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def test_submit_injects_session_to_service() -> None:
     mock_asset = MagicMock()
     mock_asset.configure_mock(
-        asset_id="asset-1", status="pending", publication_status="unpublished",
-        snapshot_state="none", title="T", description="", category="C",
-        tags=[], scenario="", allow_show_workspace_name=False,
-        source_app_id="app-1", source_tenant_id="t-1",
-        submitter_account_id="acct-1", reviewer_account_id=None,
-        row_version=1, created_at=datetime(2026, 1, 1),
+        asset_id="asset-1",
+        status="pending",
+        publication_status="unpublished",
+        snapshot_state="none",
+        title="T",
+        description="",
+        category="C",
+        tags=[],
+        scenario="",
+        allow_show_workspace_name=False,
+        source_app_id="app-1",
+        source_tenant_id="t-1",
+        submitter_account_id="acct-1",
+        reviewer_account_id=None,
+        row_version=1,
+        created_at=datetime(2026, 1, 1),
         updated_at=datetime(2026, 1, 1),
-        reviewed_at=None, review_note=None, snapshot_error_code=None,
+        reviewed_at=None,
+        review_note=None,
+        snapshot_error_code=None,
     )
     service_mock = MagicMock()
     service_mock.submit_asset.return_value = mock_asset
     with patch.object(em, "EnterpriseMarketplaceService", return_value=service_mock):
-        with patch.object(em, "current_account_with_tenant", return_value=(MagicMock(id="acct-1", current_tenant_id="t-1"), "t-1")):
+        with patch.object(
+            em, "current_account_with_tenant", return_value=(MagicMock(id="acct-1", current_tenant_id="t-1"), "t-1")
+        ):
             with patch.object(em, "console_ns", payload={"title": "T", "category": "C"}):
                 _innermost(em.MarketplaceSubmissionApi.post)(
                     em.MarketplaceSubmissionApi(), MagicMock(), app_model=MagicMock(id="app-1")
@@ -590,14 +637,25 @@ def test_review_dispatch_approved_calls_approve() -> None:
     account = MagicMock(id="rev-1", current_tenant_id="t-1")
     asset = MagicMock()
     asset.configure_mock(
-        asset_id="a-1", status="approved", publication_status="published",
-        snapshot_state="ready", title="T", description="", category="C",
-        tags=[], scenario="", allow_show_workspace_name=False,
-        source_app_id="app-1", source_tenant_id="t-1",
-        submitter_account_id="acct-1", reviewer_account_id="rev-1",
-        row_version=2, created_at=datetime(2026, 1, 1),
+        asset_id="a-1",
+        status="approved",
+        publication_status="published",
+        snapshot_state="ready",
+        title="T",
+        description="",
+        category="C",
+        tags=[],
+        scenario="",
+        allow_show_workspace_name=False,
+        source_app_id="app-1",
+        source_tenant_id="t-1",
+        submitter_account_id="acct-1",
+        reviewer_account_id="rev-1",
+        row_version=2,
+        created_at=datetime(2026, 1, 1),
         updated_at=datetime(2026, 1, 1),
-        reviewed_at=datetime(2026, 1, 1), review_note=None,
+        reviewed_at=datetime(2026, 1, 1),
+        review_note=None,
         snapshot_error_code=None,
     )
     service_mock = MagicMock()
@@ -614,14 +672,25 @@ def test_review_dispatch_rejected_calls_reject() -> None:
     account = MagicMock(id="rev-1", current_tenant_id="t-1")
     asset = MagicMock()
     asset.configure_mock(
-        asset_id="a-1", status="rejected", publication_status="unpublished",
-        snapshot_state="none", title="T", description="", category="C",
-        tags=[], scenario="", allow_show_workspace_name=False,
-        source_app_id="app-1", source_tenant_id="t-1",
-        submitter_account_id="acct-1", reviewer_account_id="rev-1",
-        row_version=2, created_at=datetime(2026, 1, 1),
+        asset_id="a-1",
+        status="rejected",
+        publication_status="unpublished",
+        snapshot_state="none",
+        title="T",
+        description="",
+        category="C",
+        tags=[],
+        scenario="",
+        allow_show_workspace_name=False,
+        source_app_id="app-1",
+        source_tenant_id="t-1",
+        submitter_account_id="acct-1",
+        reviewer_account_id="rev-1",
+        row_version=2,
+        created_at=datetime(2026, 1, 1),
         updated_at=datetime(2026, 1, 1),
-        reviewed_at=datetime(2026, 1, 1), review_note="bad",
+        reviewed_at=datetime(2026, 1, 1),
+        review_note="bad",
         snapshot_error_code=None,
     )
     service_mock = MagicMock()
@@ -637,8 +706,11 @@ def test_review_dispatch_rejected_calls_reject() -> None:
 def test_copy_passes_tenant_from_current_account() -> None:
     account = MagicMock(id="acct-1", current_tenant_id="tid-copy")
     snapshot_mock = MagicMock(
-        import_app_id="import-1", import_status="completed",
-        warnings=[], snapshot_version=1, content_sha256="abc" * 21 + "12",
+        import_app_id="import-1",
+        import_status="completed",
+        warnings=[],
+        snapshot_version=1,
+        content_sha256="abc" * 21 + "12",
     )
     service_mock = MagicMock()
     service_mock.copy_asset.return_value = snapshot_mock
@@ -671,8 +743,10 @@ def test_controller_no_direct_model_access() -> None:
 def test_response_dtos_have_no_secret_fields() -> None:
     canary_keys = {"secret", "token", "credential", "password", "api_key", "dsl_content", "private_key"}
     for model_cls in [
-        em.MarketplaceAssetResponse, em.MarketplaceSnapshotResponse,
-        em.MarketplaceSnapshotDetailResponse, em.MarketplaceCopyResponse,
+        em.MarketplaceAssetResponse,
+        em.MarketplaceSnapshotResponse,
+        em.MarketplaceSnapshotDetailResponse,
+        em.MarketplaceCopyResponse,
         em.MarketplaceErrorResponse,
     ]:
         fields = set(model_cls.model_fields)
@@ -714,6 +788,7 @@ def test_validated_query_maps_pydantic_to_400() -> None:
 # OpenAPI semantic tests (read from generated console-openapi.json)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def _load_console_openapi():
     """Return the generated console OpenAPI spec dict."""
     repo_root = Path(__file__).resolve().parents[5]
@@ -750,17 +825,13 @@ def test_openapi_each_b4_operation_has_error_responses(console_openapi) -> None:
     b4_paths = {p for p in paths if "marketplace" in p.lower() and "plugin" not in p.lower()}
     for path in sorted(b4_paths):
         for method_name, operation in paths[path].items():
-            if method_name in ("parameters",):
+            if method_name == "parameters":
                 continue
             responses = operation.get("responses", {})
             status_codes = {int(k) for k in responses if k.isdigit()}
             error_codes = status_codes - {200, 201}
-            assert error_codes, (
-                f"Operation {method_name} {path} has no error responses: {status_codes}"
-            )
-            assert 401 in status_codes, (
-                f"Operation {method_name} {path} missing 401 response"
-            )
+            assert error_codes, f"Operation {method_name} {path} has no error responses: {status_codes}"
+            assert 401 in status_codes, f"Operation {method_name} {path} missing 401 response"
 
 
 def test_openapi_401_does_not_reference_marketplace_error_response(console_openapi) -> None:
@@ -768,7 +839,7 @@ def test_openapi_401_does_not_reference_marketplace_error_response(console_opena
     b4_paths = {p for p in paths if "marketplace" in p.lower() and "plugin" not in p.lower()}
     for path in sorted(b4_paths):
         for method_name, operation in paths[path].items():
-            if method_name in ("parameters",):
+            if method_name == "parameters":
                 continue
             responses = operation.get("responses", {})
             resp401 = responses.get("401", {})
@@ -779,9 +850,7 @@ def test_openapi_401_does_not_reference_marketplace_error_response(console_opena
             assert "MarketplaceErrorResponse" not in ref, (
                 f"401 in {method_name} {path} incorrectly references MarketplaceErrorResponse"
             )
-            assert "UnauthorizedResponse" in ref, (
-                f"401 in {method_name} {path} does not reference UnauthorizedResponse"
-            )
+            assert "UnauthorizedResponse" in ref, f"401 in {method_name} {path} does not reference UnauthorizedResponse"
 
 
 def test_openapi_domain_error_responses_reference_marketplace_error_response(console_openapi) -> None:
@@ -790,7 +859,7 @@ def test_openapi_domain_error_responses_reference_marketplace_error_response(con
     domain_errors = {"400", "403", "404", "409", "422", "503"}
     for path in sorted(b4_paths):
         for method_name, operation in paths[path].items():
-            if method_name in ("parameters",):
+            if method_name == "parameters":
                 continue
             responses = operation.get("responses", {})
             for status in domain_errors:
@@ -802,8 +871,7 @@ def test_openapi_domain_error_responses_reference_marketplace_error_response(con
                 schema = app_json.get("schema", {}) if isinstance(app_json, dict) else {}
                 ref = schema.get("$ref", "") if isinstance(schema, dict) else ""
                 assert "MarketplaceErrorResponse" in ref, (
-                    f"Error {status} in {method_name} {path} "
-                    f"should reference MarketplaceErrorResponse but got: {ref}"
+                    f"Error {status} in {method_name} {path} should reference MarketplaceErrorResponse but got: {ref}"
                 )
 
 
@@ -820,7 +888,7 @@ def test_openapi_success_status_codes(console_openapi) -> None:
     get_paths = [k for k in paths if "marketplace" in k.lower() and k not in (submit_path, copy_path)]
     for p in get_paths:
         for method, op in paths[p].items():
-            if method in ("get", "post") and method not in ("parameters",):
+            if method in ("get", "post") and method != "parameters":
                 assert "200" in op.get("responses", {}), f"{method} {p} missing 200"
 
 
@@ -833,6 +901,4 @@ def test_openapi_review_operation_includes_422_domain_error(console_openapi) -> 
     content = responses["422"].get("content", {})
     app_json = content.get("application/json", {})
     ref = app_json.get("schema", {}).get("$ref", "")
-    assert "MarketplaceErrorResponse" in ref, (
-        f"Review 422 should reference MarketplaceErrorResponse but got: {ref}"
-    )
+    assert "MarketplaceErrorResponse" in ref, f"Review 422 should reference MarketplaceErrorResponse but got: {ref}"

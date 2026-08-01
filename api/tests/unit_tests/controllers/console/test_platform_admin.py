@@ -289,8 +289,7 @@ def test_openapi_b3_error_response_schema_shapes(console_openapi) -> None:
             app_json = content.get("application/json", {})
             ref = app_json.get("schema", {}).get("$ref", "")
             assert "PlatformAdminErrorResponse" in ref, (
-                f"Error {status} in {method} {path} should reference "
-                f"PlatformAdminErrorResponse but got: {ref}"
+                f"Error {status} in {method} {path} should reference PlatformAdminErrorResponse but got: {ref}"
             )
 
 
