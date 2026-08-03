@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-08-02（Asia/Shanghai）
+更新时间：2026-08-03（Asia/Shanghai）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
@@ -14,6 +14,7 @@
 | 候选分支 | `codex/enterprise-candidate-1.16.0-20260718` |
 | B5 Plan checkpoint | `c0c398f423135dcd118b2dce8be4d6c91562c1a7`（B5 Plan Rereview） |
 | B5 Contract checkpoint | `8cd884538bf1d58e92af711e49b72f2cdf061672`（Contract Rereview PASS） |
+| B5-E i18n checkpoint | `e319481a7bc1e39ca91200f1b67a6541710c1aa4`（B5-E independent Review PASS） |
 | B4 产品 checkpoint | `9c4c0356f3f2374c22b383ba96331e1dd92505fd` |
 | 交接文档 commit | 使用 `git log -1 --format=%H -- docs/enterprise/replay-1.16.0/CURRENT_STATE.md` 获取，避免文件自引用 commit |
 | 远端跟踪 | `origin/codex/enterprise-candidate-1.16.0-20260718` |
@@ -23,11 +24,11 @@
 | 官方基线 commit | `5c6372d2f76d240265b92fd27c16bc772ffcb107` |
 | Alembic 最终 head | `b416e5c4e702`（唯一 head） |
 | Skill 源仓库 | `/home/ctyun/BigData/GitHub/codex-personal-skills` |
-| Skill 源 commit | `fa95b50a2a784e5f68df229a8b1cf0c30bed95ce`（含事件驱动清理、下一步 ownership 和 human-signaled completion） |
+| Skill 源 commit | `29cccd19aba95de5d53686eda7f72d4e8e7e1b3e`（含单控制器、事件驱动清理、下一步 ownership、human-signaled completion 和长提示词 human-submit） |
 | Claude Squad 定制 commit | `a1e35dc7436454cb53a584b8730166e23055ad4b`（`fix/n-overlay-small-terminal`，含 governed workflow safeguards 与小终端 overlay 修复） |
-| 工作区 | 候选在 `8cd884538bf1d58e92af711e49b72f2cdf061672` 集成核验时干净；本文件更新期间仅允许本文件 dirty |
-| 本地与 origin | 本地已集成 Contract Rereview；状态文档提交与 checkpoint push 待人工授权 |
-| 当前产品里程碑 | B0～B4 已闭环；B5 Plan `PASS`；Contract Fix `PASS`；下一角色 B5-E i18n foundation |
+| 工作区 | 候选在 `e319481a7bc1e39ca91200f1b67a6541710c1aa4` 集成核验时干净；本文件更新期间仅允许本文件 dirty |
+| 本地与 origin | 本地已集成 B5-E Builder 与 independent Review；origin 仍为 `b4801a1ada439198d0864b43cc90c347490a20e0`，状态文档提交与 checkpoint push 待人工授权 |
+| 当前产品里程碑 | B0～B4 已闭环；B5 Plan、Contract Fix、B5-E i18n foundation 均 `PASS`；下一角色 B5-A contract/state/client/main-nav Builder |
 
 禁止向 `upstream/langgenius/dify` 推送企业候选或创建企业 PR。企业分支只推送到用户 fork `origin`。
 
@@ -44,7 +45,7 @@ git merge-base 1.16.0 HEAD
 
 预期：
 
-- 本地 HEAD 包含 B5 Contract checkpoint `8cd884538bf1d58e92af711e49b72f2cdf061672`；状态文档 checkpoint push 完成后，本地 HEAD 与 origin 相同；
+- 本地 HEAD 包含 B5-E i18n checkpoint `e319481a7bc1e39ca91200f1b67a6541710c1aa4`；状态文档 checkpoint push 完成后，本地 HEAD 与 origin 相同；
 - B4 checkpoint `9c4c0356f3f2374c22b383ba96331e1dd92505fd` 是当前 HEAD 的祖先；
 - merge-base 为官方 1.16.0 commit；
 - 工作区无修改。
@@ -53,7 +54,7 @@ git merge-base 1.16.0 HEAD
 
 ## 2. 当前工作顺序
 
-当前已完成 B5 Architect → Plan Reviewer → Plan Fixer → Plan Rereviewer，以及 Contract Fixer → Contract Reviewer → Ruff Fixer → Contract Rereviewer。B5 Plan 和 contract 修复均已接受；Contract Rereview checkpoint 已 fast-forward 到候选分支。下一角色是 B5-E i18n foundation，但尚未授权创建实例。
+当前已完成 B5 Architect → Plan Reviewer → Plan Fixer → Plan Rereviewer、Contract Fixer → Contract Reviewer → Ruff Fixer → Contract Rereviewer，以及 B5-E i18n Builder → independent Reviewer。B5 Plan、contract 修复和 B5-E 均已接受；B5-E Review checkpoint 已 fast-forward 到候选分支。下一角色是 B5-A contract/state/client/main-nav Builder，但尚未授权创建实例。
 
 协作基础设施当前状态：
 
@@ -62,8 +63,8 @@ git merge-base 1.16.0 HEAD
 3. 两个 Skill 已通过结构校验；Git 起点核验脚本已通过正向/负向测试；
 4. Claude Squad 源 checkpoint 为 `a1e35dc7436454cb53a584b8730166e23055ad4b`，并启用 `"governed_mode": true`；
 5. dirty worktree 下 `c`/`p`/`D` 会拒绝危险操作；`D` 会明确提示是否删除本地分支；
-6. B5 Plan 角色链实例已清理；Contract Fixer/Reviewer/Ruff Fixer/Rereviewer 四个已完成实例暂时保留，等待新 checkpoint 推送后执行事件驱动清理审计；
-7. 下一角色是 B5-E i18n foundation，唯一允许写 23 个已批准的 `common.json`；必须独立 Review，且不得并行启动 B5-A/B/C/D。
+6. B5 Plan 与 Contract 角色链实例已清理；B5-E Builder/Reviewer 两个已完成实例暂时保留，等待新 checkpoint 推送后执行事件驱动清理审计；
+7. 下一角色是 B5-A，只允许写已接受计划中的 8 个 exact files；B5-B/C/D 仍不得并行启动。
 
 Skill 路径：
 
@@ -214,9 +215,9 @@ Alembic unique head = b416e5c4e702
 - `B4_FINAL_REVIEW.md`
 - `B4_FINAL_REREVIEW.md`
 
-### B5：前端实施计划与 Contract 门禁
+### B5：前端实施计划、Contract 门禁与 i18n foundation
 
-当前已接受 Contract checkpoint：`8cd884538bf1d58e92af711e49b72f2cdf061672`
+当前已接受 B5-E checkpoint：`e319481a7bc1e39ca91200f1b67a6541710c1aa4`
 
 已完成：
 
@@ -228,6 +229,8 @@ Alembic unique head = b416e5c4e702
 - Contract Reviewer：`ccc96aef5c38e4605ef927d67f500eb3543e3c8f`，发现并接受 `B5CR-02` targeted Ruff finding；
 - Contract Ruff Fixer：`6b6305f2cdeb436c4736978a02240e99ae6c8e5f`；
 - Contract Rereviewer：`8cd884538bf1d58e92af711e49b72f2cdf061672`，结论 `PASS`、`CONTRACT_FIX_ACCEPTED=yes`、open findings `0/0/0`。
+- B5-E i18n Builder：`f5cf5bee66d924e1bd75b66d01ad635b225a0857`，只修改 23 个 approved locale `common.json`；
+- B5-E independent Reviewer：`e319481a7bc1e39ca91200f1b67a6541710c1aa4`，结论 `PASS`、`B5_E_ACCEPTED=yes`、open findings `0/0/0`。
 
 已关闭的计划 findings：
 
@@ -243,8 +246,10 @@ Alembic unique head = b416e5c4e702
 
 Contract Rereview 已关闭 B5 的 contract 前置阻断；两次官方 generation 均得到与 HEAD
 一致的生成内容，已接受的 179 项对称 `DA` 是 generator/index tracking 流程偏差，不是
-contracts 内容差异。下一门禁是 B5-E all-23-locale foundation；在 B5-E 实例获得单独授权、
-完成实现并经独立 Review 前，B5-A/B/C/D 仍未授权。
+contracts 内容差异。B5-E 已为全部 23 个 locale 增加准确的 139 个 approved keys，独立
+Review 验证 23/23 JSON、duplicate/preservation/inventory、locale parity、翻译语义、
+`i18n:check` 和 type-check；`pnpm check` 仅重现已接受的 5 个 B1 formatting baseline。
+下一门禁是 B5-A contract/state/client/main-nav Builder；B5-B/C/D 仍未授权。
 
 主要报告：
 
@@ -253,6 +258,7 @@ contracts 内容差异。下一门禁是 B5-E all-23-locale foundation；在 B5-
 - `B5_IMPLEMENTATION_PLAN_REREVIEW.md`
 - `B5_CONTRACT_FIX_REVIEW.md`
 - `B5_CONTRACT_FIX_REREVIEW.md`
+- `B5_E_I18N_REVIEW.md`
 
 ## 4. B4 最终契约摘要
 
@@ -363,54 +369,79 @@ type-check PASS、targeted Ruff/format PASS，以及两次 deterministic generat
 
 ## 7. B5 当前门禁与下一任务
 
-B5 实施计划和 contract 修复均已完成独立门禁并接受：
+B5 实施计划、contract 修复和 B5-E i18n foundation 均已完成独立门禁并接受：
 
 ```text
 B5 Plan Rereview: c0c398f423135dcd118b2dce8be4d6c91562c1a7
 B5 Contract Rereview: 8cd884538bf1d58e92af711e49b72f2cdf061672
+B5-E Builder: f5cf5bee66d924e1bd75b66d01ad635b225a0857
+B5-E independent Review: e319481a7bc1e39ca91200f1b67a6541710c1aa4
 ```
 
-这两个 checkpoint 均包含 B4 产品 checkpoint
+上述 checkpoint 均包含 B4 产品 checkpoint
 `9c4c0356f3f2374c22b383ba96331e1dd92505fd`。交接文档不能自引用其未来 commit；
-恢复时以 `git rev-parse HEAD` 取得当前候选精确 SHA，并要求它包含上述 Contract Rereview
+恢复时以 `git rev-parse HEAD` 取得当前候选精确 SHA，并要求它包含上述 B5-E Review
 checkpoint。状态文档 checkpoint 推送完成后，还要求本地与 origin 精确一致。
 
-### 下一角色：B5-E i18n foundation Builder
+### 已关闭门禁：B5-E i18n foundation
 
-B5-E 只负责把 `B5_IMPLEMENTATION_PLAN.md` §8.4 已批准的完整 key inventory 写入全部
-23 个 supported locale `common.json`。B5-E 是这 23 个共享文件的唯一 writer 和翻译质量
-owner；必须提供正确本地化内容，不得把英文复制到非英文 locale 作为占位，不得依赖 fallback
-或 main-push translation workflow 完成本轮交付。
+B5-E Builder 只修改了计划 §8.3 的 23 个 exact `common.json`，每个 locale 新增完整的
+56 个 `platformAdmin.*` 和 83 个 `enterpriseMarketplace.*`，共 139 个唯一 key。独立
+Reviewer 在 exact commit range 上验证父值保持不变、无 duplicate、23-locale parity、
+正确本地化、非英文无英文占位、`i18n:check` 和 type-check，结论 `PASS`、
+`B5_E_ACCEPTED=yes`、open P0/P1/P2=`0/0/0`。`pnpm check` 的唯一失败是已接受的 5 个
+B1 formatting baseline；ESLint 因命令短路 `NOT_RUN`，必须继续作为已知限制保留。
 
-以当前 Git 中 §8.4 表格逐项提取，实际 inventory 为 56 个 `platformAdmin.*` 加 83 个
-`enterpriseMarketplace.*`，共 139 个唯一 key。早先 Agent 摘要中的 `54/78` 不是实施
-依据；Builder 起步时必须独立复算 `56/83/139` 且无重复，否则停止并报告。
+### 下一角色：B5-A contract/state/client/main-nav Builder
 
-B5-E 必须从包含本次状态文档 checkpoint 的候选精确 40 位 SHA 开始，并先核验
-branch/HEAD/clean、B4 checkpoint、B5 Plan Rereview 和 B5 Contract Rereview 均为祖先。
-其 exact allowlist 只有 §8.3 列出的 23 个 `common.json`；不得修改 TypeScript/TSX、其他
-i18n 文件、API、contracts、Docker、migration、数据库、容器、vector、volume 或外部服务。
-contracts 只消费、不重新生成。
+B5-A 从包含 B5-E Review checkpoint 的候选精确 40 位 SHA 开始，只负责建立后续 B5
+页面共享的 generated Console client defaults、platform-admin status/error state 和
+main-nav 权限入口。它必须复用官方 1.16 的 `consoleQuery`/`consoleClient`、TanStack Query、
+Jotai account/workspace/permission state 和现有 main-nav route model；不得恢复旧 app
+context、legacy contract loader、手写 DTO/error types 或 direct fetch。
 
-B5-E dirty diff 必须先由协调者检查；未经单独授权不得 commit/amend/push。提交集成后必须
-创建独立 B5-E Reviewer，检查 23-locale key parity、approved inventory、typed-i18n 门禁、
-翻译语义和非英文无英文占位；有 finding 时仅允许 finding-scoped i18n Fixer，随后独立
-Rereviewer。
+B5-A exact allowlist：
+
+```text
+web/service/client.ts
+web/app/components/main-nav/routes.ts
+web/app/components/main-nav/index.tsx
+web/app/components/main-nav/__tests__/index.spec.tsx
+web/features/platform-admin/README.md
+web/features/platform-admin/state.ts
+web/features/platform-admin/errors.ts
+web/features/platform-admin/__tests__/state.spec.tsx
+```
+
+Denylist 是 allowlist 外全仓，尤其 `api/**`、`docker/**`、`dify-agent/**`、migration、
+`packages/contracts/**`、所有 locale/i18n 文件、account-setting、apps 和 explore。B5-A
+只读消费已经生成并接受的 Console contracts 和 B5-E typed i18n keys，不重新生成 contracts，
+不修改任何 locale。若发现缺 contract、缺 key、需要扩大 shared-file ownership，立即停止。
+
+B5-A 必须先用可观察行为测试证明：status pending/error/false 时平台管理员入口不可见，
+status true 时可见，`/platform-admin/**` deep link active；401 不重试，transient network/503
+最多重试 2 次；错误映射只消费 generated typed unions；server state 留在 TanStack Query，
+只把真正共享的 client state 放进 feature Jotai atoms。`web/service/client.ts` 是后续 B5
+共享 mutation invalidation 的唯一 writer。
+
+B5-A dirty diff 必须由协调者检查；未经单独授权不得 commit/amend/push。提交集成后必须
+创建独立 B5-A Reviewer；有 finding 时只允许 finding-scoped Fixer，再由独立 Rereviewer
+关闭门禁。
 
 ### 后续串行门禁
 
 ```text
-B5-E all-23-locale foundation
-→ independent B5-E Reviewer
-→ CHANGES_REQUIRED 时 finding-scoped i18n Fixer / independent B5-E Rereviewer
-→ B5-E PASS fast-forwarded and checkpoint recorded
-→ B5-A → B5-B → B5-C → B5-D
+B5-E PASS fast-forwarded
+→ B5-A contract/state/client/main-nav
+→ independent B5-A Reviewer
+→ CHANGES_REQUIRED 时 finding-scoped B5-A Fixer / independent Rereviewer
+→ B5-B → B5-C → B5-D（每阶段独立 Reviewer/Fixer?/Rereviewer）
 ```
 
-当前 Contract gate 已关闭。B5-E 实例创建仍需独立人工授权；在 B5-E Rereviewer PASS 且
-checkpoint 集成前：
+当前 Plan、Contract 和 B5-E gate 均已关闭。B5-A 实例创建仍需独立人工授权；在 B5-A
+独立 Review PASS 且 checkpoint 集成前：
 
-- B5-A/B/C/D 均未授权；
+- B5-B/C/D 均未授权；
 - 不得并行启动其他 Builder；
 - 不得重新生成 contracts；
 - 不得通过 direct fetch、手写 Console response/error types 或 legacy loader 绕过。
@@ -504,18 +535,19 @@ git merge --ff-only ctyun/<instance-branch>
 3. B4_FINAL_REREVIEW.md 是否为 PASS；
 4. B5_IMPLEMENTATION_PLAN_REREVIEW.md 是否为 PASS、PLAN_ACCEPTED=yes；
 5. B5_CONTRACT_FIX_REREVIEW.md 是否为 PASS、CONTRACT_FIX_ACCEPTED=yes、open findings 0/0/0；
-6. Skill 源 commit 是否包含 fa95b50a2a784e5f68df229a8b1cf0c30bed95ce，
+6. B5_E_I18N_REVIEW.md 是否为 PASS、B5_E_ACCEPTED=yes、open findings 0/0/0；
+7. Skill 源 commit 是否包含 29cccd19aba95de5d53686eda7f72d4e8e7e1b3e，
    Claude Squad 源 commit 是否包含 a1e35dc7436454cb53a584b8730166e23055ad4b；
-7. 只恢复协调状态，不修改业务代码，不创建实例。
+8. 只恢复协调状态，不修改业务代码，不创建实例。
 
 核验通过后：
 
-1. 依据 CURRENT_STATE.md 第 7 节、B5_IMPLEMENTATION_PLAN.md、Plan Rereview 和 Contract Rereview，
-   制定 B5-E i18n foundation Builder 的精确任务；
-2. B5-E 只写 23 个 exact `common.json`，实现 §8.4 完整 inventory 和正确本地化；
+1. 依据 CURRENT_STATE.md 第 7 节、B5_IMPLEMENTATION_PLAN.md、Plan Rereview、Contract Rereview
+   和 B5-E Review，制定 B5-A contract/state/client/main-nav Builder 的精确任务；
+2. B5-A 只写第 7 节列出的 8 个 exact files，只读消费 generated contracts 和 i18n keys；
 3. 使用最新版 $orchestrate-claude-squad 生成 N 表单字段和完整任务契约；
 4. 把任务契约交给我人工确认后再创建 Claude Squad 实例；
-5. 不得启动 B5-A/B/C/D，不得重新生成 contracts。
+5. 不得启动 B5-B/C/D，不得重新生成 contracts 或修改任何 locale/i18n 文件。
 
 任何事实与文档不符时，先报告差异，不得自动 reset、merge、rebase、migration、Docker 或 volume。
 ```
@@ -535,18 +567,16 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-B5 Plan 角色链实例已经清理。Contract Fixer/Reviewer/Ruff Fixer/Rereviewer 已完成，
-其 checkpoint 已集成到候选分支，但状态文档 checkpoint 尚未提交和推送。当前保留：
+B5 Plan 与 Contract 角色链实例已经清理。B5-E Builder/Reviewer 均已完成，其 Review
+checkpoint 已集成到候选分支，但状态文档 checkpoint 尚未提交和推送。当前保留：
 
-- `replay-116-b5-contract-fixer`；
-- `replay-116-b5-contract-reviewer`；
-- `replay-116-b5-contract-ruff-fixer`；
-- `replay-116-b5-contract-rereviewer`。
+- `replay-116-b5-e-i18n-builder`；
+- `replay-116-b5-e-i18n-reviewer`。
 
 这些实例在状态 checkpoint 推送到 origin 前不得删除。推送后按事件驱动清理审计逐项确认：
 worktree clean、实例 commit 为候选 checkpoint 祖先、无未集成报告，再请求批量删除授权。
 
-创建 B5-E 前执行：
+创建 B5-A 前执行：
 
 ```bash
 git worktree prune
@@ -557,5 +587,6 @@ git status --short --branch
 预期在获批清理后只保留候选主目录；候选分支与 origin 同步，且包含 B4 checkpoint
 `9c4c0356f3f2374c22b383ba96331e1dd92505fd`、B5 Plan Rereview checkpoint
 `c0c398f423135dcd118b2dce8be4d6c91562c1a7` 和 B5 Contract Rereview checkpoint
-`8cd884538bf1d58e92af711e49b72f2cdf061672`。随后以创建时重新读取的候选完整
-40 位 HEAD 作为 B5-E 起点，不得使用移动的“latest HEAD”。
+`8cd884538bf1d58e92af711e49b72f2cdf061672`，以及 B5-E Review checkpoint
+`e319481a7bc1e39ca91200f1b67a6541710c1aa4`。随后以创建时重新读取的候选完整
+40 位 HEAD 作为 B5-A 起点，不得使用移动的“latest HEAD”。
