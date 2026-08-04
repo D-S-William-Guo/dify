@@ -459,6 +459,25 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
               },
             },
           },
+          enterpriseMarketplace: {
+            submissions: {
+              post: {
+                mutationOptions: {
+                  retry: false,
+                  onSuccess: (_submission, _variables, _onMutateResult, context) => {
+                    return Promise.all([
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.enterpriseMarketplace.submissions.get.key(),
+                      }),
+                      context.client.invalidateQueries({
+                        queryKey: consoleQuery.platformAdmin.enterpriseMarketplace.assets.get.key(),
+                      }),
+                    ])
+                  },
+                },
+              },
+            },
+          },
         },
       },
       snippets: {
@@ -1092,6 +1111,169 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
                   accessChannelsQueryKey(consoleQuery, appInstanceId),
                   accessSettingsQueryKey(consoleQuery, appInstanceId),
                 ])
+              },
+            },
+          },
+        },
+      },
+      account: {
+        platformAdminStatus: {
+          get: {
+            queryOptions: {
+              retry: (failureCount, error) => {
+                if (error instanceof Response && error.status === 401) return false
+                return failureCount < 2
+              },
+            },
+          },
+        },
+      },
+      platformAdmin: {
+        workspaces: {
+          byWorkspaceId: {
+            patch: {
+              mutationOptions: {
+                retry: false,
+                onSuccess: (_updatedWorkspace, variables, _onMutateResult, context) => {
+                  return Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.platformAdmin.workspaces.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.platformAdmin.workspaces.byWorkspaceId.get.queryKey({
+                        input: { params: { workspace_id: variables.params.workspace_id } },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+            members: {
+              invitations: {
+                post: {
+                  mutationOptions: {
+                    retry: false,
+                    onSuccess: (_inviteResponse, variables, _onMutateResult, context) => {
+                      return Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.platformAdmin.workspaces.byWorkspaceId.members.get.queryKey(
+                              {
+                                input: {
+                                  params: { workspace_id: variables.params.workspace_id },
+                                },
+                              },
+                            ),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.platformAdmin.workspaces.byWorkspaceId.get.queryKey({
+                              input: { params: { workspace_id: variables.params.workspace_id } },
+                            }),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.platformAdmin.workspaces.get.key(),
+                        }),
+                      ])
+                    },
+                  },
+                },
+              },
+              byMemberId: {
+                role: {
+                  patch: {
+                    mutationOptions: {
+                      retry: false,
+                      onSuccess: (_roleUpdateResponse, variables, _onMutateResult, context) => {
+                        return context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.platformAdmin.workspaces.byWorkspaceId.members.get.queryKey(
+                              {
+                                input: {
+                                  params: { workspace_id: variables.params.workspace_id },
+                                },
+                              },
+                            ),
+                        })
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        enterpriseMarketplace: {
+          assets: {
+            byAssetId: {
+              reviews: {
+                post: {
+                  mutationOptions: {
+                    retry: false,
+                    onSuccess: (_reviewedAsset, variables, _onMutateResult, context) => {
+                      return Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.platformAdmin.enterpriseMarketplace.assets.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.enterpriseMarketplace.assets.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.enterpriseMarketplace.submissions.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.enterpriseMarketplace.assets.byAssetId.get.queryKey({
+                              input: { params: { asset_id: variables.params.asset_id } },
+                            }),
+                        }),
+                      ])
+                    },
+                  },
+                },
+              },
+              unlist: {
+                post: {
+                  mutationOptions: {
+                    retry: false,
+                    onSuccess: (_unlistedAsset, variables, _onMutateResult, context) => {
+                      return Promise.all([
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.platformAdmin.enterpriseMarketplace.assets.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey: consoleQuery.enterpriseMarketplace.assets.get.key(),
+                        }),
+                        context.client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.enterpriseMarketplace.assets.byAssetId.get.queryKey({
+                              input: { params: { asset_id: variables.params.asset_id } },
+                            }),
+                        }),
+                      ])
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      enterpriseMarketplace: {
+        assets: {
+          byAssetId: {
+            copies: {
+              post: {
+                mutationOptions: {
+                  retry: false,
+                  onSuccess: (_copyResponse, _variables, _onMutateResult, context) => {
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.apps.get.key(),
+                    })
+                  },
+                },
               },
             },
           },

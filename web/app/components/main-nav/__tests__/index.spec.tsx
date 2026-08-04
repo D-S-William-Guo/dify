@@ -37,10 +37,21 @@ const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess } = vi.hoist
 const mockAppContextState = vi.hoisted(() => ({
   current: undefined as AppContextStateMockState | undefined,
 }))
+const mockPlatformAdminState = vi.hoisted(() => ({
+  isPlatformAdmin: false,
+}))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
   isAgentV2Enabled: () => mockIsAgentV2Enabled(),
 }))
+
+vi.mock('@/features/platform-admin/state', async () => {
+  const { atom } = await vi.importActual<typeof import('jotai')>('jotai')
+
+  return {
+    isPlatformAdminAtom: atom(() => mockPlatformAdminState.isPlatformAdmin),
+  }
+})
 
 vi.mock('@/context/account-state', async (importOriginal) => {
   const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
@@ -331,6 +342,7 @@ describe('MainNav', () => {
       },
     ]
     mockIsAgentV2Enabled.mockReturnValue(true)
+    mockPlatformAdminState.isPlatformAdmin = false
 
     ;(usePathname as Mock).mockImplementation(() => mockPathname)
     ;(useRouter as Mock).mockReturnValue({
@@ -653,6 +665,60 @@ describe('MainNav', () => {
 
     const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
     expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
+  })
+
+  it('renders the enterprise marketplace entry in primary navigation', () => {
+    renderMainNav()
+
+    expect(
+      screen.getByRole('link', { name: /common.enterpriseMarketplace.nav.label/ }),
+    ).toHaveAttribute('href', '/enterprise-marketplace')
+  })
+
+  it.each([
+    '/enterprise-marketplace',
+    '/enterprise-marketplace/asset-1',
+    '/enterprise-marketplace/submissions',
+  ])('marks enterprise marketplace active on %s', (pathname) => {
+    mockPathname = pathname
+
+    renderMainNav()
+
+    const marketplaceLink = screen.getByRole('link', {
+      name: /common.enterpriseMarketplace.nav.label/,
+    })
+    expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
+    expect(marketplaceLink).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('hides the platform admin entry when the account is not a platform admin', () => {
+    renderMainNav()
+
+    expect(
+      screen.queryByRole('link', { name: /common.platformAdmin.nav.label/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('renders the platform admin entry for a platform admin account', () => {
+    mockPlatformAdminState.isPlatformAdmin = true
+
+    renderMainNav()
+
+    expect(screen.getByRole('link', { name: /common.platformAdmin.nav.label/ })).toHaveAttribute(
+      'href',
+      '/platform-admin/workspaces',
+    )
+  })
+
+  it('marks platform admin active on platform admin routes', () => {
+    mockPlatformAdminState.isPlatformAdmin = true
+    mockPathname = '/platform-admin/workspaces'
+
+    renderMainNav()
+
+    const platformAdminLink = screen.getByRole('link', { name: /common.platformAdmin.nav.label/ })
+    expect(platformAdminLink).toHaveClass(activeGradientMaskClassName)
+    expect(platformAdminLink).toHaveAttribute('aria-current', 'page')
   })
 
   it('marks roster active on roster routes', () => {

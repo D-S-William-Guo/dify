@@ -1,6 +1,6 @@
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 
-type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'appDeployEditor'
+type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'appDeployEditor' | 'platformAdmin'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
@@ -20,6 +20,7 @@ export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
   canUseAppDeploy: boolean
   isCurrentWorkspaceDatasetOperator: boolean
+  isPlatformAdmin: boolean
   marketplaceEnabled: boolean
 }
 
@@ -95,6 +96,24 @@ export const MAIN_NAV_ROUTES = [
     feature: 'marketplace',
   },
   {
+    key: 'enterprise-marketplace',
+    href: '/enterprise-marketplace',
+    labelKey: 'enterpriseMarketplace.nav.label',
+    active: (path: string) => isPathUnderRoute(path, '/enterprise-marketplace'),
+    icon: 'i-ri-store-2-line',
+    activeIcon: 'i-ri-store-2-fill',
+    visibility: 'all',
+  },
+  {
+    key: 'platform-admin',
+    href: '/platform-admin/workspaces',
+    labelKey: 'platformAdmin.nav.label',
+    active: (path: string) => isPathUnderRoute(path, '/platform-admin'),
+    icon: 'i-ri-admin-line',
+    activeIcon: 'i-ri-admin-fill',
+    visibility: 'platformAdmin',
+  },
+  {
     key: 'deployments',
     href: '/deployments',
     labelKey: 'menus.deployments',
@@ -116,6 +135,8 @@ export function isMainNavRouteVisible(
   if (route.visibility === 'all') return true
 
   if (route.visibility === 'notDatasetOperator') return !options.isCurrentWorkspaceDatasetOperator
+
+  if (route.visibility === 'platformAdmin') return options.isPlatformAdmin
 
   return options.canUseAppDeploy
 }

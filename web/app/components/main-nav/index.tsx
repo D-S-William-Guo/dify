@@ -15,6 +15,7 @@ import {
   isCurrentWorkspaceEditorAtom,
 } from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { isPlatformAdminAtom } from '@/features/platform-admin/state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import dynamic from '@/next/dynamic'
 import Link from '@/next/link'
@@ -34,6 +35,7 @@ export function MainNav({ className }: MainNavProps) {
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
+  const isPlatformAdmin = useAtomValue(isPlatformAdminAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const agentV2Enabled = isAgentV2Enabled()
   const showEnvTag =
@@ -48,6 +50,7 @@ export function MainNav({ className }: MainNavProps) {
           agentV2Enabled,
           canUseAppDeploy,
           isCurrentWorkspaceDatasetOperator,
+          isPlatformAdmin,
           marketplaceEnabled: systemFeatures.enable_marketplace,
         }),
       ).map((route) => ({
@@ -61,6 +64,7 @@ export function MainNav({ className }: MainNavProps) {
       agentV2Enabled,
       canUseAppDeploy,
       isCurrentWorkspaceDatasetOperator,
+      isPlatformAdmin,
       systemFeatures.enable_marketplace,
       t,
     ],
