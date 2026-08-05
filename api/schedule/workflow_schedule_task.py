@@ -1,6 +1,7 @@
 import logging
 
-from celery import current_app, group, shared_task
+from celery import current_app, shared_task
+from kombu import Producer
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -86,7 +87,9 @@ def _fetch_due_schedules(session: Session) -> list[WorkflowSchedulePlan]:
     return list(due_schedules)
 
 
-def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan], producer=None) -> int:
+def _process_schedules(
+    session: Session, schedules: list[WorkflowSchedulePlan], producer: Producer | None = None
+) -> int:
     """Process schedules: check quota, update next run time and dispatch to Celery in parallel."""
     if not schedules:
         return 0
@@ -102,8 +105,14 @@ def _process_schedules(session: Session, schedules: list[WorkflowSchedulePlan], 
         tasks_to_dispatch.append(schedule.id)
 
     if tasks_to_dispatch:
-        job = group(run_schedule_trigger.s(schedule_id) for schedule_id in tasks_to_dispatch)
-        job.apply_async(producer=producer)
+        # A bare group tracks every child through the result backend even though
+        # this fire-and-forget poller never consumes the GroupResult.
+        for schedule_id in tasks_to_dispatch:
+            run_schedule_trigger.apply_async(
+                args=(schedule_id,),
+                producer=producer,
+                ignore_result=True,
+            )
 
         logger.debug("Dispatched %d tasks in parallel", len(tasks_to_dispatch))
 

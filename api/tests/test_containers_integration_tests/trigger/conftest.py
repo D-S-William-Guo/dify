@@ -8,7 +8,6 @@ and mock objects used across trigger-related tests.
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
 
 import pytest
 from sqlalchemy import delete
@@ -105,60 +104,20 @@ def app_model(
     db_session_with_containers.commit()
 
 
-class MockCeleryGroup:
-    """Mock for celery group() function that collects dispatched tasks.
-
-    Matches the Celery group API loosely, accepting arbitrary kwargs on apply_async
-    (e.g. producer) so production code can pass broker-related options without
-    breaking tests.
-    """
+class MockCeleryTask:
+    """Mock Celery task that records independently dispatched schedule IDs."""
 
     def __init__(self) -> None:
-        self.collected: list[dict[str, Any]] = []
-        self._applied = False
-        self.last_apply_async_kwargs: dict[str, Any] | None = None
+        self.dispatched_schedule_ids: list[str] = []
 
-    def __call__(self, items: Any) -> MockCeleryGroup:
-        self.collected = list(items)
-        return self
-
-    def apply_async(self, **kwargs: Any) -> None:
-        # Accept arbitrary kwargs like producer to be compatible with Celery
-        self._applied = True
-        self.last_apply_async_kwargs = kwargs
-
-    @property
-    def applied(self) -> bool:
-        return self._applied
-
-
-class MockCelerySignature:
-    """Mock for celery task signature that returns task info dict."""
-
-    def s(self, schedule_id: str) -> dict[str, str]:
-        return {"schedule_id": schedule_id}
+    def apply_async(self, *, args: tuple[str], **_: object) -> None:
+        self.dispatched_schedule_ids.append(args[0])
 
 
 @pytest.fixture
-def mock_celery_group() -> MockCeleryGroup:
-    """
-    Provide a mock celery group for testing task dispatch.
-
-    Returns:
-        MockCeleryGroup: Mock group that collects dispatched tasks
-    """
-    return MockCeleryGroup()
-
-
-@pytest.fixture
-def mock_celery_signature() -> MockCelerySignature:
-    """
-    Provide a mock celery signature for testing task dispatch.
-
-    Returns:
-        MockCelerySignature: Mock signature generator
-    """
-    return MockCelerySignature()
+def mock_celery_task() -> MockCeleryTask:
+    """Provide a mock Celery task for schedule dispatch tests."""
+    return MockCeleryTask()
 
 
 class MockPluginSubscription:
