@@ -34,6 +34,7 @@ for module_name in RESOURCE_MODULES:
 # Import other controllers
 from . import (
     apikey,
+    enterprise_marketplace,
     extension,
     feature,
     human_input_form,
@@ -42,6 +43,7 @@ from . import (
     notification,
     onboarding,
     ping,
+    platform_admin,
     setup,
     spec,
     version,
@@ -188,6 +190,7 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "enterprise_marketplace",
     "extension",
     "external",
     "feature",
@@ -214,6 +217,7 @@ __all__ = [
     "ops_trace",
     "parameter",
     "ping",
+    "platform_admin",
     "plugin",
     "rag_pipeline",
     "rag_pipeline_datasets",

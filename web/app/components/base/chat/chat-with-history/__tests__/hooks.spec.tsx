@@ -225,6 +225,29 @@ describe('useChatWithHistory', () => {
         expect(result!.current.conversationList).toEqual(listData.data)
       })
     })
+
+    it('should clear stale localStorage conversation id when chat list returns 404', async () => {
+      // Arrange
+      setConversationIdInfo('app-1', 'missing-conversation')
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockRejectedValueOnce(new Response(null, { status: 404 }))
+
+      // Act
+      await renderWithClient(() => useChatWithHistory())
+
+      // Assert
+      await waitFor(() => {
+        expect(mockFetchChatList).toHaveBeenCalledWith(
+          'missing-conversation',
+          AppSourceType.webApp,
+          'app-1',
+        )
+      })
+      await waitFor(() => {
+        const stored = JSON.parse(localStorage.getItem(CONVERSATION_ID_INFO) || '{}')
+        expect(stored['app-1']).toBeUndefined()
+      })
+    })
   })
 
   // Scenario: completion invalidates share caches and merges generated names.

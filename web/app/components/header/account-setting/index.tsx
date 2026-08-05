@@ -11,6 +11,7 @@ import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import { userProfileAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -27,12 +28,17 @@ import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import PermissionsPage from './permissions-page'
+import PlatformAdminPage from './platform-admin-page'
 import PreferencePage from './preference-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
   w-4 h-4 mr-2
 `
+
+type EnterpriseUserProfile = {
+  is_platform_admin?: boolean
+}
 
 type IAccountSettingProps = {
   onCancelAction: () => void
@@ -61,6 +67,8 @@ export default function AccountSetting({
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
+  const userProfile = useAtomValue(userProfileAtom)
+  const enterpriseUserProfile = userProfile as EnterpriseUserProfile | undefined
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
@@ -153,6 +161,12 @@ export default function AccountSetting({
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
     },
+    {
+      key: ACCOUNT_SETTING_TAB.PLATFORM_ADMIN,
+      name: t(($) => $['settings.platformAdmin'], { ns: 'common' }),
+      icon: <span className={cn('i-ri-building-4-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-building-4-fill', iconClassName)} />,
+    },
   ]
   const activeItem = settingItems.find((item) => item.key === activeMenu)
 
@@ -191,6 +205,13 @@ export default function AccountSetting({
       key: 'user-group',
       items: preferenceItem ? [preferenceItem] : [],
     },
+    ...(enterpriseUserProfile?.is_platform_admin
+      ? [{
+          key: 'enterprise-group',
+          name: t(($) => $['settings.enterpriseGroup'], { ns: 'common' }),
+          items: settingItems.filter(item => item.key === ACCOUNT_SETTING_TAB.PLATFORM_ADMIN),
+        }]
+      : []),
   ]
 
   const [searchValue, setSearchValue] = useState<string>('')
@@ -297,6 +318,7 @@ export default function AccountSetting({
                 <PermissionsPage containerRef={scrollContainerRef} />
               )}
               {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PLATFORM_ADMIN && <PlatformAdminPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
                 <WorkflowLogArchivesPage />

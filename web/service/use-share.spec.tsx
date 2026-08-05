@@ -9,6 +9,7 @@ import {
   generationConversationName,
 } from './share'
 import {
+  isResponseNotFound,
   shareQueryKeys,
   useInvalidateShareConversations,
   useShareChatList,
@@ -139,6 +140,12 @@ describe('useShareChatList', () => {
     vi.clearAllMocks()
   })
 
+  it('should identify 404 Response errors as not found', () => {
+    expect(isResponseNotFound(new Response(null, { status: 404 }))).toBe(true)
+    expect(isResponseNotFound(new Response(null, { status: 500 }))).toBe(false)
+    expect(isResponseNotFound(new Error('not found'))).toBe(false)
+  })
+
   it('should fetch chat list when conversationId is provided', async () => {
     // Arrange
     const params = {
@@ -183,6 +190,27 @@ describe('useShareChatList', () => {
       expect(result.current.fetchStatus).toBe('idle')
     })
     expect(mockFetchChatList).not.toHaveBeenCalled()
+  })
+
+  it('should not retry when stale conversation returns 404', async () => {
+    // Arrange
+    const queryClient = new QueryClient()
+    const wrapper = createWrapper(queryClient)
+    const params = {
+      conversationId: 'missing-conversation',
+      appSourceType: AppSourceType.webApp,
+    }
+    const notFoundResponse = new Response(null, { status: 404 })
+    mockFetchChatList.mockRejectedValueOnce(notFoundResponse)
+
+    // Act
+    const { result } = renderHook(() => useShareChatList(params), { wrapper })
+
+    // Assert
+    await waitFor(() => {
+      expect(result.current.error).toBe(notFoundResponse)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
   })
 
   it('should always consider data stale to ensure fresh data on conversation switch (GitHub #30378)', async () => {

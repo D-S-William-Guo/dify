@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from http import HTTPStatus
-from typing import Literal
+from typing import Any, Literal
 
 import pytz
 from flask import request
@@ -54,6 +54,7 @@ from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from libs.login import login_required
+from libs.platform_admin import apply_platform_admin_flag
 from models import Account, AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
 from models.enums import CreatorUserRole
@@ -196,6 +197,11 @@ register_schema_models(
 )
 
 
+def _serialize_account(account) -> dict[str, Any]:
+    apply_platform_admin_flag(account)
+    return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
+
+
 class AccountIntegrateResponse(ResponseModel):
     provider: str
     created_at: int | None = None
@@ -304,7 +310,7 @@ class AccountProfileApi(Resource):
     @enterprise_license_required
     @with_current_user
     def get(self, current_user: Account):
-        return dump_response(AccountResponse, current_user)
+        return _serialize_account(current_user)
 
 
 @console_ns.route("/account/name")
@@ -320,7 +326,7 @@ class AccountNameApi(Resource):
         args = AccountNamePayload.model_validate(payload)
         updated_account = AccountService.update_account(current_user, session=db.session(), name=args.name)
 
-        return dump_response(AccountResponse, updated_account)
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/avatar")
@@ -366,7 +372,7 @@ class AccountAvatarApi(Resource):
 
         updated_account = AccountService.update_account(current_user, session=db.session(), avatar=args.avatar)
 
-        return dump_response(AccountResponse, updated_account)
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/interface-language")
@@ -385,7 +391,7 @@ class AccountInterfaceLanguageApi(Resource):
             current_user, session=db.session(), interface_language=args.interface_language
         )
 
-        return dump_response(AccountResponse, updated_account)
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/interface-theme")
@@ -404,7 +410,7 @@ class AccountInterfaceThemeApi(Resource):
             current_user, session=db.session(), interface_theme=args.interface_theme
         )
 
-        return dump_response(AccountResponse, updated_account)
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/timezone")
@@ -421,7 +427,7 @@ class AccountTimezoneApi(Resource):
 
         updated_account = AccountService.update_account(current_user, session=db.session(), timezone=args.timezone)
 
-        return dump_response(AccountResponse, updated_account)
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/password")
@@ -442,7 +448,7 @@ class AccountPasswordApi(Resource):
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
 
-        return dump_response(AccountResponse, current_user)
+        return _serialize_account(current_user)
 
 
 @console_ns.route("/account/integrates")
@@ -759,7 +765,7 @@ class ChangeEmailResetApi(Resource):
             email=normalized_new_email,
         )
 
-        return dump_response(AccountResponse, updated_account)
+        return _serialize_account(updated_account)
 
 
 @console_ns.route("/account/change-email/check-email-unique")

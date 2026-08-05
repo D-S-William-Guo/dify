@@ -83,6 +83,9 @@ const DSLExportConfirmModal = dynamic(
 const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
   ssr: false,
 })
+const SubmitEnterpriseMarketplaceModal = dynamic(() => import('@/app/components/apps/submit-enterprise-marketplace-modal'), {
+  ssr: false,
+})
 
 const ACCESS_MODE_ICON_CLASS_NAMES: Record<AccessMode, string> = {
   [AccessMode.PUBLIC]: 'i-ri-global-line',
@@ -160,6 +163,7 @@ type AppCardOperationsMenuProps = {
   shouldShowEditOption: boolean
   shouldShowDuplicateOption: boolean
   shouldShowExportOption: boolean
+  shouldShowSubmitMarketplaceOption: boolean
   shouldShowSwitchOption: boolean
   shouldShowOpenInExploreOption: boolean
   shouldShowAccessControlOption: boolean
@@ -169,6 +173,7 @@ type AppCardOperationsMenuProps = {
   onEdit: () => void
   onDuplicate: () => void
   onExport: () => void
+  onSubmitMarketplace: () => void
   onSwitch: () => void
   onDelete: () => void
   onAccessControl: () => void
@@ -180,6 +185,7 @@ function AppCardOperationsMenu({
   shouldShowEditOption,
   shouldShowDuplicateOption,
   shouldShowExportOption,
+  shouldShowSubmitMarketplaceOption,
   shouldShowSwitchOption,
   shouldShowOpenInExploreOption,
   shouldShowAccessControlOption,
@@ -189,6 +195,7 @@ function AppCardOperationsMenu({
   onEdit,
   onDuplicate,
   onExport,
+  onSubmitMarketplace,
   onSwitch,
   onDelete,
   onAccessControl,
@@ -197,7 +204,7 @@ function AppCardOperationsMenu({
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
   const hasEditGroup = shouldShowEditOption
-  const hasCreateExportGroup = shouldShowDuplicateOption || shouldShowExportOption
+  const hasCreateExportGroup = shouldShowDuplicateOption || shouldShowExportOption || shouldShowSubmitMarketplaceOption
   const hasSwitchOrExploreGroup = shouldShowSwitchOption || shouldShowOpenInExploreOption
   const hasAccessDeleteGroup =
     shouldShowAccessControlOption || shouldShowAccessConfigOption || shouldShowDeleteOption
@@ -265,6 +272,11 @@ function AppCardOperationsMenu({
           <span className="system-sm-regular text-text-secondary">
             {t(($) => $.export, { ns: 'app' })}
           </span>
+        </DropdownMenuItem>
+      )}
+      {shouldShowSubmitMarketplaceOption && (
+        <DropdownMenuItem className="gap-2 px-3" onClick={e => handleMenuAction(e, onSubmitMarketplace)}>
+          <span className="system-sm-regular text-text-secondary">{t(($) => $["enterpriseMarketplace.submitAction"], { ns: 'common' })}</span>
         </DropdownMenuItem>
       )}
       {hasCreateExportGroup && (hasSwitchOrExploreGroup || hasAccessDeleteGroup) && (
@@ -366,6 +378,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showSubmitMarketplaceModal, setShowSubmitMarketplaceModal] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
@@ -453,6 +466,13 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowConfirmDelete(true)
+    })
+  }, [])
+
+  const handleShowSubmitMarketplaceModal = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowSubmitMarketplaceModal(true)
     })
   }, [])
 
@@ -581,6 +601,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const shouldShowEditOption = appACLCapabilities.canEdit
   const shouldShowDuplicateOption = canCreateApp
   const shouldShowExportOption = appACLCapabilities.canImportExportDSL
+  const shouldShowSubmitMarketplaceOption = appACLCapabilities.canEdit
   const shouldShowSwitchOption =
     canCreateApp &&
     appACLCapabilities.canEdit &&
@@ -593,6 +614,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     shouldShowEditOption ||
     shouldShowDuplicateOption ||
     shouldShowExportOption ||
+    shouldShowSubmitMarketplaceOption ||
     shouldShowSwitchOption ||
     shouldShowAccessControlOption ||
     shouldShowAccessConfigOption ||
@@ -680,6 +702,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     shouldShowEditOption={shouldShowEditOption}
                     shouldShowDuplicateOption={shouldShowDuplicateOption}
                     shouldShowExportOption={shouldShowExportOption}
+                    shouldShowSubmitMarketplaceOption={shouldShowSubmitMarketplaceOption}
                     shouldShowSwitchOption={shouldShowSwitchOption}
                     shouldShowAccessControlOption={shouldShowAccessControlOption}
                     shouldShowAccessConfigOption={shouldShowAccessConfigOption}
@@ -688,6 +711,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     onEdit={handleShowEditModal}
                     onDuplicate={handleShowDuplicateModal}
                     onExport={exportCheck}
+                    onSubmitMarketplace={handleShowSubmitMarketplaceModal}
                     onSwitch={handleShowSwitchModal}
                     onDelete={handleShowDeleteConfirm}
                     onAccessControl={handleShowAccessControl}
@@ -699,6 +723,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     shouldShowEditOption={shouldShowEditOption}
                     shouldShowDuplicateOption={shouldShowDuplicateOption}
                     shouldShowExportOption={shouldShowExportOption}
+                    shouldShowSubmitMarketplaceOption={shouldShowSubmitMarketplaceOption}
                     shouldShowSwitchOption={shouldShowSwitchOption}
                     shouldShowOpenInExploreOption={!app.has_draft_trigger}
                     shouldShowAccessControlOption={shouldShowAccessControlOption}
@@ -708,6 +733,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     onEdit={handleShowEditModal}
                     onDuplicate={handleShowDuplicateModal}
                     onExport={exportCheck}
+                    onSubmitMarketplace={handleShowSubmitMarketplaceModal}
                     onSwitch={handleShowSwitchModal}
                     onDelete={handleShowDeleteConfirm}
                     onAccessControl={handleShowAccessControl}
@@ -819,6 +845,15 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
           onClose={() => setShowAccessControl(false)}
         />
       )}
+      {showSubmitMarketplaceModal && (
+        <SubmitEnterpriseMarketplaceModal
+          appId={app.id}
+          open={showSubmitMarketplaceModal}
+          defaultTitle={app.name}
+          defaultDescription={app.description}
+          onClose={() => setShowSubmitMarketplaceModal(false)}
+        />
+      )}
     </>
   )
 }
@@ -845,6 +880,7 @@ export function AppCard({
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showSubmitMarketplaceModal, setShowSubmitMarketplaceModal] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
   const operationsMenu = useStepByStepTourControlledDropdown({
@@ -932,6 +968,13 @@ export function AppCard({
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowConfirmDelete(true)
+    })
+  }
+
+  function handleShowSubmitMarketplaceModal() {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowSubmitMarketplaceModal(true)
     })
   }
 
@@ -1033,7 +1076,7 @@ export function AppCard({
   }
 
   const handleToggleStar = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement>) => {
+    async (e: MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       e.preventDefault()
 
@@ -1057,6 +1100,7 @@ export function AppCard({
   const shouldShowEditOption = appACLCapabilities.canEdit
   const shouldShowDuplicateOption = canCreateApp
   const shouldShowExportOption = appACLCapabilities.canImportExportDSL
+  const shouldShowSubmitMarketplaceOption = appACLCapabilities.canEdit
   const shouldShowSwitchOption =
     appACLCapabilities.canEdit &&
     (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
@@ -1068,6 +1112,7 @@ export function AppCard({
     shouldShowEditOption ||
     shouldShowDuplicateOption ||
     shouldShowExportOption ||
+    shouldShowSubmitMarketplaceOption ||
     shouldShowSwitchOption ||
     shouldShowAccessControlOption ||
     shouldShowAccessConfigOption ||
@@ -1325,6 +1370,7 @@ export function AppCard({
                       shouldShowEditOption={shouldShowEditOption}
                       shouldShowDuplicateOption={shouldShowDuplicateOption}
                       shouldShowExportOption={shouldShowExportOption}
+                      shouldShowSubmitMarketplaceOption={shouldShowSubmitMarketplaceOption}
                       shouldShowSwitchOption={shouldShowSwitchOption}
                       shouldShowAccessControlOption={shouldShowAccessControlOption}
                       shouldShowAccessConfigOption={shouldShowAccessConfigOption}
@@ -1333,6 +1379,7 @@ export function AppCard({
                       onEdit={handleShowEditModal}
                       onDuplicate={handleShowDuplicateModal}
                       onExport={exportCheck}
+                      onSubmitMarketplace={handleShowSubmitMarketplaceModal}
                       onSwitch={handleShowSwitchModal}
                       onDelete={handleShowDeleteConfirm}
                       onAccessControl={handleShowAccessControl}
@@ -1344,6 +1391,7 @@ export function AppCard({
                       shouldShowEditOption={shouldShowEditOption}
                       shouldShowDuplicateOption={shouldShowDuplicateOption}
                       shouldShowExportOption={shouldShowExportOption}
+                      shouldShowSubmitMarketplaceOption={shouldShowSubmitMarketplaceOption}
                       shouldShowSwitchOption={shouldShowSwitchOption}
                       shouldShowOpenInExploreOption={!app.has_draft_trigger}
                       shouldShowAccessControlOption={shouldShowAccessControlOption}
@@ -1353,6 +1401,7 @@ export function AppCard({
                       onEdit={handleShowEditModal}
                       onDuplicate={handleShowDuplicateModal}
                       onExport={exportCheck}
+                      onSubmitMarketplace={handleShowSubmitMarketplaceModal}
                       onSwitch={handleShowSwitchModal}
                       onDelete={handleShowDeleteConfirm}
                       onAccessControl={handleShowAccessControl}
@@ -1465,6 +1514,15 @@ export function AppCard({
           envList={secretEnvList}
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
+        />
+      )}
+      {showSubmitMarketplaceModal && (
+        <SubmitEnterpriseMarketplaceModal
+          appId={app.id}
+          open={showSubmitMarketplaceModal}
+          defaultTitle={app.name}
+          defaultDescription={app.description}
+          onClose={() => setShowSubmitMarketplaceModal(false)}
         />
       )}
       {showAccessControl && (

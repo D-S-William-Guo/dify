@@ -222,7 +222,7 @@ export const fetchChatList = async (
 ) => {
   return getAction('get', appSourceType)(getUrl('messages', appSourceType, installedAppId), {
     params: { conversation_id: conversationId, limit: 20, last_id: '' },
-  }) as any
+  }, { silent: true }) as any
 }
 
 // Abandoned API interface

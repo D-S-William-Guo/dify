@@ -15,6 +15,7 @@ import { useWebAppStore } from '@/context/web-app-context'
 import { changeLanguage } from '@/i18n-config/client'
 import { AppSourceType, updateFeedback } from '@/service/share'
 import {
+  isResponseNotFound,
   useInvalidateShareConversations,
   useShareChatList,
   useShareConversationName,
@@ -168,11 +169,19 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       pinned: false,
       limit: 100,
     })
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useShareChatList({
+  const {
+    data: appChatListData,
+    error: appChatListDataError,
+    isLoading: appChatListDataLoading,
+  } = useShareChatList({
     conversationId: chatShouldReloadKey,
     appSourceType,
     appId,
   })
+  useEffect(() => {
+    if (appId && isResponseNotFound(appChatListDataError))
+      removeConversationIdInfo(appId)
+  }, [appChatListDataError, appId, removeConversationIdInfo])
   const invalidateShareConversations = useInvalidateShareConversations()
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)

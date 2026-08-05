@@ -89,6 +89,15 @@ export const MAIN_NAV_ROUTES = [
     visibility: VISIBLE_TO_ALL,
   },
   {
+    key: 'enterpriseMarketplace',
+    href: '/explore/marketplace',
+    labelKey: 'enterpriseMarketplace.sidebarTitle',
+    active: (path: string) => isPathUnderRoute(path, '/explore/marketplace'),
+    icon: 'i-ri-store-2-line',
+    activeIcon: 'i-ri-store-2-fill',
+    visibility: VISIBLE_TO_ALL,
+  },
+  {
     key: 'marketplace',
     href: '/marketplace',
     labelKey: 'mainNav.marketplace',

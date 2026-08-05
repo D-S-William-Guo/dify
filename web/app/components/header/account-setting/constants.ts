@@ -8,6 +8,7 @@ export const ACCOUNT_SETTING_TAB = {
   MEMBERS: 'members',
   ROLES_AND_PERMISSIONS: 'roles-and-permissions',
   PERMISSION_SET: 'permission-set',
+  PLATFORM_ADMIN: 'platform-admin',
   BILLING: 'billing',
   WORKFLOW_LOG_ARCHIVES: 'workflow-log-archives',
   DATA_SOURCE: 'data-source',
@@ -35,6 +36,7 @@ export type WorkspaceSettingTab = (typeof WORKSPACE_SETTING_TAB_VALUES)[number]
 const USER_SETTING_TAB_VALUES = [
   ACCOUNT_SETTING_TAB.PREFERENCES,
   ACCOUNT_SETTING_TAB.LANGUAGE,
+  ACCOUNT_SETTING_TAB.PLATFORM_ADMIN,
 ] as const
 
 export type UserSettingTab = (typeof USER_SETTING_TAB_VALUES)[number]

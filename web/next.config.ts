@@ -15,6 +15,15 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
   serverExternalPackages: ['loro-crdt'],
   turbopack: {
+    // Fix langgenius/dify#38532: `loro-crdt`'s default browser
+    // export and `base64` subpath synchronously construct a large
+    // WebAssembly.Module on the main thread. Older Chromium-based
+    // mobile browsers reject that. The `bundler` browser build
+    // initializes WASM asynchronously and keeps the server bundle
+    // untouched because `serverExternalPackages` still applies above.
+    resolveAlias: {
+      'loro-crdt': { browser: 'loro-crdt/bundler' },
+    },
     rules: codeInspectorPlugin({
       bundler: 'turbopack',
     }),

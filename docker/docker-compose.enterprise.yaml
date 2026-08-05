@@ -1,0 +1,86 @@
+services:
+  api:
+    image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
+        PIP_INDEX_URL: ${PIP_MIRROR_URL:-}
+        UV_DEFAULT_INDEX: ${PIP_MIRROR_URL:-}
+        UV_INDEX_URL: ${PIP_MIRROR_URL:-}
+    environment:
+      HOME: ${HOME_OVERRIDE:-/tmp}
+      ENTERPRISE_ENABLED: ${ENTERPRISE_ENABLED:-false}
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
+
+  worker:
+    image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
+        PIP_INDEX_URL: ${PIP_MIRROR_URL:-}
+        UV_DEFAULT_INDEX: ${PIP_MIRROR_URL:-}
+        UV_INDEX_URL: ${PIP_MIRROR_URL:-}
+    environment:
+      HOME: ${HOME_OVERRIDE:-/tmp}
+      ENTERPRISE_ENABLED: ${ENTERPRISE_ENABLED:-false}
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
+
+  worker_beat:
+    image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
+        PIP_INDEX_URL: ${PIP_MIRROR_URL:-}
+        UV_DEFAULT_INDEX: ${PIP_MIRROR_URL:-}
+        UV_INDEX_URL: ${PIP_MIRROR_URL:-}
+    environment:
+      HOME: ${HOME_OVERRIDE:-/tmp}
+      ENTERPRISE_ENABLED: ${ENTERPRISE_ENABLED:-false}
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
+
+  api_websocket:
+    image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
+        PIP_INDEX_URL: ${PIP_MIRROR_URL:-}
+        UV_DEFAULT_INDEX: ${PIP_MIRROR_URL:-}
+        UV_INDEX_URL: ${PIP_MIRROR_URL:-}
+    environment:
+      HOME: ${HOME_OVERRIDE:-/tmp}
+      ENTERPRISE_ENABLED: ${ENTERPRISE_ENABLED:-false}
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
+
+  web:
+    image: ${DIFY_ENTERPRISE_WEB_IMAGE:-dify-web-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
+    build:
+      context: ${DIFY_WEB_BUILD_CONTEXT:-..}
+      dockerfile: web/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}
+    environment:
+      DIFY_INTERNAL_API_URL: ${DIFY_INTERNAL_API_URL:-http://api:5001}
+
+  plugin_daemon:
+    environment:
+      PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+      PIP_INDEX_URL: ${PIP_MIRROR_URL:-}
+      UV_INDEX_URL: ${PIP_MIRROR_URL:-}
+      PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-1200}

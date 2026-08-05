@@ -6,7 +6,10 @@ WORKDIR /app/api
 # Install uv
 ENV UV_VERSION=0.8.9
 
-RUN pip install --no-cache-dir uv==${UV_VERSION}
+ARG PIP_INDEX_URL=
+RUN set -eux; \
+    if [ -z "${PIP_INDEX_URL:-}" ]; then unset PIP_INDEX_URL; fi; \
+    pip install --no-cache-dir uv==${UV_VERSION}
 
 
 FROM base AS packages
@@ -27,7 +30,14 @@ COPY api/providers ./providers
 COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
 COPY dify-agent/src /app/dify-agent/src
 # Trust the checked-in lock during image builds; local path sources are copied from the repository context.
-RUN uv sync --frozen --no-dev --no-editable
+ARG PIP_INDEX_URL=
+ARG UV_DEFAULT_INDEX=
+ARG UV_INDEX_URL=
+RUN set -eux; \
+    if [ -z "${PIP_INDEX_URL:-}" ]; then unset PIP_INDEX_URL; fi; \
+    if [ -z "${UV_DEFAULT_INDEX:-}" ]; then unset UV_DEFAULT_INDEX; fi; \
+    if [ -z "${UV_INDEX_URL:-}" ]; then unset UV_INDEX_URL; fi; \
+    uv sync --frozen --no-dev --no-editable
 
 # production stage
 FROM base AS production
@@ -101,12 +111,34 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Download nltk data
 RUN mkdir -p /usr/local/share/nltk_data \
-    && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')" \
+    && set -eux; \
+        download_nltk_package() { \
+            package_dir="$1"; \
+            package_name="$2"; \
+            target_dir="/usr/local/share/nltk_data/${package_dir}"; \
+            archive="${target_dir}/${package_name}.zip"; \
+            mkdir -p "${target_dir}"; \
+            curl --fail --location --retry 5 --retry-delay 3 --connect-timeout 30 --max-time 180 \
+                "https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/${package_dir}/${package_name}.zip" \
+                --output "${archive}"; \
+            python -c "import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "${archive}" "${target_dir}"; \
+            rm -f "${archive}"; \
+        }; \
+        download_nltk_package tokenizers punkt; \
+        download_nltk_package taggers averaged_perceptron_tagger; \
+        download_nltk_package corpora stopwords \
     && chmod -R 755 /usr/local/share/nltk_data
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 
-RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
+RUN mkdir -p ${TIKTOKEN_CACHE_DIR} \
+    && curl --fail --location --retry 5 --retry-delay 3 --connect-timeout 30 --max-time 180 \
+        https://openaipublic.blob.core.windows.net/gpt-2/encodings/main/vocab.bpe \
+        --output ${TIKTOKEN_CACHE_DIR}/6d1cbeee0f20b3d9449abfede4726ed8212e3aee \
+    && curl --fail --location --retry 5 --retry-delay 3 --connect-timeout 30 --max-time 180 \
+        https://openaipublic.blob.core.windows.net/gpt-2/encodings/main/encoder.json \
+        --output ${TIKTOKEN_CACHE_DIR}/6c7ea1a7e38e3a7f062df639a5b80947f075ffe6 \
+    && python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
     && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
 
 # Copy source code
