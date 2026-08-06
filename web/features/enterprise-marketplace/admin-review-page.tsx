@@ -10,8 +10,10 @@ import { useAtomValue } from 'jotai'
 import { parseAsArrayOf, parseAsString, useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RbacUnavailableBanner } from '@/features/platform-admin/rbac-unavailable-banner'
 import {
   isPlatformAdminAtom,
+  platformAdminMutationSupportedAtom,
   platformAdminStatusErrorAtom,
   platformAdminStatusPendingAtom,
 } from '@/features/platform-admin/state'
@@ -89,6 +91,7 @@ function AdminGateState({ kind }: { kind: 'loading' | 'denied' }) {
 
 function AdminReviewContent() {
   const { t } = useTranslation()
+  const mutationSupported = useAtomValue(platformAdminMutationSupportedAtom)
   const [page, setPage] = useQueryState('page', marketplacePageQueryState)
   const [search, setSearch] = useQueryState('search', marketplaceSearchQueryState)
   const [category, setCategory] = useQueryState('category', marketplaceCategoryQueryState)
@@ -156,6 +159,11 @@ function AdminReviewContent() {
           onResetPage={() => void setPage(1)}
         />
       </div>
+      {!mutationSupported && (
+        <div className="px-8 pb-2">
+          <RbacUnavailableBanner />
+        </div>
+      )}
       <div className="min-h-0 grow px-8 pb-8">
         {query.isPending ? (
           <AdminReviewSkeleton />
@@ -188,6 +196,7 @@ function AdminReviewContent() {
                       type="button"
                       size="small"
                       variant="secondary"
+                      disabled={!mutationSupported}
                       onClick={() => setReviewTarget({ asset, decision: 'approved' })}
                     >
                       {t(($) => $['enterpriseMarketplace.review.approve'], { ns: 'common' })}
@@ -196,6 +205,7 @@ function AdminReviewContent() {
                       type="button"
                       size="small"
                       variant="secondary"
+                      disabled={!mutationSupported}
                       onClick={() => setReviewTarget({ asset, decision: 'rejected' })}
                     >
                       {t(($) => $['enterpriseMarketplace.review.reject'], { ns: 'common' })}
@@ -204,6 +214,7 @@ function AdminReviewContent() {
                       type="button"
                       size="small"
                       variant="secondary"
+                      disabled={!mutationSupported}
                       onClick={() => setUnlistTarget(asset)}
                     >
                       {t(($) => $['enterpriseMarketplace.unlist.title'], { ns: 'common' })}

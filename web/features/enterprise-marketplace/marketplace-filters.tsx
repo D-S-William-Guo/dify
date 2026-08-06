@@ -81,9 +81,7 @@ export function MarketplaceFilters({ categories }: MarketplaceFiltersProps) {
       </form>
       <Select<string>
         value={category}
-        onValueChange={(nextCategory) => {
-          if (nextCategory) commitCategory(nextCategory)
-        }}
+        onValueChange={(nextCategory) => commitCategory(nextCategory ?? '')}
       >
         <SelectTrigger aria-label={allCategoriesLabel} className="h-8 w-44">
           <SelectValue />
