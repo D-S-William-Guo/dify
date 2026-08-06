@@ -2309,4 +2309,68 @@ describe('AppCard', () => {
       mockDeleteMutationPending = false
     })
   })
+
+  describe('Marketplace Submit Entry', () => {
+    it('should show the first-submit marketplace option in the operations menu', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('common.enterpriseMarketplace.submitDialog.title'),
+        ).toBeInTheDocument()
+      })
+    })
+
+    it('should open the first-submit marketplace dialog from the submit option', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      fireEvent.click(await screen.findByText('common.enterpriseMarketplace.submitDialog.title'))
+
+      expect(
+        await screen.findByRole('dialog', {
+          name: 'common.enterpriseMarketplace.submitDialog.title',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('should show the submit option when no other operations are permitted', async () => {
+      mockAppContext.workspacePermissionKeys = []
+      const viewerApp = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+      render(<AppCard app={viewerApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('common.enterpriseMarketplace.submitDialog.title'),
+        ).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.editApp')).not.toBeInTheDocument()
+    })
+
+    it('should not offer any resubmit action from the app card', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('common.enterpriseMarketplace.submitDialog.title'),
+        ).toBeInTheDocument()
+      })
+      expect(
+        screen.queryByText('common.enterpriseMarketplace.resubmitDialog.title'),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('common.enterpriseMarketplace.submissions.resubmit'),
+      ).not.toBeInTheDocument()
+    })
+  })
 })

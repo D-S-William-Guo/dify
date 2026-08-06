@@ -39,6 +39,7 @@ import { buildInstalledAppPath } from '@/app/components/explore/installed-app/ro
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { SubmitMarketplaceDialog } from '@/features/enterprise-marketplace/submit-marketplace-dialog'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppCardTags } from '@/features/tag-management/components/app-card-tags'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
@@ -149,6 +150,7 @@ function AppAccessModeIcon({ accessMode }: AppAccessModeIconProps) {
 
 type AppCardOperationsMenuProps = {
   app: App
+  shouldShowSubmitMarketplaceOption: boolean
   shouldShowEditOption: boolean
   shouldShowDuplicateOption: boolean
   shouldShowExportOption: boolean
@@ -157,6 +159,7 @@ type AppCardOperationsMenuProps = {
   shouldShowAccessControlOption: boolean
   shouldShowAccessConfigOption: boolean
   shouldShowDeleteOption: boolean
+  onSubmitMarketplace: () => void
   onEdit: () => void
   onDuplicate: () => void
   onExport: () => void
@@ -168,6 +171,7 @@ type AppCardOperationsMenuProps = {
 
 function AppCardOperationsMenu({
   app,
+  shouldShowSubmitMarketplaceOption,
   shouldShowEditOption,
   shouldShowDuplicateOption,
   shouldShowExportOption,
@@ -176,6 +180,7 @@ function AppCardOperationsMenu({
   shouldShowAccessControlOption,
   shouldShowAccessConfigOption,
   shouldShowDeleteOption,
+  onSubmitMarketplace,
   onEdit,
   onDuplicate,
   onExport,
@@ -186,6 +191,7 @@ function AppCardOperationsMenu({
 }: AppCardOperationsMenuProps) {
   const { t } = useTranslation()
   const openAsyncWindow = useAsyncWindowOpen()
+  const hasSubmitGroup = shouldShowSubmitMarketplaceOption
   const hasEditGroup = shouldShowEditOption
   const hasCreateExportGroup = shouldShowDuplicateOption || shouldShowExportOption
   const hasSwitchOrExploreGroup = shouldShowSwitchOption || shouldShowOpenInExploreOption
@@ -228,6 +234,16 @@ function AppCardOperationsMenu({
 
   return (
     <>
+      {hasSubmitGroup && (
+        <DropdownMenuItem
+          className="gap-2 px-3"
+          onClick={(e) => handleMenuAction(e, onSubmitMarketplace)}
+        >
+          <span className="system-sm-regular text-text-secondary">
+            {t(($) => $['enterpriseMarketplace.submitDialog.title'], { ns: 'common' })}
+          </span>
+        </DropdownMenuItem>
+      )}
       {shouldShowEditOption && (
         <DropdownMenuItem className="gap-2 px-3" onClick={(e) => handleMenuAction(e, onEdit)}>
           <span className="system-sm-regular text-text-secondary">
@@ -235,7 +251,7 @@ function AppCardOperationsMenu({
           </span>
         </DropdownMenuItem>
       )}
-      {hasEditGroup &&
+      {(hasSubmitGroup || hasEditGroup) &&
         (hasCreateExportGroup || hasSwitchOrExploreGroup || hasAccessDeleteGroup) && (
           <DropdownMenuSeparator />
         )}
@@ -354,6 +370,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
+  const [showSubmitMarketplace, setShowSubmitMarketplace] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
@@ -443,6 +460,13 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowAccessControl(true)
+    })
+  }, [])
+
+  const handleShowSubmitMarketplace = useCallback(() => {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowSubmitMarketplace(true)
     })
   }, [])
 
@@ -590,7 +614,9 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
+  const shouldShowSubmitMarketplaceOption = true
   const shouldShowOperationsMenu =
+    shouldShowSubmitMarketplaceOption ||
     shouldShowEditOption ||
     shouldShowDuplicateOption ||
     shouldShowExportOption ||
@@ -667,6 +693,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                 {systemFeatures.webapp_auth.enabled ? (
                   <AppCardOperationsMenuContent
                     app={app}
+                    shouldShowSubmitMarketplaceOption={shouldShowSubmitMarketplaceOption}
                     shouldShowEditOption={shouldShowEditOption}
                     shouldShowDuplicateOption={shouldShowDuplicateOption}
                     shouldShowExportOption={shouldShowExportOption}
@@ -674,6 +701,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     shouldShowAccessControlOption={shouldShowAccessControlOption}
                     shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                     shouldShowDeleteOption={shouldShowDeleteOption}
+                    onSubmitMarketplace={handleShowSubmitMarketplace}
                     onEdit={handleShowEditModal}
                     onDuplicate={handleShowDuplicateModal}
                     onExport={exportCheck}
@@ -685,6 +713,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                 ) : (
                   <AppCardOperationsMenu
                     app={app}
+                    shouldShowSubmitMarketplaceOption={shouldShowSubmitMarketplaceOption}
                     shouldShowEditOption={shouldShowEditOption}
                     shouldShowDuplicateOption={shouldShowDuplicateOption}
                     shouldShowExportOption={shouldShowExportOption}
@@ -693,6 +722,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
                     shouldShowAccessControlOption={shouldShowAccessControlOption}
                     shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                     shouldShowDeleteOption={shouldShowDeleteOption}
+                    onSubmitMarketplace={handleShowSubmitMarketplace}
                     onEdit={handleShowEditModal}
                     onDuplicate={handleShowDuplicateModal}
                     onExport={exportCheck}
@@ -807,6 +837,11 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
           onClose={() => setShowAccessControl(false)}
         />
       )}
+      <SubmitMarketplaceDialog
+        appId={app.id}
+        open={showSubmitMarketplace}
+        onOpenChange={setShowSubmitMarketplace}
+      />
     </>
   )
 }
@@ -831,6 +866,7 @@ export function AppCard({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
+  const [showSubmitMarketplace, setShowSubmitMarketplace] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
@@ -915,6 +951,13 @@ export function AppCard({
     setIsOperationsMenuOpen(false)
     queueMicrotask(() => {
       setShowAccessControl(true)
+    })
+  }
+
+  function handleShowSubmitMarketplace() {
+    setIsOperationsMenuOpen(false)
+    queueMicrotask(() => {
+      setShowSubmitMarketplace(true)
     })
   }
 
@@ -1058,7 +1101,9 @@ export function AppCard({
     systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
+  const shouldShowSubmitMarketplaceOption = true
   const shouldShowOperationsMenu =
+    shouldShowSubmitMarketplaceOption ||
     shouldShowEditOption ||
     shouldShowDuplicateOption ||
     shouldShowExportOption ||
@@ -1301,6 +1346,7 @@ export function AppCard({
                   {systemFeatures.webapp_auth.enabled ? (
                     <AppCardOperationsMenuContent
                       app={app}
+                      shouldShowSubmitMarketplaceOption={shouldShowSubmitMarketplaceOption}
                       shouldShowEditOption={shouldShowEditOption}
                       shouldShowDuplicateOption={shouldShowDuplicateOption}
                       shouldShowExportOption={shouldShowExportOption}
@@ -1308,6 +1354,7 @@ export function AppCard({
                       shouldShowAccessControlOption={shouldShowAccessControlOption}
                       shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                       shouldShowDeleteOption={shouldShowDeleteOption}
+                      onSubmitMarketplace={handleShowSubmitMarketplace}
                       onEdit={handleShowEditModal}
                       onDuplicate={handleShowDuplicateModal}
                       onExport={exportCheck}
@@ -1319,6 +1366,7 @@ export function AppCard({
                   ) : (
                     <AppCardOperationsMenu
                       app={app}
+                      shouldShowSubmitMarketplaceOption={shouldShowSubmitMarketplaceOption}
                       shouldShowEditOption={shouldShowEditOption}
                       shouldShowDuplicateOption={shouldShowDuplicateOption}
                       shouldShowExportOption={shouldShowExportOption}
@@ -1327,6 +1375,7 @@ export function AppCard({
                       shouldShowAccessControlOption={shouldShowAccessControlOption}
                       shouldShowAccessConfigOption={shouldShowAccessConfigOption}
                       shouldShowDeleteOption={shouldShowDeleteOption}
+                      onSubmitMarketplace={handleShowSubmitMarketplace}
                       onEdit={handleShowEditModal}
                       onDuplicate={handleShowDuplicateModal}
                       onExport={exportCheck}
@@ -1451,6 +1500,11 @@ export function AppCard({
           onClose={() => setShowAccessControl(false)}
         />
       )}
+      <SubmitMarketplaceDialog
+        appId={app.id}
+        open={showSubmitMarketplace}
+        onOpenChange={setShowSubmitMarketplace}
+      />
     </>
   )
 }
