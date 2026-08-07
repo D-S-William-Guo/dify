@@ -2336,7 +2336,7 @@ describe('AppCard', () => {
       ).toBeInTheDocument()
     })
 
-    it('should show the submit option when no other operations are permitted', async () => {
+    it('should not show the submit option for a viewer without edit permission', async () => {
       mockAppContext.workspacePermissionKeys = []
       const viewerApp = createMockApp({
         created_by: 'another-user',
@@ -2345,13 +2345,10 @@ describe('AppCard', () => {
       })
       render(<AppCard app={viewerApp} />)
 
-      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-
-      await waitFor(() => {
-        expect(
-          screen.getByText('common.enterpriseMarketplace.submitDialog.title'),
-        ).toBeInTheDocument()
-      })
+      expect(screen.queryByTestId('dropdown-menu-trigger')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('common.enterpriseMarketplace.submitDialog.title'),
+      ).not.toBeInTheDocument()
       expect(screen.queryByText('app.editApp')).not.toBeInTheDocument()
     })
 

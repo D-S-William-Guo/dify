@@ -614,7 +614,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
     systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
-  const shouldShowSubmitMarketplaceOption = true
+  const shouldShowSubmitMarketplaceOption = appACLCapabilities.canEdit
   const shouldShowOperationsMenu =
     shouldShowSubmitMarketplaceOption ||
     shouldShowEditOption ||
@@ -838,6 +838,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
         />
       )}
       <SubmitMarketplaceDialog
+        key={String(showSubmitMarketplace)}
         appId={app.id}
         open={showSubmitMarketplace}
         onOpenChange={setShowSubmitMarketplace}
@@ -1101,7 +1102,7 @@ export function AppCard({
     systemFeatures.webapp_auth.enabled && appACLCapabilities.canReleaseAndVersion
   const shouldShowAccessConfigOption = appACLCapabilities.canAccessConfig
   const shouldShowDeleteOption = appACLCapabilities.canDelete
-  const shouldShowSubmitMarketplaceOption = true
+  const shouldShowSubmitMarketplaceOption = appACLCapabilities.canEdit
   const shouldShowOperationsMenu =
     shouldShowSubmitMarketplaceOption ||
     shouldShowEditOption ||
@@ -1501,6 +1502,7 @@ export function AppCard({
         />
       )}
       <SubmitMarketplaceDialog
+        key={String(showSubmitMarketplace)}
         appId={app.id}
         open={showSubmitMarketplace}
         onOpenChange={setShowSubmitMarketplace}
