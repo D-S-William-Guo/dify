@@ -29,7 +29,7 @@
 | 官方基线 commit | `5c6372d2f76d240265b92fd27c16bc772ffcb107` |
 | Alembic 最终 head | `b416e5c4e702`（唯一 head） |
 | Skill 源仓库 | `/home/ctyun/BigData/GitHub/codex-personal-skills` |
-| Skill 源 commit | `29cccd19aba95de5d53686eda7f72d4e8e7e1b3e`（含单控制器、事件驱动清理、下一步 ownership、human-signaled completion 和长提示词 human-submit） |
+| Skill 源 commit | `33928a0`（含单控制器、事件驱动清理、下一步 ownership、human-signaled completion、长提示词 human-submit、`cs create` 非交互路径与大契约 temp-file 投递） |
 | Claude Squad 定制 commit | `a1e35dc7436454cb53a584b8730166e23055ad4b`（`fix/n-overlay-small-terminal`，含 governed workflow safeguards 与小终端 overlay 修复） |
 | 工作区 | 候选在 `e7d487538fb1431a3b769a8d3fe9d8354487ceea` 集成核验时干净；本文件更新期间仅允许本文件 dirty |
 | 本地与 origin | 本地已集成 B5 全链并通过 Final Review；origin 已同步（checkpoint push 完成） |
@@ -516,7 +516,7 @@ git merge --ff-only ctyun/<instance-branch>
 7. B5_A_REVIEW.md、B5_B_REVIEW.md 是否为 PASS；
 8. B5_C_REREVIEW.md、B5_D_REREVIEW.md 是否为 PASS；
 9. B5_FULL_REGRESSION_REPORT.md、B5_FINAL_REVIEW.md 是否为 PASS；
-10. Skill 源 commit 是否包含 29cccd19aba95de5d53686eda7f72d4e8e7e1b3e，
+10. Skill 源 commit 是否包含 33928a0（`cs create` 非交互路径与大契约 temp-file 投递），
    Claude Squad 源 commit 是否包含 a1e35dc7436454cb53a584b8730166e23055ad4b；
 11. 只恢复协调状态，不修改业务代码，不创建实例。
 
