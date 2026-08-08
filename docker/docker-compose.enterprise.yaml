@@ -1,0 +1,74 @@
+# Dify Enterprise 1.16.0 overlay.
+# Minimal Compose overlay covering only api, worker, worker_beat, api_websocket, web.
+# Reuses the official api/Dockerfile and web/Dockerfile via build with COMMIT_SHA.
+# Official service fields (env_file, volumes, networks, healthcheck, depends_on) are preserved by compose merge.
+
+services:
+  api:
+    image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    environment:
+      ENTERPRISE_ENABLED: ${ENTERPRISE_ENABLED:-false}
+      CAN_REPLACE_LOGO: "true"
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
+
+  api_websocket:
+    image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    profiles:
+      - collaboration
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    environment:
+      ENTERPRISE_ENABLED: ${ENTERPRISE_ENABLED:-false}
+      CAN_REPLACE_LOGO: "true"
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
+
+  worker:
+    image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    environment:
+      ENTERPRISE_ENABLED: ${ENTERPRISE_ENABLED:-false}
+      CAN_REPLACE_LOGO: "true"
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
+
+  worker_beat:
+    image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    environment:
+      ENTERPRISE_ENABLED: ${ENTERPRISE_ENABLED:-false}
+      CAN_REPLACE_LOGO: "true"
+      PLATFORM_ADMIN_EMAILS: ${PLATFORM_ADMIN_EMAILS:-}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
+
+  web:
+    image: ${DIFY_ENTERPRISE_WEB_IMAGE:-dify-web-enterprise}:${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+      args:
+        COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-1.16.0-enterprise}
+    environment:
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      ALLOW_CREATE_WORKSPACE: ${ALLOW_CREATE_WORKSPACE:-false}
