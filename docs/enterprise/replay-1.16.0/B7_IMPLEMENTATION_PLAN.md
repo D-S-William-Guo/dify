@@ -26,8 +26,13 @@
    （Phase H 第 6/7 条，B7 只实现扫描门禁，不实现安装器）。
 5. `B7_PLUGIN_KNOBS_PASSTHROUGH`：插件离线源与签名只透传官方 knob
    `PIP_MIRROR_AUTO_DETECT`、`PIP_MIRROR_URL`、`FORCE_VERIFYING_SIGNATURE`；
-   不建立任何平行 mirror/索引/转发实现（E11/C05）。官方 plugin-daemon
-   `.env.example` 确认：显式 `PIP_MIRROR_URL` 优先并禁用自动探测，自动探测是官方默认。
+   不建立任何平行 mirror/索引/转发实现（E11/C05）。三个 knob 均为官方
+   dify-plugin-daemon 项目 `.env.example`（链接见
+   `docker/envs/middleware.env.example`）提供的官方 knob；本仓库
+   `docker/envs/core-services/plugin-daemon.env.example` 当前仅含
+   `FORCE_VERIFYING_SIGNATURE`，B7 按 §5.1 追加 `PIP_MIRROR_AUTO_DETECT`/
+   `PIP_MIRROR_URL` 透传行。显式 `PIP_MIRROR_URL` 优先并禁用自动探测，
+   自动探测是官方默认。
 6. `B7_CONFIG_PACKAGE_1_16_SET`：1.16 配置包文件集不再依赖 1.15 专属文件
    （`docker/ENTERPRISE_DEPLOY_STARTUP.md`、`UPGRADE_*.md`、`docker/dify-env-sync.*`、
    `docker/README.enterprise.md`、`scripts/check-enterprise-vector-indexes.sh`）；
@@ -100,7 +105,7 @@ B6 overlay；不得修改 `docker/docker-compose.enterprise.yaml`、业务源码
 | 两层 Compose image 解析 | `docker/docker-compose.yaml`（auto-generated）+ B6 overlay | 离线脚本用 `docker compose --env-file docker/.env -f docker-compose.yaml -f docker-compose.enterprise.yaml config --images` 解析；`COMPOSE_PROFILES` 来自部署 `.env`（weaviate,postgresql,collaboration） |
 | Agent 两镜像 | `agent_backend: langgenius/dify-agent-backend:1.16.0`、`local_sandbox: langgenius/dify-agent-local-sandbox:1.16.0` | 离线 required-image 断言必须包含；企业 tag 不得覆盖 |
 | 企业五 runtime 镜像身份 | B6 overlay image/tag 覆盖 | 断言 `api==worker==worker_beat==api_websocket` 同企业 API tag、`web` 企业 Web tag |
-| plugin 镜像源/签名 knob | plugin daemon 官方 `PIP_MIRROR_AUTO_DETECT`/`PIP_MIRROR_URL`/`FORCE_VERIFYING_SIGNATURE`；官方 compose `plugin_daemon` 已透传 `PIP_MIRROR_URL`/`FORCE_VERIFYING_SIGNATURE` | 只在 `docker/envs/core-services/plugin-daemon.env.example` 追加 `PIP_MIRROR_AUTO_DETECT`/`PIP_MIRROR_URL` 官方透传变量；不实现平行 mirror |
+| plugin 镜像源/签名 knob | 三个 knob 均为官方 dify-plugin-daemon 项目 `.env.example`（链接见 `docker/envs/middleware.env.example`）提供的官方 knob；本仓库 `docker/envs/core-services/plugin-daemon.env.example` 当前仅含 `FORCE_VERIFYING_SIGNATURE`；官方 compose `plugin_daemon` 已透传 `PIP_MIRROR_URL`/`FORCE_VERIFYING_SIGNATURE` | 只在 `docker/envs/core-services/plugin-daemon.env.example` 追加 `PIP_MIRROR_AUTO_DETECT`/`PIP_MIRROR_URL` 官方透传变量（按 §5.1）；不实现平行 mirror |
 | 配置包 env 示例全集 | `docker/envs/**/*.env.example` 37 个 | config 脚本用 `find docker/envs -name '*.env.example'` 全量纳入（含 dify-agent/local-sandbox） |
 | 官方 compose/env 文件只读 | 官方 Dockerfile 已支持 `COMMIT_SHA`；`.env.example` 结构稳定 | 配置包把 `docker/docker-compose.yaml`、`docker/docker-compose.enterprise.yaml`、`docker/.env.example`、`docker/nginx/**`、`docker/ssrf_proxy/**` 原样打包 |
 | 官方开发默认 key 的 WARNING | `docker/.env.example`、`dify-agent.env.example` 已含开发默认与 WARNING | 扫描门禁校验：含默认值的文件必须相邻 WARNING；默认值绝不进可运行配置 |
@@ -485,7 +490,7 @@ B7 Architect（本计划）
 | `ls scripts/build-enterprise-offline.* scripts/*enterprise*config*` | 1 | `no-scripts`（B7 待创建） |
 | `git show d218e48f28:docker/docker-compose.enterprise.yaml \| wc -l` | 0 | 74 |
 | 读取 sources of truth 六份 + compose/env 示例 + 旧 1.15 四脚本 | — | 全部读取 |
-| 官方 plugin-daemon `.env.example` 核验 | — | 确认 `PIP_MIRROR_AUTO_DETECT`/`PIP_MIRROR_URL`/`FORCE_VERIFYING_SIGNATURE` 官方 knob |
+| 官方 dify-plugin-daemon 项目 `.env.example`（链接见 `docker/envs/middleware.env.example`）核验 | — | 确认 `PIP_MIRROR_AUTO_DETECT`/`PIP_MIRROR_URL`/`FORCE_VERIFYING_SIGNATURE` 为官方项目 knob；本仓库 `docker/envs/core-services/plugin-daemon.env.example` 当前仅含 `FORCE_VERIFYING_SIGNATURE`，B7 按 §5.1 追加 `PIP_MIRROR_AUTO_DETECT`/`PIP_MIRROR_URL` 透传行 |
 
 ### 12.2 NOT_RUN
 
