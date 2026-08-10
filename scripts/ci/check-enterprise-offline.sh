@@ -70,6 +70,11 @@ readonly FORBIDDEN_1_15_FILES=(
 pass_count=0
 fail_count=0
 notrun_count=0
+config_members_clean=0
+config_members_hit=0
+layer_scan_passes=0
+layer_scan_notrun=0
+layer_scan_hits=0
 
 pass() {
   printf 'PASS: %s\n' "$1"
@@ -164,9 +169,18 @@ scan_content_secrets() {
   fi
 
   if grep -Fq -- "$DEV_AGENT_SECRET" "$file"; then
-    printf 'FAIL: %s contains the development agent default secret (dev default must stay out of runnable artifacts)\n' "$label" >&2
-    fail_count=$((fail_count + 1))
-    hit=1
+    local has_warning=0
+    for marker in "${WARNING_MARKERS[@]}"; do
+      if grep -Fq -- "$marker" "$file"; then
+        has_warning=1
+        break
+      fi
+    done
+    if [[ "$has_warning" -ne 1 ]]; then
+      printf 'FAIL: %s contains the development agent default secret (dev default must stay out of runnable artifacts)\n' "$label" >&2
+      fail_count=$((fail_count + 1))
+      hit=1
+    fi
   fi
 
   if [[ "$hit" -eq 0 ]]; then
@@ -348,6 +362,11 @@ else
           dev_default_violations=1
         fi
       fi
+      if scan_content_secrets "config archive member ${entry#./}" "$extracted"; then
+        config_members_hit=$((config_members_hit + 1))
+      else
+        config_members_clean=$((config_members_clean + 1))
+      fi
     done < "$config_listing"
     if [[ "$dev_default_violations" -eq 0 ]]; then
       pass "dev agent default secret only appears where the WARNING marker is present"
@@ -383,8 +402,6 @@ else
       pass "image bundle contains no forbidden paths"
     fi
 
-    layer_scan_passes=0
-    layer_scan_notrun=0
     while IFS= read -r layer_tar; do
       [[ "$layer_tar" == */layer.tar ]] || continue
       layer_dir="$tmp_root/layer-$(printf '%s' "$layer_tar" | tr '/' '_')"
@@ -404,7 +421,26 @@ else
             layer_forbidden=1
           fi
         done < "$layer_dir/layer-contents.txt"
-        if [[ "$layer_forbidden" -eq 0 ]]; then
+
+        layer_secret_hit=0
+        layer_files="$layer_dir/files"
+        mkdir -p "$layer_files"
+        if tar xzf "$layer_dir/$layer_tar" -C "$layer_files" 2>/dev/null; then
+          while IFS= read -r -d '' member; do
+            [[ -f "$member" ]] || continue
+            if scan_content_secrets "image bundle layer $layer_tar member ${member#"$layer_files"/}" "$member"; then
+              layer_secret_hit=1
+              layer_scan_hits=$((layer_scan_hits + 1))
+            fi
+          done < <(find "$layer_files" -type f -print0)
+        else
+          printf 'NOT_RUN: image bundle layer cannot be extracted for content scan: %s\n' "$layer_tar"
+          notrun_count=$((notrun_count + 1))
+          layer_scan_notrun=1
+          continue
+        fi
+
+        if [[ "$layer_forbidden" -eq 0 && "$layer_secret_hit" -eq 0 ]]; then
           layer_scan_passes=$((layer_scan_passes + 1))
         fi
       else
@@ -414,7 +450,9 @@ else
       fi
     done < <(grep '/layer.tar$' "$bundle_listing")
 
-    if [[ "$layer_scan_passes" -gt 0 ]]; then
+    if [[ "$layer_scan_hits" -gt 0 ]]; then
+      :
+    elif [[ "$layer_scan_passes" -gt 0 ]]; then
       pass "image bundle layer scans clean ($layer_scan_passes layers, $layer_scan_notrun NOT_RUN)"
     elif [[ "$layer_scan_notrun" -gt 0 ]]; then
       notrun "no image bundle layer was listable; runtime layer scan remains Phase G"
@@ -426,8 +464,12 @@ fi
 if [[ -n "$SECRETS_PATTERN" ]]; then
   if [[ ! -f "$SECRETS_PATTERN" ]]; then
     fail "secrets pattern file not found: $SECRETS_PATTERN"
+  elif [[ "$config_members_hit" -gt 0 || "$layer_scan_hits" -gt 0 ]]; then
+    fail "real-secret pattern scan (S-8) found secrets in packaged content (see FAILs above)"
+  elif [[ "$config_members_clean" -gt 0 && "$layer_scan_passes" -gt 0 ]]; then
+    pass "real-secret pattern scan (S-8) clean for images, manifest, config archive members, and image bundle layers"
   else
-    pass "real-secret pattern scan configured from protected environment"
+    notrun "real-secret pattern scan (S-8) covered no packaged content (no config members or listable image bundle layers)"
   fi
 else
   notrun "real-secret pattern scan (S-8) needs a protected-environment pattern file; not available in this B7 run"

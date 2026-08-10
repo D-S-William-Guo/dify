@@ -282,6 +282,38 @@ expect_pass "check-enterprise-offline passes on clean artifacts" \
   -Images "dist/offline/images-1.16.0-enterprise.txt"
 unset FAKE_DOCKER_IMAGES FAKE_DOCKER_COMMIT_SHA FAKE_DOCKER_COMPOSE_IMAGES FAKE_DOCKER_OUT
 
+# --- check script: real image bundle positive case -------------------------------
+fixture=$(new_fixture bundle-positive)
+export FAKE_DOCKER_IMAGES="$ALL_IMAGES"
+export FAKE_DOCKER_COMMIT_SHA="1.16.0-enterprise"
+export FAKE_DOCKER_COMPOSE_IMAGES="$COMPOSE_IMAGES"
+export FAKE_DOCKER_OUT="$fixture/dist/offline"
+expect_pass "bundle-positive: reuse run saves a real image bundle" \
+  "$fixture" ./scripts/build-enterprise-offline.sh -Version 1.16.0-enterprise -Mode reuse
+expect_pass "bundle-positive: config package builds from reuse artifacts" \
+  "$fixture" ./scripts/build-enterprise-config-package.sh -Version 1.16.0-enterprise
+unset FAKE_DOCKER_OUT
+expect_pass "check-enterprise-offline passes with real image bundle" \
+  "$fixture" ./scripts/ci/check-enterprise-offline.sh \
+  -Archive "dist/offline/dify-enterprise-offline-1.16.0-enterprise.tar" \
+  -ConfigArchive "dist/offline/dify-enterprise-config-1.16.0-enterprise.tar.gz" \
+  -Manifest "dist/offline/manifest-1.16.0-enterprise.json" \
+  -Images "dist/offline/images-1.16.0-enterprise.txt"
+for marker in \
+  "image bundle archive is listable" \
+  "image bundle has a docker-save top-level layout" \
+  "image bundle contains no forbidden paths" \
+  "image bundle layer scans clean"; do
+  if ! grep -Fq "$marker" "$tmp_root/check-enterprise-offline passes with real image bundle.out"; then
+    printf 'not ok - check output missing marker: %s\n' "$marker" >&2
+    sed -n '1,60p' "$tmp_root/check-enterprise-offline passes with real image bundle.out" >&2
+    exit 1
+  fi
+done
+printf 'ok - real image bundle scanned: listable/layout/forbidden/layer-scan PASS\n'
+pass_count=$((pass_count + 1))
+unset FAKE_DOCKER_IMAGES FAKE_DOCKER_COMMIT_SHA FAKE_DOCKER_COMPOSE_IMAGES
+
 # --- check script: canary real .env rejected ------------------------------------
 fixture=$(new_fixture check-canary-env)
 mkdir -p "$fixture/canary/docker/envs/core-services" "$fixture/canary/docker/volumes"
