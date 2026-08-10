@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Fake git shim for B7 offline fixture tests.
+# `git rev-parse HEAD` returns a deterministic enterprise_commit value; other
+# git operations are not needed by the B7 scripts and fail loudly.
+
+set -euo pipefail
+
+if [[ "${1:-}" == "rev-parse" && "${2:-}" == "HEAD" ]]; then
+  printf '1111111111111111111111111111111111111111\n'
+  exit 0
+fi
+
+echo "fake-git: unsupported git invocation: $*" >&2
+exit 1

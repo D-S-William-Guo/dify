@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# Fake docker shim for B7 offline fixture tests.
+# Configuration is read from the environment:
+#   FAKE_DOCKER_IMAGES         space-separated list of images that "exist" locally
+#   FAKE_DOCKER_COMMIT_SHA     COMMIT_SHA value reported for enterprise images (default 1.16.0-enterprise)
+#   FAKE_DOCKER_COMPOSE_IMAGES newline-separated image list returned by `config --images`
+#   FAKE_DOCKER_LOG            file each invocation is appended to (assert no build/pull/save in dry-run)
+#   FAKE_DOCKER_NO_DIGEST      space-separated images that must report an empty RepoDigest
+#   FAKE_DOCKER_OUT            directory for `save` output (defaults to mktemp -d)
+
+set -euo pipefail
+
+log() {
+  if [[ -n "${FAKE_DOCKER_LOG:-}" ]]; then
+    printf 'docker %s\n' "$*" >> "$FAKE_DOCKER_LOG"
+  fi
+}
+
+images_file="${FAKE_DOCKER_IMAGES:-}"
+commit_sha="${FAKE_DOCKER_COMMIT_SHA:-1.16.0-enterprise}"
+
+has_image() {
+  local img="$1"
+  for candidate in $images_file; do
+    [[ "$candidate" == "$img" ]] && return 0
+  done
+  return 1
+}
+
+cmd="$1"
+shift || true
+
+log "$cmd $*"
+
+case "$cmd" in
+  compose)
+    # docker compose --env-file X -f Y -f Z config --images
+    local_images=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        config)
+          shift || true
+          if [[ "${1:-}" == "--images" ]]; then
+            printf '%s\n' "${FAKE_DOCKER_COMPOSE_IMAGES:-}"
+            exit 0
+          fi
+          ;;
+        *)
+          shift || true
+          ;;
+      esac
+    done
+    exit 0
+    ;;
+  image)
+    sub="${1:-}"
+    shift || true
+    if [[ "$sub" == "inspect" ]]; then
+      img="${1:-}"
+      shift || true
+      fmt=""
+      if [[ "${1:-}" == "--format" ]]; then
+        fmt="$2"
+        shift 2 || true
+      fi
+      if ! has_image "$img"; then
+        exit 1
+      fi
+      case "$fmt" in
+        *"Config.Env"*)
+          printf 'COMMIT_SHA=%s\n' "$commit_sha"
+          ;;
+        *".Id"*)
+          printf 'sha256:fake-id-%s\n' "$(printf '%s' "$img" | sha256sum | cut -c1-24)"
+          ;;
+        *"RepoDigests"*)
+          if [[ " ${FAKE_DOCKER_NO_DIGEST:-} " == *" $img "* ]]; then
+            printf '<no value>\n'
+          else
+            printf '%s@sha256:fake-digest-%s\n' "$img" "$(printf '%s' "$img" | sha256sum | cut -c1-24)"
+          fi
+          ;;
+        *)
+          ;;
+      esac
+      exit 0
+    fi
+    exit 0
+    ;;
+  save)
+    out="${1:-}"
+    shift || true
+    if [[ "$out" == "-o" ]]; then
+      out="${1:-}"
+      shift || true
+    fi
+    if [[ -n "$out" ]]; then
+      save_dir="${FAKE_DOCKER_OUT:-$(mktemp -d)}"
+      mkdir -p "$save_dir/ab12cd34"
+      printf 'placeholder-layer-content\n' > "$save_dir/ab12cd34/layer.txt"
+      (
+        cd "$save_dir"
+        printf '{"Config":"config.json","RepoTags":["stub:1.16.0-enterprise"],"Layers":["ab12cd34/layer.tar"]}\n' > manifest.json
+        printf '{}\n' > repositories
+        tar czf ab12cd34/layer.tar -C "$save_dir/ab12cd34" layer.txt
+        tar cf "$out" manifest.json repositories ab12cd34/layer.tar
+      )
+    fi
+    exit 0
+    ;;
+  pull)
+    exit 0
+    ;;
+  build)
+    exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+esac
