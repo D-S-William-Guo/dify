@@ -29,9 +29,13 @@ check；B8 Builder 的精确 allowlist/denylist、验证命令、串行门禁与
    Phase G（运行验收）、Phase H（离线目标 smoke）的真实运行操作默认 `NOT_RUN` for B8
    Builder，必须由协调者逐项另行授权（VALIDATION_PLAN Phase D/F/G/H；B7 同款门禁
    `B7_PHASE_FG_NOT_RUN`）。静态/只读替代证据不得冒充运行证据。
-6. `B8_COMPLETENESS_CHECK`：evidence completeness check 与 checker 同属 B8 交付，落在
-   `scripts/ci/check-enterprise-validation-evidence.*`（ARCHITECT_HANDOFF §5 B8 验收命令
-   “数据库/runtime/offline evidence completeness check”）。
+6. `B8_COMPLETENESS_CHECK`：evidence completeness check 是**条件性/描述性交付**。脚本
+   `scripts/ci/check-enterprise-validation-evidence.sh`/`-tests.sh` **当前未被授权**：不在
+   ARCHITECT_HANDOFF §5 B8 allowlist（§5 B8 允许写路径仅为
+   `scripts/check-enterprise-vector-indexes.*`、对应 fixtures/tests、经批准的
+   `docs/enterprise/replay-1.16.0/evidence/**`）。“数据库/runtime/offline evidence completeness
+   check”只是 §5 验收命令（验收标准），不是写权限授权。B8 Builder 写出这两个脚本前必须获得
+   协调者**显式 allowlist 扩展审批**；本计划不假定审批已存在。
 
 当前门禁：
 
@@ -49,7 +53,7 @@ B8_PHASE_DFGH_NOT_AUTHORIZED（Phase D/F/G/H 需协调者逐项另行批准）
 | branch | `ctyun/replay-116-b8-architect` | `ctyun/replay-116-b8-architect` | PASS |
 | HEAD | `b8dd2b3e3cb8846e1b6225fe6e94e538e960c8c4` | `b8dd2b3e3cb8846e1b6225fe6e94e538e960c8c4` | PASS |
 | porcelain | empty | empty | PASS |
-| B7 链已合并 | `bb86a5e8aa`（B7 Rereview）与 `28f9f72e7d`（B7 code review）在 HEAD | `git log` 确认 | PASS |
+| B7 链已合并 | `b8dd2b3e3c`（B7 Rereview，HEAD）、`93ab820b48`（B7 Code Review）、`bb86a5e8aa`（B7 Fixer）、`28f9f72e7d`（B7 code feat）均在 HEAD | `git log` 确认 | PASS |
 | B6 overlay 存在 | `docker/docker-compose.enterprise.yaml` 74 行 | 74 行 | PASS |
 | 旧 1.15 vector checker | 只读证据 `dify-enterprise-1.15.0/scripts/check-enterprise-vector-indexes.sh` | 存在，189 行，含 `--repair` | PASS（仅证据；repair 不移植） |
 | 本仓库 vector checker | `scripts/check-enterprise-vector-indexes.*` 不存在 | `ls` 输出 no-such-file | PASS（B8 待创建） |
@@ -61,7 +65,7 @@ B8_PHASE_DFGH_NOT_AUTHORIZED（Phase D/F/G/H 需协调者逐项另行批准）
 
 ### 1.2 已接受产品事实
 
-- B0→B1→B2→B3→B4→B5→B6→B7 全链已合并到候选分支；B7 最终 Rereview `bb86a5e8aa`
+- B0→B1→B2→B3→B4→B5→B6→B7 全链已合并到候选分支；B7 最终 Rereview `b8dd2b3e3c`
   结论 `PASS`、`21/21` fixture PASS（B7_REREVIEW §VERDICT）。
 - B6 overlay `docker/docker-compose.enterprise.yaml`（74 行）是唯一 enterprise Compose
   覆盖文件；五个企业 runtime 覆盖企业 API/Web image/tag，`agent_backend`/`local_sandbox`
@@ -293,13 +297,19 @@ summary: 1 PASS / 1 FAIL / 1 NOT_RUN
 | `scripts/check-enterprise-vector-indexes.sh` | 默认只读 vector consistency checker（§3） |
 | `scripts/ci/check-enterprise-vector-indexes-tests.sh` | checker fixture/dry-run 测试 |
 | `scripts/ci/check-enterprise-vector-indexes-fixtures/**` | checker fixtures（fake psql/curl shim、fixture inventory、canary） |
-| `scripts/ci/check-enterprise-validation-evidence.sh` | evidence completeness check（§5.1） |
-| `scripts/ci/check-enterprise-validation-evidence-tests.sh` | completeness check fixture 测试（含缺证据=NOT_RUN、越界路径、坏格式负例） |
+| `scripts/ci/check-enterprise-validation-evidence.sh` | evidence completeness check（§5.1）；**当前未授权**：不在 ARCHITECT_HANDOFF §5 B8 allowlist，需协调者显式 allowlist 扩展审批后方可写 |
+| `scripts/ci/check-enterprise-validation-evidence-tests.sh` | completeness check fixture 测试（含缺证据=NOT_RUN、越界路径、坏格式负例）；**当前未授权**：同上，需协调者显式 allowlist 扩展审批后方可写 |
 | `docs/enterprise/replay-1.16.0/evidence/**` | 只允许**后续授权**的 B8 Builder/Validator 写（§4） |
 
 说明：
 
 - `.ps1` 默认不交付（`B8_CHECKER_NO_PS1`）。
+- `scripts/ci/check-enterprise-validation-evidence.sh`/`-tests.sh` **当前未被授权**：
+  ARCHITECT_HANDOFF §5 B8 行允许写路径仅 `scripts/check-enterprise-vector-indexes.*`、对应
+  fixtures/tests、经批准的 evidence/**，不含 `scripts/ci/check-enterprise-validation-*`；
+  §5 验收命令“数据库/runtime/offline evidence completeness check”只是验收标准，不是写权限授权。
+  completeness check 仅作为条件性/描述性交付保留；B8 Builder 写出这两个脚本前必须获得协调者
+  显式 allowlist 扩展审批，本计划不假定审批已存在。
 - 除上述文件外任何新文件（含新 docs、新 `.env.example`、新 Dockerfile）默认非法；
   Builder 必须停下请求扩展 allowlist。
 - `dist/offline/**` 是 B7 生成产物（gitignored），B8 只读取。
@@ -340,7 +350,7 @@ summary: 1 PASS / 1 FAIL / 1 NOT_RUN
 git branch --show-current
 git rev-parse HEAD
 git status --short --branch
-git merge-base --is-ancestor bb86a5e8aa85ca6fedbbf42004fd232074ae9ba3 HEAD
+git merge-base --is-ancestor b8dd2b3e3cb8846e1b6225fe6e94e538e960c8c4 HEAD
 git diff --check
 git diff --name-status <B8 起始 base SHA>...HEAD   # 期望仅 §6.1 allowlist 文件
 git diff <base>...HEAD -- docker/   # 期望空
@@ -503,7 +513,7 @@ NOT_RUN。
 | `git status --short --branch` | 0 | clean |
 | `git status --porcelain=v1` | 0 | empty |
 | `git diff --check` | 0 | clean |
-| `git log --oneline -15` | 0 | HEAD 为 B7 Rereview `b8dd2b3e3c`；含 B7 review `bb86a5e8aa`、B7 code `28f9f72e7d` |
+| `git log --oneline -15` | 0 | HEAD 为 B7 Rereview `b8dd2b3e3c`；含 B7 Code Review `93ab820b48`、B7 Fixer `bb86a5e8aa`、B7 code feat `28f9f72e7d` |
 | `git show d218e48f28:docker/docker-compose.enterprise.yaml \| wc -l` | 0 | 74 |
 | `ls scripts/check-enterprise-vector-indexes.*` | 1 | no-such-file（B8 待创建） |
 | `ls docs/enterprise/replay-1.16.0/evidence` | 1 | no-such-dir（B8 Builder 才写） |
@@ -554,7 +564,7 @@ Phase D/F/G/H 属于逐项另行授权阶段。
 
 ## 13. Plan Reviewer checklist
 
-- [ ] 强制起点与 B7 ancestor 事实真实（§1.1）：branch/HEAD/clean、`bb86a5e8aa` 在 HEAD、B6 overlay 74 行、vector checker 与 evidence 均不存在。
+- [ ] 强制起点与 B7 ancestor 事实真实（§1.1）：branch/HEAD/clean、`b8dd2b3e3c`（B7 Rereview）在 HEAD、B6 overlay 74 行、vector checker 与 evidence 均不存在。
 - [ ] checker 只读契约完整（§3）：输入（环境/显式只读连接）、`VECTOR_STORE=weaviate` 门禁、PG 只读断言、Weaviate 仅 GET、输出三态与脱敏、负向“read-only 不写”。
 - [ ] 无 repair 路径；repair 只作为独立任务+协调者批准描述（E13），本计划未设计 repair 实现。
 - [ ] `.ps1` 默认不交付且理由（旧链无 `.ps1` 对照）明确。
