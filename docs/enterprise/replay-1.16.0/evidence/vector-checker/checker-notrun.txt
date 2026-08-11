@@ -1,0 +1,23 @@
+# Vector checker run record (NOT_RUN: no live PostgreSQL/Weaviate in sandbox)
+## timestamp: 2026-08-11T10:30:32+08:00
+
+## Run 1: VECTOR_STORE unset -> unsupported provider NOT_RUN
+## command: env -u VECTOR_STORE -u WEAVIATE_ENDPOINT scripts/check-enterprise-vector-indexes.sh
+
+# vector consistency check, VECTOR_STORE=, DIFY_ENTERPRISE_VERSION=1.16.0-enterprise, COMPOSE_PROFILES=weaviate,postgresql,collaboration
+NOT_RUN unsupported vector provider: VECTOR_STORE=<unset> (release blocker set is PostgreSQL + Weaviate)
+summary: 0 PASS / 0 FAIL / 1 NOT_RUN
+exit=0
+
+## Run 2: VECTOR_STORE=weaviate without WEAVIATE_ENDPOINT -> NOT_RUN (environment incomplete)
+## command: VECTOR_STORE=weaviate scripts/check-enterprise-vector-indexes.sh
+
+# vector consistency check, VECTOR_STORE=weaviate, DIFY_ENTERPRISE_VERSION=1.16.0-enterprise, COMPOSE_PROFILES=weaviate,postgresql,collaboration
+NOT_RUN WEAVIATE_ENDPOINT not configured (set WEAVIATE_ENDPOINT or pass -WeaviateEndpoint); environment incomplete
+summary: 0 PASS / 0 FAIL / 1 NOT_RUN
+exit=0
+
+## RESULT: NOT_RUN for live consistency checking (release blocker set is
+PostgreSQL + Weaviate). Full PASS/FAIL logic is covered by the fixture suite
+(evidence/phase-b/checker-fixture-tests.log). Real checker runs need the
+authorized isolated upgrade environment (Phase D/G gate).

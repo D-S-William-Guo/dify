@@ -1,0 +1,14 @@
+# Phase C contracts (NOT_RUN)
+
+## timestamp: 2026-08-11T10:29:40+08:00
+
+B4 is the unique generator of `packages/contracts/generated/api/console/**`; B8 does
+not regenerate contracts. This B8 Builder only performed a read-only reference of
+the already-merged generated contracts and their B4 generation record.
+
+| Item | Status | Reason |
+| --- | --- | --- |
+| Contract regeneration (`pnpm --dir packages/contracts gen-api-contract`) | NOT_RUN | B4 unique writer; regeneration requires B4 authorization |
+| Contract determinism check | NOT_RUN | depends on regeneration |
+
+No contract file was modified in this B8 diff.

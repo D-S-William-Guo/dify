@@ -1,0 +1,17 @@
+# Phase B NOT_RUN items
+
+## timestamp: 2026-08-11T10:29:30+08:00
+
+The following Phase B items are honestly NOT_RUN in this B8 Builder sandbox.
+They are not reported as PASS.
+
+| Item | Status | Reason |
+| --- | --- | --- |
+| Frontend focused vitest (`pnpm --dir web vitest run <specs>`) | NOT_RUN | node_modules/pnpm install not available in sandbox; not part of the B8 checker deliverable |
+| `pnpm --dir web type-check` / `pnpm check` | NOT_RUN | same sandbox constraint |
+| Full backend pytest set (all of `api/tests/`) | NOT_RUN | minimal focused set run instead (see focused-backend.log); full suite not authorized for this scope |
+| `pytest-cov` coverage collection | NOT_RUN | `pytest-cov` is not installed in the resolved offline `api/.venv`; `-o addopts=""` disables the inifile `--cov` addopts for the focused run |
+
+Run set (PASS): `evidence/phase-b/focused-backend.log` (158 passed),
+`evidence/phase-d/migration-graph-tests.log` (61 passed),
+`evidence/phase-b/checker-fixture-tests.log` (47 checker shell/fixture assertions passed).

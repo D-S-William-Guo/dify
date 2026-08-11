@@ -1,0 +1,20 @@
+# Phase D static: flask db heads / history (NOT_RUN)
+## timestamp: 2026-08-11T10:29:13+08:00
+
+## flask db heads: FLASK_APP=app.py uv run --project api flask db heads
+Usage: flask [OPTIONS] COMMAND [ARGS]...
+Try 'flask --help' for help.
+
+Error: No such command 'db'.
+exit=2
+
+## flask db history: FLASK_APP=app.py uv run --project api flask db history
+Usage: flask [OPTIONS] COMMAND [ARGS]...
+Try 'flask --help' for help.
+
+Error: No such command 'db'.
+exit=2
+
+## RESULT: NOT_RUN - Flask app import requires the full runtime environment
+(api/.venv deps resolved offline but app.py import needs DB/Redis/.env);
+merged migration graph tests referenced instead (evidence/phase-d/migration-graph-tests.log).

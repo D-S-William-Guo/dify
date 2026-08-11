@@ -1,0 +1,9 @@
+# Phase B focused backend tests (minimal set, VALIDATION_PLAN Phase B)
+## timestamp: 2026-08-11T10:27:51+08:00
+
+## command (env proxies stripped for sandbox): uv run --project api pytest -o addopts="" api/tests/unit_tests/services/enterprise/test_enterprise_service.py api/tests/unit_tests/services/test_account_service.py -q
+
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+158 passed, 3 warnings in 13.39s
+pytest-exit=0

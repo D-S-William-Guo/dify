@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Fake psql shim for B8 vector checker fixture tests.
+#
+# Configuration comes from the environment:
+#   FAKE_PSQL_LOG   file each invocation is appended to (assert no write commands)
+#   FAKE_PSQL_ROWS  newline-separated fixture rows (pipe-separated columns) for the
+#                   expected-class SELECT; empty means no high_quality dataset
+#   FAKE_PSQL_FAIL  if set to any value, every invocation exits 1 (connection failure)
+#
+# The shim only answers read-only queries; it refuses nothing because the checker
+# never issues anything but SHOW/SELECT.
+
+set -uo pipefail
+
+if [[ -n "${FAKE_PSQL_LOG:-}" ]]; then
+  printf 'psql %s\n' "$*" >> "$FAKE_PSQL_LOG"
+fi
+
+if [[ -n "${FAKE_PSQL_FAIL:-}" ]]; then
+  exit 1
+fi
+
+for arg in "$@"; do
+  if [[ "$arg" == *"SHOW"* ]]; then
+    printf 'on\n'
+    exit 0
+  fi
+done
+
+printf '%s\n' "${FAKE_PSQL_ROWS:-}"

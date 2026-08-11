@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Fake curl shim for B8 vector checker fixture tests.
+#
+# Configuration comes from the environment:
+#   FAKE_WEAVIATE_LOG      file each invocation is appended to (assert only GET, no writes)
+#   FAKE_WEAVIATE_SCHEMA   path to the JSON body served for GET /v1/schema
+#   FAKE_WEAVIATE_STATUS   HTTP status served for GET /v1/schema (default 200)
+#   FAKE_WEAVIATE_CLASSES  space-separated class names that exist (200 for /v1/schema/<class>)
+#
+# Only GET is served; any explicit non-GET request is rejected loudly so a
+# fixture regression would surface in the shim log.
+
+set -uo pipefail
+
+url=""
+out_file=""
+method="GET"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output)
+      out_file="${2:-}"
+      shift 2
+      ;;
+    --write-out)
+      shift 2
+      ;;
+    -H | --header)
+      shift 2
+      ;;
+    -X | --request)
+      method="${2:-}"
+      shift 2
+      ;;
+    --silent | --show-error | --fail-with-body | -s | -q | -O)
+      shift
+      ;;
+    *)
+      if [[ "$1" == *"/v1/"* ]]; then
+        url="/v1/${1#*"/v1/"}"
+      fi
+      shift
+      ;;
+  esac
+done
+
+if [[ "$method" != "GET" ]]; then
+  if [[ -n "${FAKE_WEAVIATE_LOG:-}" ]]; then
+    printf 'curl %s %s\n' "$method" "$url" >> "$FAKE_WEAVIATE_LOG"
+  fi
+  printf '405'
+  exit 0
+fi
+
+if [[ -n "${FAKE_WEAVIATE_LOG:-}" ]]; then
+  printf 'curl %s %s\n' "$method" "$url" >> "$FAKE_WEAVIATE_LOG"
+fi
+
+if [[ "$url" == "/v1/schema" ]]; then
+  if [[ -n "$out_file" && -n "${FAKE_WEAVIATE_SCHEMA:-}" && -f "$FAKE_WEAVIATE_SCHEMA" ]]; then
+    cp "$FAKE_WEAVIATE_SCHEMA" "$out_file"
+  fi
+  printf '%s' "${FAKE_WEAVIATE_STATUS:-200}"
+  exit 0
+fi
+
+if [[ "$url" == /v1/schema/* ]]; then
+  class="${url#/v1/schema/}"
+  found=0
+  for candidate in ${FAKE_WEAVIATE_CLASSES:-}; do
+    if [[ "$candidate" == "$class" ]]; then
+      found=1
+      break
+    fi
+  done
+  if [[ "$found" -eq 1 ]]; then
+    if [[ -n "$out_file" ]]; then
+      printf '{"class":"%s"}\n' "$class" > "$out_file"
+    fi
+    printf '200'
+  else
+    if [[ -n "$out_file" ]]; then
+      : > "$out_file"
+    fi
+    printf '404'
+  fi
+  exit 0
+fi
+
+printf '404'
+exit 0

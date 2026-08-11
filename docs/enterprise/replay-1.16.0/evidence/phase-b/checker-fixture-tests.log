@@ -1,0 +1,54 @@
+# Phase B: vector index checker shell/fixture tests (check-enterprise-vector-indexes-tests.sh)
+## timestamp: 2026-08-11T10:29:05+08:00
+
+## command: scripts/ci/check-enterprise-vector-indexes-tests.sh
+
+ok - no high_quality dataset exits 0
+ok - no high_quality dataset reports PASS
+ok - no high_quality dataset summary
+ok - class present exits 0
+ok - class present line
+ok - class present summary
+ok - class missing exits 1
+ok - class missing line
+ok - missing class reports separately authorized repair
+ok - class missing summary
+ok - qdrant provider exits 0
+ok - qdrant provider NOT_RUN
+ok - qdrant provider summary
+ok - missing endpoint exits 0
+ok - missing endpoint NOT_RUN
+ok - missing endpoint summary
+ok - schema 403 exits 0
+ok - schema 403 NOT_RUN
+ok - schema 403 summary
+ok - PGOPTIONS unset exits 1
+ok - PGOPTIONS unset FAIL
+ok - PGOPTIONS unset summary
+ok - read-only run exits 0
+ok - no psql write commands in shim log
+ok - no non-GET weaviate requests in shim log
+ok - weaviate shim saw only GET
+ok - read-only run wrote no files into the run directory
+ok - extra class exits 0
+ok - extra class present class still PASS
+ok - extra class NOT_RUN reported
+ok - extra class summary
+ok - redaction run exits 0
+ok - no plaintext dataset id in output
+ok - no plaintext class in output
+ok - no plaintext endpoint in output
+ok - no plaintext api key in output
+ok - dataset targets are sha256-redacted
+ok - class targets are sha256-redacted
+ok - PostgreSQL connection failure exits 0
+ok - PostgreSQL failure NOT_RUN
+ok - PostgreSQL failure summary
+ok - explicit -WeaviateEndpoint exits 0
+ok - explicit endpoint line PASS
+ok - explicit endpoint summary
+ok - class_prefix fallback exits 0
+ok - class_prefix fallback line PASS
+ok - class_prefix fallback summary
+all 47 enterprise vector index checker tests passed
+tests-exit=0

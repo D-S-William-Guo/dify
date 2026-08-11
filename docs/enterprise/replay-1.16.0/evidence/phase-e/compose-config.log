@@ -1,0 +1,10 @@
+# Phase E compose static validation (NOT_RUN)
+## timestamp: 2026-08-11T10:29:18+08:00
+
+## command: DIFY_ENTERPRISE_VERSION=1.16.0-enterprise COMPOSE_PROFILES=weaviate,postgresql,collaboration docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q
+
+env file /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-builder_18ca9e74074d2d08/docker/.env not found: stat /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-builder_18ca9e74074d2d08/docker/.env: no such file or directory
+exit=1
+
+## RESULT: NOT_RUN - docker/.env is absent and its creation is forbidden
+(B6 overlay validation already merged; Phase E needs a real deployment .env).
