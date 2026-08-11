@@ -276,7 +276,7 @@ summary: 1 PASS / 1 FAIL / 1 NOT_RUN
 | auth/RBAC/安全 | Phase G、安全回归清单（line 299-308） | `evidence/phase-g/auth-rbac-security.log` | 静态引用 B3/B4 已合并测试；运行 **NOT_RUN** | 运行验收 |
 | 离线包/镜像一致性 | Phase H、B7 manifest | `evidence/phase-h/offline-*.log` | 静态扫描 B7 产物 | 离线目标 smoke |
 
-### 5.1 completeness check（`scripts/ci/check-enterprise-validation-evidence.sh`）
+### 5.1 completeness check（`scripts/ci/check-enterprise-validation-evidence.sh`；条件性/描述性交付，见 §0.6 决定 6）
 
 - 输入：`-Evidence <docs/enterprise/replay-1.16.0/evidence>`（必填）。
 - 读 `evidence/README.md` 索引，对上表每个门禁：缺 artifact → `NOT_RUN`；artifact 存在但
@@ -378,7 +378,9 @@ fixture 断言（fake psql + fake curl/wget shim + fixture inventory 数据）�
 | 额外 class（EXTRA） | 报告不阻断，exit 0 |
 | 输出脱敏 | 输出中不含明文 dataset ID/class/endpoint/key 的 fixture 值 |
 
-### 7.3 completeness check fixture/dry-run（必跑）
+### 7.3 completeness check fixture/dry-run（条件性，非必跑）
+
+§7.3 仅在协调者显式 allowlist 扩展审批获得后执行；未授权则如实 NOT_RUN/跳过。
 
 ```bash
 scripts/ci/check-enterprise-validation-evidence-tests.sh
@@ -423,7 +425,7 @@ B7_REVIEW §7 同款纪律）。
 | --- | --- | --- | --- | --- |
 | `scripts/check-enterprise-vector-indexes.sh` | B8 独占 | B2_INVENTORY 方法论、旧 1.15 checker（证据）、`api/configs/middleware/vdb/weaviate_config.py`、官方 weaviate env example、B7 check 脚本输出约定 | 无 | B7 之后 |
 | `scripts/ci/check-enterprise-vector-indexes-tests.sh`、`-fixtures/**` | B8 独占 | 同 checker；B7 tests.sh fixture 模式 | `scripts/ci/` 目录已有 B0/B7 文件，B8 只新增独立文件 | 同 B8 |
-| `scripts/ci/check-enterprise-validation-evidence.sh`/`-tests.sh` | B8 独占 | §5.1 矩阵、evidence 布局 | 同 B8 | 同 B8 |
+| `scripts/ci/check-enterprise-validation-evidence.sh`/`-tests.sh` | B8 独占（**当前未授权**：需协调者显式 allowlist 扩展审批后方可写/跑；未授权则 NOT_RUN/跳过） | §5.1 矩阵、evidence 布局 | 同 B8 | 同 B8 |
 | `docs/enterprise/replay-1.16.0/evidence/**` | 后续授权 B8 Builder/Validator | 全部已合并实现、B6/B7 artifacts | 唯一写者=B8 Builder/Validator；本 Architect 不写 | 随 B8 |
 | `docs/enterprise/replay-1.16.0/B8_IMPLEMENTATION_PLAN.md` | 本 Architect | 全部 sources of truth | 唯一 writer=本计划 | 随 B8 计划门禁 |
 
@@ -439,8 +441,9 @@ B8 Architect（本计划）
 → CHANGES_REQUIRED: finding-scoped Plan Fixer → 独立 Plan Rereviewer
 → 协调者检查 dirty diff 后另行授权 plan commit
 → fast-forward 到候选分支
-→ B8 Builder（只写 §6.1 allowlist：checker + fixtures/tests + evidence completeness check；
-   Phase A/B/E 静态 + §7.2/§7.3 fixture/dry-run + §7.4 静态；证据目录初始化只放 README 索引）
+→ B8 Builder（只写 §6.1 allowlist：checker + fixtures/tests；evidence completeness check 为
+   条件性/描述性交付，仅协调者显式 allowlist 扩展审批后写与跑，未授权则 NOT_RUN/跳过；Phase A/B/E
+   静态 + §7.2/§7.3 fixture/dry-run（§7.3 需审批）+ §7.4 静态；证据目录初始化只放 README 索引）
 → Code Reviewer（Migration/Data + Docker/Offline + Runtime/Release 视角）
 → Fixer? → Rereviewer
 → 协调者检查 dirty diff 后另行授权 commit
@@ -488,7 +491,7 @@ NOT_RUN。
 3. `B8_EVIDENCE_BUILDER_ONLY`：evidence/** 只允许后续授权 B8 Builder/Validator 写。
 4. `B8_MISSING_EVIDENCE_IS_NOT_RUN`：缺证据 = NOT_RUN，不是 PASS。
 5. `B8_PHASE_DFGH_NOT_RUN`：Phase D/F/G/H 真实运行默认 NOT_RUN，逐项协调者授权。
-6. `B8_COMPLETENESS_CHECK`：evidence completeness check 归 B8 交付。
+6. `B8_COMPLETENESS_CHECK`：evidence completeness check 为**条件性/描述性交付**；脚本当前未授权，需协调者显式 allowlist 扩展审批后方可写出/运行，未授权则 NOT_RUN（同 §0.6）。
 
 ### 10.3 Stop conditions
 
@@ -553,8 +556,9 @@ git status --porcelain=v1
 ```bash
 git diff --name-status <accepted-b8-plan-sha>...HEAD
 git diff --check
-# §7.2 checker fixture、§7.3 completeness fixture、§7.4 Phase D/E 静态；Phase F/G/H 按协调者授权
+# §7.2 checker fixture、§7.3 completeness fixture（条件性，见 §7.3）、§7.4 Phase D/E 静态；Phase F/G/H 按协调者授权
 scripts/ci/check-enterprise-vector-indexes-tests.sh
+# 以下 completeness check 两命令需先获 §0.6/§6.1 所述 allowlist 扩展审批；未授权则 NOT_RUN
 scripts/ci/check-enterprise-validation-evidence-tests.sh
 scripts/ci/check-enterprise-validation-evidence.sh -Evidence docs/enterprise/replay-1.16.0/evidence
 ```
