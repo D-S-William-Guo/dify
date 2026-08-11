@@ -1,0 +1,205 @@
+a71e16c0de01 -> b416e5c4e702 (head), finalize enterprise marketplace schema
+e2f0a9b7c6d5, 7a1c2d9e4b60 -> a71e16c0de01 (mergepoint), merge 1.16.0 enterprise migration heads
+f1a14e1e9b41, d9e8f7a6b5c4 -> e2f0a9b7c6d5 (mergepoint), merge 1.15.0 enterprise migration heads
+a4f2d8c9b731, c8f3d9d4a1be -> f1a14e1e9b41 (mergepoint), merge 1.14.2 enterprise migration heads
+c3d4e5f6a7b8 -> 7a1c2d9e4b60, add workflow run archive bundle index table
+a2b3c4d5e6f7 -> c3d4e5f6a7b8, add agent active config is published
+e4f5a6b7c8d9 -> a2b3c4d5e6f7, add agent backing app id
+a6f1c9d2e8b4 -> e4f5a6b7c8d9, add agent config drafts
+d9e8f7a6b5c4 -> a6f1c9d2e8b4, add input placeholder to sites
+c8f4a6b2d3e1 -> d9e8f7a6b5c4 (branchpoint), add cloud only flag to recommended apps
+b2515f9d4c2a -> c8f4a6b2d3e1, add agent debug conversations
+4f7b2c8d9a10 -> b2515f9d4c2a, agent drive skill metadata refactor
+a7c4e9d2f681 -> 4f7b2c8d9a10, normalize legacy end user type
+d2f1a4b8c3e0 -> a7c4e9d2f681, add resource maintainers
+c167a72a00eb -> d2f1a4b8c3e0, add conversation_id to human_input_forms for agent v2 chat hitl
+c4d5e6f7a8b9 -> c167a72a00eb, add ask_human pause correlation to agent_runtime_sessions
+f5e8a9c0d2b3 -> c4d5e6f7a8b9, add app stars
+f6a7b8c9d012 -> f5e8a9c0d2b3, add learn dify flag to recommended apps
+b7c2d9e8a1f4 -> f6a7b8c9d012, add plugin auto upgrade category
+9f4b7c2d1a80 -> b7c2d9e8a1f4, add tenant account join last opened at
+0b2f2c8a9d1e -> 9f4b7c2d1a80, add agent active config has model
+7bad07dc267d -> 0b2f2c8a9d1e, add agent role
+3df4dbcc1e21 -> 7bad07dc267d, add agent_drive_files (agent drive KV)
+2b3c4d5e6f70 -> 3df4dbcc1e21, add identity mode to mcp tool provider
+8d4c2a1b9f03 -> 2b3c4d5e6f70, add customized snippets
+121e7346074d -> 8d4c2a1b9f03, Add human input upload token and file association tables
+a1b2c3d4e5f6 -> 121e7346074d, unify agent runtime sessions table
+7885bd53f9a9 -> a1b2c3d4e5f6, add credential visibility and permission table
+d4a5e1f3c9b7 -> 7885bd53f9a9, add workflow agent runtime sessions
+97e2e1a644e8 -> d4a5e1f3c9b7, add oauth_access_tokens table
+f8b6b7e9c421 -> 97e2e1a644e8, add workflow_version to workflow_agent_node_bindings
+c6a9f4b12d3e -> f8b6b7e9c421, add agent config revisions
+a4f2d8c9b731 -> c6a9f4b12d3e, add agent domain models
+227822d22895 -> a4f2d8c9b731 (branchpoint), add recommended app categories
+227822d22895 -> c8f3d9d4a1be, add enterprise marketplace assets
+8574b23a38fd -> 227822d22895 (branchpoint), Add workflow comments table
+6b5f9f8b1a2c -> 8574b23a38fd, add qdrant_endpoint to tidb_auth_bindings
+0ec65df55790 -> 6b5f9f8b1a2c, add user_id and switch workflow_draft_variables unique key to user scope
+e288952f2994 -> 0ec65df55790, add indexes for human_input_forms query patterns
+fce013ca180e -> e288952f2994, add partial indexes on conversations for app_id with created_at and updated_at
+f55813ffe2c8 -> fce013ca180e, fix index to optimize message clean job performance
+c3df22613c99 -> f55813ffe2c8, add unique constraint to tenant_default_models
+e8c3b3c46151 -> c3df22613c99, drop server_default for app trail related tables
+788d3099ae3a -> e8c3b3c46151, Add human input related db models
+9d77545f524e -> 788d3099ae3a, add summary index feature
+f9f6d18a37f9 -> 9d77545f524e, create workflow_archive_logs
+9e6fa5cbcd80 -> f9f6d18a37f9, add table explore banner and trial
+288345cd01d1 -> 9e6fa5cbcd80, make message annotation question not nullable
+3334862ee907 -> 288345cd01d1, change workflow node execution workflow_run index
+905527cc8fd3 -> 3334862ee907, feat: add created_at id index to messages
+7df29de0f6be -> 905527cc8fd3, add workflow_run_created_at_id_idx
+03ea244985ce -> 7df29de0f6be, add credit pool
+d57accd375ae -> 03ea244985ce, add type column not null default tool
+7bb281b7a422 -> d57accd375ae, support-multi-modal
+09cfdda155d1 -> 7bb281b7a422, Add workflow_pauses_reasons table
+669ffd70119c -> 09cfdda155d1, mysql adaptation
+03f8dcbc611e -> 669ffd70119c, introduce_trigger
+ae662b25d9bc -> 03f8dcbc611e, add WorkflowPause model
+d98acf217d43 -> ae662b25d9bc, remove-builtin-template-user
+68519ad5cd18 -> d98acf217d43, add app_mode for messsage
+cf7c38a32b2d -> 68519ad5cd18, knowledge_pipeline_migrate
+c20211f18133 -> cf7c38a32b2d, Add credential status for provider table
+b95962a3885c -> c20211f18133, add_headers_to_mcp_provider
+8d289573e1da -> b95962a3885c, chore: add workflow app log run id index
+0e154742a5fa -> 8d289573e1da, empty message
+e8446f481c1e -> 0e154742a5fa, Add provider model multi credential support
+fa8b0fa6f407 -> e8446f481c1e, Add provider multi credential support
+532b3f888abf -> fa8b0fa6f407, add timeout for tool_mcp_providers
+8bcc02c9bd07 -> 532b3f888abf, manual dataset field update
+375fe79ead14 -> 8bcc02c9bd07, add_tenant_plugin_autoupgrade_table
+1a83934ad6d1 -> 375fe79ead14, oauth_refresh_token
+71f5020c6470 -> 1a83934ad6d1, update models
+1c9ba48be8e4 -> 71f5020c6470, tool oauth
+58eb7bdb93fe -> 1c9ba48be8e4, add uuidv7 function in SQL
+0ab65e1cc7fa -> 58eb7bdb93fe, add mcp server tool and app server
+4474872b0ee6 -> 0ab65e1cc7fa, remove sequence_number from workflow_runs
+2adcbe1f5dfb -> 4474872b0ee6, `workflow_draft_varaibles` add `node_execution_id` column, add an index for `workflow_node_executions`.
+d28f2004b072 -> 2adcbe1f5dfb, add WorkflowDraftVariable model
+6a9f914f656c -> d28f2004b072, add index for workflow_conversation_variables.conversation_id
+d20049ed0af6 -> 6a9f914f656c, change documentsegment and childchunk indexes
+f051706725cc -> d20049ed0af6, add_metadata_function
+ee79d9b1c156 -> f051706725cc, add_rate_limit_logs
+5511c782ee4c -> ee79d9b1c156, add marked_name and marked_comment in workflows
+4413929e1ec2 -> 5511c782ee4c, extend provider column
+08ec4f75af5e -> 4413929e1ec2, extend_provider_name_column
+ddcc8bbef391 -> 08ec4f75af5e, add_tenant_plugin_permisisons
+a91b476a53de -> ddcc8bbef391, increase max length of builtin tool provider
+923752d42eb6 -> a91b476a53de, change workflow_runs.total_tokens to bigint
+e19037032219 -> 923752d42eb6, add_auto_disabled_dataset_logs
+d7999dfa4aae -> e19037032219, parent-child-index
+e1944c35e15e -> d7999dfa4aae, remove workflow_node_executions.retry_index if exists
+11b07f66c737 -> e1944c35e15e, add retry_index field to node-execution model
+cf8f4fc45278 -> 11b07f66c737, remove unused tool_providers
+01d6889832f7 -> cf8f4fc45278, add exceptions_count field to WorkflowRun model
+09a8d1878d9b -> 01d6889832f7, add_created_at_index_for_messages
+d07474999927 -> 09a8d1878d9b, update workflows graph, features and updated_at
+f4d7ce70a7ca -> d07474999927, update type of custom_disclaimer to TEXT
+93ad8c19c40b -> f4d7ce70a7ca, update upload_files.source_url
+d3f6769a94a3 -> 93ad8c19c40b, rename conversation variables index name
+43fa78bc3b7d -> d3f6769a94a3, Add upload_files.source_url
+0251a1c768cc -> 43fa78bc3b7d, add_white_list
+bbadea11becb -> 0251a1c768cc, add-tidb-auth-binding
+d8e744d88ed6 -> bbadea11becb, add name and size to tool_files
+33f5fac87f29 -> d8e744d88ed6, fix wrong service-api history
+6af6a521a53e -> 33f5fac87f29, external_knowledge_api
+d57ba9ebb251 -> 6af6a521a53e, update-retrieval-resource
+675b5321501b -> d57ba9ebb251, add parent_message_id to messages
+030f4915f36a -> 675b5321501b, add node_execution_id into node_executions
+d0187d6a88dd -> 030f4915f36a, add use_icon_as_answer_icon fields for app and site
+2dbe42621d96 -> d0187d6a88dd, add created_by and updated_by to app, modelconfig, and site
+a6be81136580 -> 2dbe42621d96, rename workflow__conversation_variables to workflow_conversation_variables
+8782057ff0dc -> a6be81136580, app and site icon type
+63a83fcf12ba -> 8782057ff0dc, add conversations.dialogue_count
+1787fbae959a -> 63a83fcf12ba, support conversation variables
+eeb2e349e6ac -> 1787fbae959a, update tools original_url length
+53bf8af60645 -> eeb2e349e6ac, increase max model_name length
+8e5588e6412e -> 53bf8af60645, update model
+6e957a32015b -> 8e5588e6412e, add environment variable to workflow model
+fecff1c3da27 -> 6e957a32015b, add-embedding-cache-created_at_index
+408176b91ad3 -> fecff1c3da27, remove extra tracing app config table and add idx_dataset_permissions_tenant_id
+161cadc1af8d -> 408176b91ad3, 'add_max_active_requests'
+7e6a8693e07a -> 161cadc1af8d, add dataset permission tenant id
+b2602e131636 -> 7e6a8693e07a, add table dataset_permissions
+63f9175e515b -> b2602e131636, add workflow_run_id index for message
+2a3aebbbf4bb, b69ca54b9208 -> 63f9175e515b (mergepoint), merge branches
+c031d46af369 -> 2a3aebbbf4bb, add app tracing
+04c602f5dc9b -> c031d46af369, remove app model config trace config and rename trace app config
+4ff534e1eb11 -> 04c602f5dc9b, update AppModelConfig and add table TracingAppConfig
+4ff534e1eb11 -> b69ca54b9208, add chatbot color theme
+7b45942e39bb -> 4ff534e1eb11 (branchpoint), add workflow to site
+4e99a8df00ff -> 7b45942e39bb, add-api-key-auth-binding
+64a70a7aab8b -> 4e99a8df00ff, add load balancing
+03f98355ba0e -> 64a70a7aab8b, add workflow run index
+9e98fbaffb88 -> 03f98355ba0e, add workflow tool label and tool bindings idx
+3b18fea55204 -> 9e98fbaffb88, add workflow tool version
+7bdef072e63a -> 3b18fea55204, add tool label bings
+5fda94355fce -> 7bdef072e63a, add workflow tool
+47cc7df8c4f3 -> 5fda94355fce, Custom Disclaimer
+3c7cac9521c6 -> 47cc7df8c4f3, modify default model name length
+c3311b089690 -> 3c7cac9521c6, add-tags-and-binding-table
+e2eacc9a1b63 -> c3311b089690, add tool meta
+563cf8bf777b -> e2eacc9a1b63, add status for message
+b5429b71023c -> 563cf8bf777b, enable tool file without conversation id
+42e85ed5564d -> b5429b71023c, messages columns set nullable
+f9107f83abab -> 42e85ed5564d, conversation columns set nullable
+cc04d0998d4d -> f9107f83abab, add desc for apps
+b289e2408ee2 -> cc04d0998d4d, set model config column nullable
+a8d7385a7b66 -> b289e2408ee2, add workflow
+17b5ab037c40 -> a8d7385a7b66, add-embeddings-provider-name
+a8f9b3c45e4a -> 17b5ab037c40, add-keyworg-table-storage-type
+16830a790f0f -> a8f9b3c45e4a, add_tenant_id_db_index
+380c6aa5a70d -> 16830a790f0f, empty message
+dfb3b7f477da -> 380c6aa5a70d, add tool labels to agent thought
+b24be59fbb04 -> dfb3b7f477da, add-tool-index
+de95f5c77138 -> b24be59fbb04, empty message
+23db93619b9d -> de95f5c77138, migration serpapi_api_key
+8ae9bc661daa -> 23db93619b9d, add message files into agent thought
+9fafbd60eca1 -> 8ae9bc661daa, add tool conversation variables idx
+4823da1d26cf -> 9fafbd60eca1, add message file belongs to
+053da0c1d756 -> 4823da1d26cf, add tool file
+4829e54d2fee -> 053da0c1d756, add api tool privacy
+114eed84c228 -> 4829e54d2fee, change message chain id to nullable
+c71211c8f604 -> 114eed84c228, remove tool id from model invoke
+f25003750af4 -> c71211c8f604, add tool_invoke_model_log
+00bacef91f18 -> f25003750af4, add created/updated at
+8ec536f3c800 -> 00bacef91f18, rename api provider description
+ad472b61a054 -> 8ec536f3c800, rename api provider credentials
+3ef9b2b6bee6 -> ad472b61a054, add api provider icon
+89c7899ca936 -> 3ef9b2b6bee6, add_assistant_app
+187385f442fc -> 89c7899ca936, empty message
+88072f0caa04 -> 187385f442fc, modify provider model name length
+246ba09cbbdb -> 88072f0caa04, add custom config in tenant
+714aafe25d39 -> 246ba09cbbdb, add_app_anntation_setting
+f2a6fc85e260 -> 714aafe25d39, add_anntation_history_match_response
+46976cc39132 -> f2a6fc85e260, add_anntation_history_message_id
+e1901f623fd0 -> 46976cc39132, add-annotation-histoiry-score
+fca025d3b60f -> e1901f623fd0, add-annotation-reply
+8fe468ba0ca5 -> fca025d3b60f, add-dataset-retrieval-model
+a9836e3baeee -> 8fe468ba0ca5, add gpt4v supports
+968fff4c0ab9 -> a9836e3baeee, add external_data_tools in app model config
+b3a09c049e8e -> 968fff4c0ab9, add_api_based_extension
+2e9819ca5b28 -> b3a09c049e8e, add advanced prompt templates
+ab23c11305d4 -> 2e9819ca5b28, add_tenant_id_in_api_token
+6e2cfb077b04 -> ab23c11305d4, add dataset query variable at app model configs.
+77e83833755c -> 6e2cfb077b04, add_dataset_collection_binding
+6dcb43972bdc -> 77e83833755c, add_app_config_retriever_resource
+4bcffcd64aa4 -> 6dcb43972bdc, add_dataset_retriever_resource
+853f9b9cd3b6 -> 4bcffcd64aa4, update_dataset_model_field_null_available
+e8883b0148c9 -> 853f9b9cd3b6, add message price unit
+2c8af9671032 -> e8883b0148c9, add_dataset_model_name
+5022897aaceb -> 2c8af9671032, add_qa_document_language
+bf0aec5ba2cf -> 5022897aaceb, add model name in embedding
+e35ed59becda -> bf0aec5ba2cf, add provider order
+16fa53d9faec -> e35ed59becda, modify quota limit field type
+8d2d099ceb74 -> 16fa53d9faec, add provider model support
+7ce5a52e4eee -> 8d2d099ceb74, add_qa_model_support
+2beac44e5f5f -> 7ce5a52e4eee, add tool providers
+a5b56fb053ef -> 2beac44e5f5f, add is_universal in apps
+d3d503a3471c -> a5b56fb053ef, app config add speech_to_text
+e32f6ccb87c6 -> d3d503a3471c, add is_deleted to conversations
+614f77cecc48 -> e32f6ccb87c6, e08af0a69ccefbb59fa80c778efee300bb780980
+a45f4dfde53b -> 614f77cecc48, add last active at
+9f4e3427ea84 -> a45f4dfde53b, add language to recommend apps
+64b051264f32 -> 9f4e3427ea84, add created by role
+<base> -> 64b051264f32, init

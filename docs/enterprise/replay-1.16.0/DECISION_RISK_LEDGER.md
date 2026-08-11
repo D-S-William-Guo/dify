@@ -38,12 +38,12 @@
 | Phase A | 静态范围与基线 | ✅ 已做（B0/B8 evidence） | git | 越界文件、非官方基线 | 已完成 |
 | Phase B | 聚焦单元测试 | ✅ 部分（B4 398、B5 295、B7 21、B8 47+158+61） | Python/Node 环境 | 逻辑回归 | 已完成大部分 |
 | Phase C | OpenAPI/contracts 生成 | ✅ B4 两次 deterministic | pnpm | 契约漂移、手写类型 | 已完成 |
-| Phase D | migration 图 + 真库升级矩阵 | ⚠️ 图已测；真库 NOT_RUN | 隔离 PostgreSQL/备份副本 | 升级失败、数据丢失、uuidv7、双 head | 高（4–6 条路径） |
+| Phase D | migration 图 + 真库升级矩阵 | ✅ 真库 6 行全 PASS（隔离副本） | 隔离 PostgreSQL/备份副本 | 升级失败、数据丢失、uuidv7、双 head | 已完成（6/6 PASS，evidence/phase-d） |
 | Phase E | Compose 静态验证 | ✅ B6/B8 静态 | docker compose config | overlay 丢失依赖/安全变量 | 已完成 |
 | Phase F | 镜像构建 + 容器身份 | ⚠️ NOT_RUN | Docker build/daemon | image ID 不一致、构建缺文件 | 中 |
 | Phase G | 运行验收（browser/API/Agent） | ⚠️ NOT_RUN | 完整运行栈 + 浏览器 | 登录/权限/marketplace/Agent/WebSocket/secret | 高 |
 | Phase H | 离线包 load + `--pull never` smoke | ⚠️ 静态扫描已做；真实 NOT_RUN | 无外网 Docker 目标 | 离线包不可用、含 secret、缺镜像 | 中 |
-| 回滚 | 备份/恢复演练 | ⚠️ NOT_RUN | 隔离卷/备份 | 回滚失败、数据回灌问题 | 高 |
+| 回滚 | 备份/恢复演练 | ✅ 真库演练 PASS（DB 级） | 隔离卷/备份 | 回滚失败、数据回灌问题 | 已完成（evidence/phase-d/rollback-drill） |
 
 ## 已接受决策（2026-08-11）
 
@@ -139,16 +139,16 @@
 - Weaviate 1.27.0；schema class 与 PostgreSQL 预期完全匹配（缺失 0、额外 0）。
 - 1 个 high_quality dataset（class_prefix 存在）。
 - ✅ B2_REVIEW：PASS；16 个 migration graph 测试通过。
+- ✅ 真库升级矩阵 6/6 PASS（Phase D Validator，隔离副本）：生产 PG15 企业 1.15→1.16、官方 1.15→1.16、PG18 空库、PG18 企业 1.15 应用升级、官方 1.16→1.16、备份/恢复回滚演练。证据：`docs/enterprise/replay-1.16.0/evidence/phase-d/`。
 
 ### 已知限制
 
-- ⚠️ 真实 DB 升级矩阵 NOT_RUN。
 - ⚠️ MySQL 条件验证未做。
 - Weaviate `vectorizer`/`vectorIndexType`/`vectorIndexConfig` 为 UNKNOWN。
 
 ### 待判断
 
-- Phase D 授权后，先跑哪条路径？推荐“生产 PG 企业 1.15→1.16 + 回滚”第一条。
+- Phase D 真库矩阵已全部 PASS（6/6）；应用级验收仍属 Phase G。
 
 ---
 
@@ -355,7 +355,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 
 按已接受决策 D：
 
-1. Phase D：隔离副本真库升级矩阵（PG 15.17 企业 1.15→1.16、官方 1.15→1.16、PG18 空库/应用升级、回滚）。
+1. ~~Phase D：隔离副本真库升级矩阵（PG 15.17 企业 1.15→1.16、官方 1.15→1.16、PG18 空库/应用升级、回滚）~~ ✅ 已完成（`replay-116-b8-phase-d-validator`，6/6 PASS，`evidence/phase-d/**`）。
 2. Phase F：build + 五容器 image ID 断言。
 3. Phase G：完整运行验收（platform-admin/marketplace/Agent 12 场景/Workflow/HITL/WebSocket/browser/E2E/secret）。
 4. Phase H：离线 `docker load` + `up --pull never` + smoke + 重复 secret 扫描。
@@ -366,8 +366,8 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 
 | 风险 | 暴露阶段 | 当前状态 | 决策 |
 | --- | --- | --- | --- |
-| migration 升级失败/数据丢失 | Phase D | NOT_RUN | 隔离副本 |
-| uuidv7/PG18 不兼容 | Phase D | NOT_RUN | 必跑 |
+| migration 升级失败/数据丢失 | Phase D | ✅ 已验（6/6 PASS，隔离副本） | 隔离副本 |
+| uuidv7/PG18 不兼容 | Phase D | ✅ 已验（PG18 uuidv7 版本 7；`1c9ba48be8e4` 不重跑） | 必跑 |
 | image ID 不一致 | Phase F | NOT_RUN | 五容器 inspect |
 | 浏览器/交互回归 | Phase G | NOT_RUN | E2E 5 组 |
 | Agent/WebSocket 故障 | Phase G | NOT_RUN | 12 场景 |
