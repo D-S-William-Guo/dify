@@ -1,0 +1,610 @@
+# build.log
+head=0f63806aa3143067a4b4e0f9c0d2fd24102a4152
+command: docker compose -p dify-b8-phase-f -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml -f /tmp/dify-b8-phase-f.override.yaml build --build-arg HTTP_PROXY=REDACTED --build-arg HTTPS_PROXY=REDACTED --build-arg NO_PROXY=... api worker worker_beat api_websocket web
+
+## Attempts
+- api group build attempts 1-3 (before proxy fix): FAILED at 'uv sync' git clone of github.com flask-restx (network). See below.
+- api group attempt (with build.network=host + proxy build-args): PASS
+- web build attempt (with build.network=host + proxy build-args): PASS
+
+## api group build (final, exit 0)
+ Image dify-api-enterprise:1.16.0-enterprise Building
+ Image dify-api-enterprise:1.16.0-enterprise Building
+ Image dify-api-enterprise:1.16.0-enterprise Building
+ Image dify-api-enterprise:1.16.0-enterprise Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 3.59kB done
+#1 DONE 0.0s
+
+#2 [api internal] load build definition from Dockerfile
+#2 transferring dockerfile: 4.58kB done
+#2 WARN: SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "NODESOURCE_KEY_FPR") (line 59)
+#2 WARN: SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "NODESOURCE_KEY_FPR") (line 59)
+#2 WARN: SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "NODESOURCE_KEY_FPR") (line 59)
+#2 WARN: SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "NODESOURCE_KEY_FPR") (line 59)
+#2 DONE 0.0s
+
+#3 [api internal] load metadata for docker.io/library/python:3.12-slim-bookworm
+#3 DONE 0.0s
+
+#4 [api base 1/3] FROM docker.io/library/python:3.12-slim-bookworm
+#4 DONE 0.0s
+
+#5 [api internal] load build context
+#5 transferring context: 79.91kB 0.1s
+#5 transferring context: 186.58kB 0.2s done
+#5 transferring context: 186.58kB 0.2s done
+#5 DONE 0.3s
+
+#6 [worker packages 3/6] COPY api/providers ./providers
+#6 CACHED
+
+#7 [worker packages 5/6] COPY dify-agent/src /app/dify-agent/src
+#7 CACHED
+
+#8 [worker packages 1/6] RUN apt-get update     && apt-get install -y --no-install-recommends           git g++           libmpfr-dev libmpc-dev
+#8 CACHED
+
+#9 [worker base 3/3] RUN pip install --no-cache-dir uv==0.8.9
+#9 CACHED
+
+#10 [worker packages 2/6] COPY api/pyproject.toml api/uv.lock ./
+#10 CACHED
+
+#11 [worker base 2/3] WORKDIR /app/api
+#11 CACHED
+
+#12 [worker packages 4/6] COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
+#12 CACHED
+
+#13 [worker packages 6/6] RUN uv sync --frozen --no-dev --no-editable
+#13 CACHED
+
+#14 [worker_beat production 3/8] RUN     apt-get update     && apt-get install -y --no-install-recommends         ca-certificates         curl         gnupg     && mkdir -p /etc/apt/keyrings     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /tmp/nodesource.gpg     && gpg --show-keys --with-colons /tmp/nodesource.gpg         | awk -F: '/^fpr:/ {print $10}'         | grep -Fx "6F71F525282841EEDAF851B42F59B5F99B1BE0B4"     && gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg /tmp/nodesource.gpg     && rm -f /tmp/nodesource.gpg     && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main"         > /etc/apt/sources.list.d/nodesource.list     && apt-get update     && apt-get install -y --no-install-recommends         nodejs=22.21.0-1nodesource1         libgmp-dev libmpfr-dev libmpc-dev         expat libldap-2.5-0=2.5.13+dfsg-5 perl libsqlite3-0=3.40.1-2+deb12u2 zlib1g=1:1.2.13.dfsg-1         fonts-noto-cjk         media-types         libmagic1     && apt-get autoremove -y     && rm -rf /var/lib/apt/lists/*
+#14 CACHED
+
+#15 [worker_beat production 1/8] WORKDIR /app/api
+#15 CACHED
+
+#16 [worker_beat production 2/8] RUN groupadd -r -g 1001 dify &&     useradd -r -u 1001 -g 1001 -s /bin/bash dify &&     chown -R dify:dify /app
+#16 CACHED
+
+#17 [worker_beat production 4/8] COPY --from=packages --chown=dify:dify /app/api/.venv /app/api/.venv
+#17 CACHED
+
+#18 [worker_beat production 5/8] RUN mkdir -p /usr/local/share/nltk_data     && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')"     && chmod -R 755 /usr/local/share/nltk_data
+#18 2.540 [nltk_data] Downloading package punkt to /usr/local/share/nltk_data...
+#18 3.493 [nltk_data]   Unzipping tokenizers/punkt.zip.
+#18 3.971 [nltk_data] Downloading package averaged_perceptron_tagger to
+#18 3.971 [nltk_data]     /usr/local/share/nltk_data...
+#18 4.673 [nltk_data]   Unzipping taggers/averaged_perceptron_tagger.zip.
+#18 4.732 [nltk_data] Downloading package stopwords to
+#18 4.732 [nltk_data]     /usr/local/share/nltk_data...
+#18 5.188 [nltk_data]   Unzipping corpora/stopwords.zip.
+#18 DONE 5.5s
+
+#19 [api production 6/8] RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')"     && chown -R dify:dify /app/api/.tiktoken_cache
+#19 DONE 7.0s
+
+#20 [worker_beat production 7/8] COPY --chown=dify:dify api /app/api/
+#20 DONE 0.7s
+
+#21 [worker_beat production 8/8] COPY --chown=dify:dify --chmod=755 api/docker/entrypoint.sh /entrypoint.sh
+#21 DONE 0.2s
+
+#22 [worker] exporting to image
+#22 exporting layers
+#22 ...
+
+#23 [api_websocket] exporting to image
+#23 ...
+
+#24 [api] exporting to image
+#24 ...
+
+#25 [worker_beat] exporting to image
+#25 ...
+
+#24 [api] exporting to image
+#24 exporting layers 24.1s done
+#24 writing image sha256:3171c59c9a04e2f1309850a220891f650464cb0c2af250798904a03eea2d9a5f 0.0s done
+#24 naming to docker.io/library/dify-api-enterprise:1.16.0-enterprise 0.0s done
+#24 DONE 24.3s
+
+#22 [worker] exporting to image
+#22 exporting layers 24.1s done
+#22 writing image sha256:5161865a22382e95e77bdf897c50877f2addbe79680ba1c107e26f7c09c1ce19 0.0s done
+#22 naming to docker.io/library/dify-api-enterprise:1.16.0-enterprise 0.0s done
+#22 DONE 24.3s
+
+#25 [worker_beat] exporting to image
+#25 exporting layers 24.1s done
+#25 writing image sha256:eddfeceba711f3ae5c8c9b984870fdcf787cd2c0d1f1da2956dc5ec85e569dc1 done
+#25 naming to docker.io/library/dify-api-enterprise:1.16.0-enterprise 0.1s done
+#25 DONE 24.3s
+
+#23 [api_websocket] exporting to image
+#23 exporting layers 24.1s done
+#23 writing image sha256:cb4d99a45ac1fcadbe02336e4633053c2234e775e8e65fb8bd2c8d7fdc70c347 0.0s done
+#23 naming to docker.io/library/dify-api-enterprise:1.16.0-enterprise 0.0s done
+#23 DONE 24.3s
+
+#26 [api] resolving provenance for metadata file
+#26 DONE 0.2s
+
+#27 [worker] resolving provenance for metadata file
+#27 DONE 0.1s
+
+#28 [worker_beat] resolving provenance for metadata file
+#28 DONE 0.1s
+
+#29 [api_websocket] resolving provenance for metadata file
+#29 DONE 0.0s
+ Image dify-api-enterprise:1.16.0-enterprise Built
+ Image dify-api-enterprise:1.16.0-enterprise Built
+ Image dify-api-enterprise:1.16.0-enterprise Built
+ Image dify-api-enterprise:1.16.0-enterprise Built
+
+## web build (final, exit 0)
+ Image dify-web-enterprise:1.16.0-enterprise Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 946B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 3.02kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:22.22.1-alpine
+#3 DONE 1.9s
+
+#4 [base 1/3] FROM docker.io/library/node:22.22.1-alpine@sha256:8094c002d08262dba12645a3b4a15cd6cd627d30bc782f53229a2ec13ee22a00
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 57B 0.1s
+#5 transferring context: 80.25MB 2.2s done
+#5 DONE 2.3s
+
+#6 [base 2/3] RUN apk add --no-cache tzdata
+#6 CACHED
+
+#7 [base 3/3] RUN corepack enable
+#7 CACHED
+
+#8 [packages 1/8] WORKDIR /app
+#8 CACHED
+
+#9 [packages 2/8] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
+#9 DONE 0.5s
+
+#10 [packages 3/8] COPY web/package.json /app/web/
+#10 DONE 0.2s
+
+#11 [packages 4/8] COPY e2e/package.json /app/e2e/
+#11 DONE 0.1s
+
+#12 [packages 5/8] COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
+#12 DONE 0.1s
+
+#13 [packages 6/8] COPY packages /app/packages
+#13 DONE 0.3s
+
+#14 [packages 7/8] RUN corepack install
+#14 0.436 Adding pnpm@11.10.0 to the cache...
+#14 DONE 2.4s
+
+#15 [packages 8/8] RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
+#15 1.623 Scope: all 11 workspace projects
+#15 2.051 ? Verifying lockfile against supply-chain policies (1621 entries)...
+#15 2.082 Lockfile is up to date, resolution step is skipped
+#15 2.364 Progress: resolved 1, reused 0, downloaded 0, added 0
+#15 2.814 Packages: +1350
+#15 2.814 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#15 3.367 Progress: resolved 1350, reused 0, downloaded 0, added 0
+#15 4.385 Progress: resolved 1350, reused 0, downloaded 107, added 104
+#15 5.401 Progress: resolved 1350, reused 0, downloaded 242, added 237
+#15 6.369
+#15 6.369    ╭───────────────────────────────────────────────╮
+#15 6.369    │                                               │
+#15 6.369    │     Update available! 11.10.0 → 11.21.0.      │
+#15 6.369    │     Changelog: https://pnpm.io/v/11.21.0      │
+#15 6.369    │   To update, run: corepack use pnpm@11.21.0   │
+#15 6.369    │                                               │
+#15 6.369    ╰───────────────────────────────────────────────╯
+#15 6.369
+#15 6.433 Progress: resolved 1350, reused 0, downloaded 385, added 388
+#15 7.439 Progress: resolved 1350, reused 0, downloaded 461, added 475
+#15 8.443 Progress: resolved 1350, reused 0, downloaded 562, added 581
+#15 9.463 Progress: resolved 1350, reused 0, downloaded 656, added 678
+#15 10.46 Progress: resolved 1350, reused 0, downloaded 737, added 768
+#15 11.60 Progress: resolved 1350, reused 0, downloaded 819, added 848
+#15 12.61 Progress: resolved 1350, reused 0, downloaded 892, added 923
+#15 13.63 Progress: resolved 1350, reused 0, downloaded 920, added 951
+#15 14.63 Progress: resolved 1350, reused 0, downloaded 975, added 1006
+#15 14.77 [WARN] Request took 10351ms: https://registry.npmjs.org/@eslint-react%2Feslint-plugin
+#15 15.64 Progress: resolved 1350, reused 0, downloaded 1041, added 1067
+#15 16.66 Progress: resolved 1350, reused 0, downloaded 1129, added 1154
+#15 17.73 Progress: resolved 1350, reused 0, downloaded 1204, added 1224
+#15 18.11 [WARN] Request took 11235ms: https://registry.npmjs.org/@next%2Fmdx
+#15 18.73 Progress: resolved 1350, reused 0, downloaded 1286, added 1316
+#15 19.53 Progress: resolved 1350, reused 0, downloaded 1319, added 1350, done
+#15 21.39 [WARN] Request took 10337ms: https://registry.npmjs.org/@storybook%2Faddon-themes
+#15 21.51 [WARN] Request took 10212ms: https://registry.npmjs.org/@storybook%2Freact-dom-shim
+#15 23.10 [WARN] Request took 11975ms: https://registry.npmjs.org/@storybook%2Fbuilder-vite
+#15 23.35 [WARN] Request took 12030ms: https://registry.npmjs.org/@storybook%2Freact-vite
+#15 24.09 [WARN] Request took 13771ms: https://registry.npmjs.org/@playwright%2Ftest
+#15 26.73 [WARN] Request took 15716ms: https://registry.npmjs.org/@storybook%2Faddon-links
+#15 27.08 [WARN] Request took 16132ms: https://registry.npmjs.org/@storybook%2Faddon-a11y
+#15 27.83 [WARN] Request took 11165ms: https://registry.npmjs.org/@typescript-eslint%2Ftype-utils
+#15 28.56 [WARN] Request took 12425ms: https://registry.npmjs.org/@types%2Fnode
+#15 28.84 [WARN] Request took 17528ms: https://registry.npmjs.org/@storybook%2Freact
+#15 29.11 [WARN] Request took 12414ms: https://registry.npmjs.org/@typescript-eslint%2Futils
+#15 30.74 [WARN] Request took 11033ms: https://registry.npmjs.org/axe-core
+#15 30.96 [WARN] Request took 14187ms: https://registry.npmjs.org/@typescript-eslint%2Fvisitor-keys
+#15 31.20 [WARN] Request took 20200ms: https://registry.npmjs.org/@storybook%2Faddon-docs
+#15 31.52 [WARN] Request took 14850ms: https://registry.npmjs.org/@typescript-eslint%2Ftypes
+#15 31.76 [WARN] Request took 15158ms: https://registry.npmjs.org/@typescript-eslint%2Fscope-manager
+#15 32.79 [WARN] Request took 10963ms: https://registry.npmjs.org/es-toolkit
+#15 33.35 [WARN] Request took 16774ms: https://registry.npmjs.org/@typescript-eslint%2Fparser
+#15 33.71 [WARN] Request took 27601ms: https://registry.npmjs.org/@lexical%2Freact
+#15 34.33 [WARN] Request took 17604ms: https://registry.npmjs.org/@typescript-eslint%2Ftypescript-estree
+#15 35.08 [WARN] Request took 14990ms: https://registry.npmjs.org/chromatic
+#15 36.08 [WARN] Request took 10254ms: https://registry.npmjs.org/playwright-core
+#15 37.18 [WARN] Request took 11927ms: https://registry.npmjs.org/next
+#15 37.29 ✓ Lockfile passes supply-chain policies (1621 entries in 35.2s)
+#15 37.70
+#15 37.70 devDependencies:
+#15 37.70 + @eslint-community/eslint-plugin-eslint-comments 4.7.2
+#15 37.70 + @eslint-react/eslint-plugin 5.14.5
+#15 37.70 + @eslint/markdown 8.0.3
+#15 37.70 + @iconify-json/heroicons 1.2.3
+#15 37.70 + @iconify-json/ri 1.2.10
+#15 37.70 + @tanstack/eslint-plugin-query 5.101.2
+#15 37.70 + @typescript-eslint/parser 8.63.0
+#15 37.70 + @typescript/native <- typescript 7.0.2
+#15 37.70 + concurrently 10.0.3
+#15 37.70 + eslint 10.7.0
+#15 37.70 + eslint-markdown 0.12.1
+#15 37.70 + eslint-plugin-antfu 3.2.3
+#15 37.70 + eslint-plugin-command 3.5.2
+#15 37.70 + eslint-plugin-erasable-syntax-only 0.4.2
+#15 37.70 + eslint-plugin-hyoban 0.14.1
+#15 37.70 + eslint-plugin-jsdoc 63.0.13
+#15 37.70 + eslint-plugin-jsonc 3.3.0
+#15 37.70 + eslint-plugin-markdown-preferences 0.41.1
+#15 37.70 + eslint-plugin-n 18.2.2
+#15 37.70 + eslint-plugin-no-barrel-files 1.3.1
+#15 37.70 + eslint-plugin-perfectionist 5.10.0
+#15 37.70 + eslint-plugin-pnpm 1.6.1
+#15 37.70 + eslint-plugin-regexp 3.1.1
+#15 37.70 + eslint-plugin-storybook 10.5.0
+#15 37.70 + eslint-plugin-toml 1.4.0
+#15 37.70 + eslint-plugin-unicorn 71.1.0
+#15 37.70 + eslint-plugin-yml 3.6.0
+#15 37.70 + node 22.23.1
+#15 37.70 + typescript <- @typescript/typescript6 6.0.2
+#15 37.70 + vite <- @voidzero-dev/vite-plus-core 0.2.5
+#15 37.70 + vite-plus 0.2.5
+#15 37.70
+#15 37.74 . prepare$ vp config
+#15 38.46 . prepare: skip install (git hooks disabled)
+#15 38.48 . prepare: Done
+#15 38.54 packages/dev-proxy prepare$ pnpm run build
+#15 40.07 packages/dev-proxy prepare: $ vp pack
+#15 42.30 packages/dev-proxy prepare: ℹ entry: src/index.ts, src/cli.ts
+#15 42.30 packages/dev-proxy prepare: ℹ target: node22
+#15 42.30 packages/dev-proxy prepare: ℹ tsconfig: tsconfig.json
+#15 42.30 packages/dev-proxy prepare: ℹ Build start
+#15 42.35 packages/dev-proxy prepare: warn: TypeScript 7.0 does not yet have a stable API and is experimental. Some options will be unavailable.
+#15 42.37 packages/dev-proxy prepare: ℹ Emit types with typescript@7.0.2
+#15 42.80 packages/dev-proxy prepare: ℹ dist/cli.mjs                   4.29 kB │ gzip: 1.45 kB
+#15 42.80 packages/dev-proxy prepare: ℹ dist/index.mjs                 0.68 kB │ gzip: 0.28 kB
+#15 42.80 packages/dev-proxy prepare: ℹ dist/server-B7kScAEi.mjs.map  29.29 kB │ gzip: 8.00 kB
+#15 42.80 packages/dev-proxy prepare: ℹ dist/server-B7kScAEi.mjs      15.78 kB │ gzip: 4.44 kB
+#15 42.80 packages/dev-proxy prepare: ℹ dist/cli.mjs.map               7.37 kB │ gzip: 2.35 kB
+#15 42.80 packages/dev-proxy prepare: ℹ dist/index.d.mts               3.43 kB │ gzip: 1.02 kB
+#15 42.80 packages/dev-proxy prepare: ℹ dist/cli.d.mts                 0.01 kB │ gzip: 0.03 kB
+#15 42.80 packages/dev-proxy prepare: ℹ 7 files, total: 60.85 kB
+#15 42.80 packages/dev-proxy prepare: ✔ Build complete in 495ms
+#15 42.87 packages/dev-proxy prepare: Done
+#15 43.17 Done in 42.8s using pnpm v11.10.0
+#15 DONE 44.5s
+
+#16 [builder 2/5] COPY --from=packages /app/ .
+#16 DONE 16.9s
+
+#17 [builder 3/5] COPY . .
+#17 DONE 2.3s
+
+#18 [builder 4/5] WORKDIR /app/web
+#18 DONE 0.1s
+
+#19 [builder 5/5] RUN pnpm build && pnpm build:vinext
+#19 0.384 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-11.10.0.tgz
+#19 3.606 $ next build
+#19 6.453 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+#19 6.454 This information is used to shape Next.js' roadmap and prioritize features.
+#19 6.454 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#19 6.454 https://nextjs.org/telemetry
+#19 6.454
+#19 6.493 ▲ Next.js 16.2.10 (Turbopack)
+#19 6.493
+#19 6.714   Creating an optimized production build ...
+#19 121.9 ✓ Compiled successfully in 113s
+#19 121.9   Skipping validation of types
+#19 122.0   Finished TypeScript config validation in 28ms ...
+#19 122.0   Collecting page data using 15 workers ...
+#19 135.7   Generating static pages using 15 workers (0/45) ...
+#19 136.2 [systemFeatures] server fetch failed Error: Dynamic server usage: Route /deployments/create couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+#19 136.2     at y (.next/server/chunks/ssr/16jy_next_dist_0r5xed4._.js:1:12756)
+#19 136.2     at m (.next/server/chunks/ssr/_1vhb06k._.js:1:15909)
+#19 136.2     at <unknown> (.next/server/chunks/ssr/_1yu7fl5._.js:1:13285) {
+#19 136.2   description: "Route /deployments/create couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+#19 136.2   digest: 'DYNAMIC_SERVER_USAGE'
+#19 136.2 }
+#19 137.0   Generating static pages using 15 workers (11/45)
+#19 137.0 [systemFeatures] server fetch failed Error: Dynamic server usage: Route /deployments couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+#19 137.0     at y (.next/server/chunks/ssr/16jy_next_dist_0r5xed4._.js:1:12756)
+#19 137.0     at m (.next/server/chunks/ssr/_1vhb06k._.js:1:15909)
+#19 137.0     at <unknown> (.next/server/chunks/ssr/_1yu7fl5._.js:1:13285) {
+#19 137.0   description: "Route /deployments couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+#19 137.0   digest: 'DYNAMIC_SERVER_USAGE'
+#19 137.0 }
+#19 137.2   Generating static pages using 15 workers (22/45)
+#19 137.8   Generating static pages using 15 workers (33/45)
+#19 138.0 ✓ Generating static pages using 15 workers (45/45) in 2.4s
+#19 138.1   Finalizing page optimization ...
+#19 142.6
+#19 142.6 Route (app)
+#19 142.6 ┌ ƒ /
+#19 142.6 ├ ƒ /_not-found
+#19 142.6 ├ ƒ /account
+#19 142.6 ├ ƒ /account/oauth/authorize
+#19 142.6 ├ ƒ /activate
+#19 142.6 ├ ƒ /agent/[token]
+#19 142.6 ├ ƒ /agents
+#19 142.6 ├ ƒ /agents/[agentId]
+#19 142.6 ├ ƒ /agents/[agentId]/access
+#19 142.6 ├ ƒ /agents/[agentId]/configure
+#19 142.6 ├ ƒ /agents/[agentId]/logs
+#19 142.6 ├ ƒ /agents/[agentId]/monitoring
+#19 142.6 ├ ƒ /app/[appId]/access-config
+#19 142.6 ├ ƒ /app/[appId]/annotations
+#19 142.6 ├ ƒ /app/[appId]/configuration
+#19 142.6 ├ ƒ /app/[appId]/develop
+#19 142.6 ├ ƒ /app/[appId]/logs
+#19 142.6 ├ ƒ /app/[appId]/overview
+#19 142.6 ├ ƒ /app/[appId]/workflow
+#19 142.6 ├ ƒ /apps
+#19 142.6 ├ ƒ /auth/refresh
+#19 142.6 ├ ƒ /chat/[token]
+#19 142.6 ├ ƒ /chatbot/[token]
+#19 142.6 ├ ƒ /completion/[token]
+#19 142.6 ├ ƒ /components/integrations
+#19 142.6 ├ ƒ /datasets
+#19 142.6 ├ ƒ /datasets/[datasetId]/access-config
+#19 142.6 ├ ƒ /datasets/[datasetId]/api
+#19 142.6 ├ ƒ /datasets/[datasetId]/documents
+#19 142.6 ├ ƒ /datasets/[datasetId]/documents/[documentId]
+#19 142.6 ├ ƒ /datasets/[datasetId]/documents/[documentId]/settings
+#19 142.6 ├ ƒ /datasets/[datasetId]/documents/create
+#19 142.6 ├ ƒ /datasets/[datasetId]/documents/create-from-pipeline
+#19 142.6 ├ ƒ /datasets/[datasetId]/hitTesting
+#19 142.6 ├ ƒ /datasets/[datasetId]/pipeline
+#19 142.6 ├ ƒ /datasets/[datasetId]/settings
+#19 142.6 ├ ƒ /datasets/connect
+#19 142.6 ├ ƒ /datasets/create
+#19 142.6 ├ ƒ /datasets/create-from-pipeline
+#19 142.6 ├ ƒ /deployments
+#19 142.6 ├ ƒ /deployments/[appInstanceId]
+#19 142.6 ├ ƒ /deployments/[appInstanceId]/access
+#19 142.6 ├ ƒ /deployments/[appInstanceId]/api-tokens
+#19 142.6 ├ ƒ /deployments/[appInstanceId]/instances
+#19 142.6 ├ ƒ /deployments/[appInstanceId]/overview
+#19 142.6 ├ ƒ /deployments/[appInstanceId]/releases
+#19 142.6 ├ ƒ /deployments/create
+#19 142.6 ├ ƒ /device
+#19 142.6 ├ ƒ /education-apply
+#19 142.6 ├ ƒ /enterprise-marketplace
+#19 142.6 ├ ƒ /enterprise-marketplace/[assetId]
+#19 142.6 ├ ƒ /enterprise-marketplace/submissions
+#19 142.6 ├ ƒ /explore/apps
+#19 142.6 ├ ƒ /explore/installed/[appId]
+#19 142.6 ├ ƒ /forgot-password
+#19 142.6 ├ ƒ /form/[token]
+#19 142.6 ├ ƒ /init
+#19 142.6 ├ ƒ /install
+#19 142.6 ├ ƒ /installed/[appId]
+#19 142.6 ├ ƒ /integrations/[[...slug]]
+#19 142.6 ├ ƒ /marketplace
+#19 142.6 ├ ƒ /oauth-callback
+#19 142.6 ├ ƒ /platform-admin/enterprise-marketplace
+#19 142.6 ├ ƒ /platform-admin/workspaces
+#19 142.6 ├ ƒ /platform-admin/workspaces/[workspaceId]
+#19 142.6 ├ ƒ /plugins
+#19 142.6 ├ ƒ /reset-password
+#19 142.6 ├ ƒ /reset-password/check-code
+#19 142.6 ├ ƒ /reset-password/set-password
+#19 142.6 ├ ƒ /signin
+#19 142.6 ├ ƒ /signin/check-code
+#19 142.6 ├ ƒ /signin/invite-settings
+#19 142.6 ├ ƒ /signup
+#19 142.6 ├ ƒ /signup/check-code
+#19 142.6 ├ ƒ /signup/set-password
+#19 142.6 ├ ƒ /snippets
+#19 142.6 ├ ƒ /snippets/[snippetId]
+#19 142.6 ├ ƒ /snippets/[snippetId]/orchestrate
+#19 142.6 ├ ƒ /tools
+#19 142.6 ├ ƒ /webapp-reset-password
+#19 142.6 ├ ƒ /webapp-reset-password/check-code
+#19 142.6 ├ ƒ /webapp-reset-password/set-password
+#19 142.6 ├ ƒ /webapp-signin
+#19 142.6 ├ ƒ /webapp-signin/check-code
+#19 142.6 └ ƒ /workflow/[token]
+#19 142.6
+#19 142.6
+#19 142.6 ƒ Proxy (Middleware)
+#19 142.6
+#19 142.6 ƒ  (Dynamic)  server-rendered on demand
+#19 142.6
+#19 144.9 $ vinext build
+#19 146.1
+#19 146.1   vinext build  (Vite 8.1.4)
+#19 146.1
+#19 148.3 [vinext] next.config option "webpack" is not yet supported and will be ignored
+#19 148.4 [vinext] next.config option "webpack" is not yet supported and will be ignored
+#19 151.2 [vinext] Auto-injected @mdx-js/rollup for MDX support
+#19 151.5 [1/5] analyze client references...
+#19 151.6 [2Ktransforming...
+#19 159.1 ~@/app/components/workflow/run/assets/bg-line-error.svg?vinext_css_url_asset=bg-line-error.svg referenced in ~@/app/components/workflow/run/assets/bg-line-error.svg?vinext_css_url_asset=bg-line-error.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 159.1
+#19 159.1 ~@/app/components/workflow/run/assets/bg-line-running.svg?vinext_css_url_asset=bg-line-running.svg referenced in ~@/app/components/workflow/run/assets/bg-line-running.svg?vinext_css_url_asset=bg-line-running.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 159.1
+#19 159.1 ~@/app/components/workflow/run/assets/bg-line-success.svg?vinext_css_url_asset=bg-line-success.svg referenced in ~@/app/components/workflow/run/assets/bg-line-success.svg?vinext_css_url_asset=bg-line-success.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 159.1
+#19 159.1 ~@/app/components/workflow/run/assets/bg-line-warning.svg?vinext_css_url_asset=bg-line-warning.svg referenced in ~@/app/components/workflow/run/assets/bg-line-warning.svg?vinext_css_url_asset=bg-line-warning.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 159.1
+#19 159.1 ~@/app/components/workflow/run/assets/highlight-dark.svg?vinext_css_url_asset=highlight-dark.svg referenced in ~@/app/components/workflow/run/assets/highlight-dark.svg?vinext_css_url_asset=highlight-dark.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 159.1
+#19 159.1 ~@/app/components/workflow/run/assets/highlight.svg?vinext_css_url_asset=highlight.svg referenced in ~@/app/components/workflow/run/assets/highlight.svg?vinext_css_url_asset=highlight.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 161.9 ✓ 1845 modules transformed.
+#19 162.0 rendering chunks...
+#19 162.1 [33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+#19 162.1   - rsc:virtual-client-package (14%)
+#19 162.1   - vinext:og-inline-fetch-assets (9%)
+#19 162.1   - alias (9%)
+#19 162.1   - vinext:validate-middleware-exports (8%)
+#19 162.1   - vite-plugin-commonjs (7%)
+#19 162.1 See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+#19 162.1
+#19 162.1 ✓ built in 10.54s
+#19 162.1 [2/5] analyze server references...
+#19 162.1 [2Ktransforming...
+#19 180.0 ~@/app/components/develop/secret-key/assets/copy.svg?vinext_css_url_asset=copy.svg referenced in ~@/app/components/develop/secret-key/assets/copy.svg?vinext_css_url_asset=copy.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 180.0
+#19 180.0 ~@/app/components/develop/secret-key/assets/copy-hover.svg?vinext_css_url_asset=copy-hover.svg referenced in ~@/app/components/develop/secret-key/assets/copy-hover.svg?vinext_css_url_asset=copy-hover.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 180.0
+#19 180.0 ~@/app/components/develop/secret-key/assets/copied.svg?vinext_css_url_asset=copied.svg referenced in ~@/app/components/develop/secret-key/assets/copied.svg?vinext_css_url_asset=copied.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/action.svg?vinext_css_url_asset=action.svg referenced in ~@/assets/action.svg?vinext_css_url_asset=action.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/pdf.svg?vinext_css_url_asset=pdf.svg referenced in ~@/assets/pdf.svg?vinext_css_url_asset=pdf.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/json.svg?vinext_css_url_asset=json.svg referenced in ~@/assets/json.svg?vinext_css_url_asset=json.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/html.svg?vinext_css_url_asset=html.svg referenced in ~@/assets/html.svg?vinext_css_url_asset=html.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/txt.svg?vinext_css_url_asset=txt.svg referenced in ~@/assets/txt.svg?vinext_css_url_asset=txt.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/md.svg?vinext_css_url_asset=md.svg referenced in ~@/assets/md.svg?vinext_css_url_asset=md.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/xlsx.svg?vinext_css_url_asset=xlsx.svg referenced in ~@/assets/xlsx.svg?vinext_css_url_asset=xlsx.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/csv.svg?vinext_css_url_asset=csv.svg referenced in ~@/assets/csv.svg?vinext_css_url_asset=csv.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/doc.svg?vinext_css_url_asset=doc.svg referenced in ~@/assets/doc.svg?vinext_css_url_asset=doc.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 196.8
+#19 196.8 ~@/assets/docx.svg?vinext_css_url_asset=docx.svg referenced in ~@/assets/docx.svg?vinext_css_url_asset=docx.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 208.0
+#19 208.0 ~@/app/components/develop/secret-key/assets/svg.svg?vinext_css_url_asset=svg.svg referenced in ~@/app/components/develop/secret-key/assets/svg.svg?vinext_css_url_asset=svg.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 208.0
+#19 208.0 ~@/app/components/develop/secret-key/assets/svged.svg?vinext_css_url_asset=svged.svg referenced in ~@/app/components/develop/secret-key/assets/svged.svg?vinext_css_url_asset=svged.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 220.7
+#19 220.7 ~@/app/components/develop/secret-key/assets/play.svg?vinext_css_url_asset=play.svg referenced in ~@/app/components/develop/secret-key/assets/play.svg?vinext_css_url_asset=play.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 220.7
+#19 220.7 ~@/app/components/develop/secret-key/assets/pause.svg?vinext_css_url_asset=pause.svg referenced in ~@/app/components/develop/secret-key/assets/pause.svg?vinext_css_url_asset=pause.svg didn't resolve at build time, it will remain unchanged to be resolved at runtime
+#19 221.7 ✓ 11011 modules transformed.
+#19 221.8 rendering chunks...
+#19 221.9 [33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+#19 221.9   - vinext:og-inline-fetch-assets (31%)
+#19 221.9   - vinext:middleware-server-only (25%)
+#19 221.9   - alias (17%)
+#19 221.9   - vinext:css-data-url (11%)
+#19 221.9   - rsc:virtual-client-package (6%)
+#19 221.9 See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+#19 221.9
+#19 221.9 ✓ built in 59.78s
+#19 221.9 [3/5] build rsc environment...
+#19 222.2 [2Ktransforming...✓ 1849 modules transformed.
+#19 231.1 rendering chunks...
+#19 232.4 computing gzip size...
+#19 233.5 [33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+#19 233.5   - rsc:virtual-client-package (9%)
+#19 233.5   - vinext:config (8%)
+#19 233.5   - rsc:load-environment-module (7%)
+#19 233.5   - alias (6%)
+#19 233.5   - vinext:og-inline-fetch-assets (5%)
+#19 233.5 See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+#19 233.5
+#19 233.5 ✓ built in 11.65s
+#19 233.5 [4/5] build client environment...
+#19 233.6 [2Ktransforming...✓ 11834 modules transformed.
+#19 289.8 rendering chunks...
+#19 295.4 computing gzip size...
+#19 295.6 [plugin builtin:vite-reporter]
+#19 295.6 (!) Some chunks are larger than 500 kB after minification. Consider:
+#19 295.6 - Using dynamic import() to code-split the application
+#19 295.6 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#19 295.6 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#19 296.3 [33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+#19 296.3   - vinext:og-inline-fetch-assets (35%)
+#19 296.3   - vinext:middleware-server-only (27%)
+#19 296.3   - alias (14%)
+#19 296.3   - vinext:css-data-url (7%)
+#19 296.3   - rsc:virtual-client-package (6%)
+#19 296.3 See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+#19 296.3
+#19 296.3 ✓ built in 1m 3s
+#19 296.5 [5/5] build ssr environment...
+#19 296.5 [2Ktransforming...✓ 11235 modules transformed.
+#19 344.9 rendering chunks...
+#19 348.4 computing gzip size...
+#19 348.8 [33m[PLUGIN_TIMINGS] [0mYour build spent significant time in plugins. Here is a breakdown:
+#19 348.8   - vinext:middleware-server-only (29%)
+#19 348.8   - vinext:og-inline-fetch-assets (28%)
+#19 348.8   - alias (13%)
+#19 348.8   - vinext:css-data-url (12%)
+#19 348.8   - rsc:virtual-client-package (7%)
+#19 348.8 See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+#19 348.8
+#19 348.9 ✓ built in 52.41s
+#19 351.5   Generated standalone output in dist/standalone/
+#19 351.5   Start it with: node dist/standalone/server.js
+#19 351.5
+#19 DONE 352.4s
+
+#20 [production 1/8] RUN ln -s /usr/share/zoneinfo/UTC /etc/localtime     && echo UTC > /etc/timezone
+#20 CACHED
+
+#21 [production 2/8] RUN addgroup -S -g 1001 dify &&     adduser -S -u 1001 -G dify -s /bin/ash -h /home/dify dify &&     mkdir /app &&     chown -R dify:dify /app
+#21 CACHED
+
+#22 [production 3/8] WORKDIR /app
+#22 CACHED
+
+#23 [production 4/8] COPY --from=builder --chown=dify:dify /app/web/public ./targets/next/web/public
+#23 DONE 0.3s
+
+#24 [production 5/8] COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./targets/next/
+#24 DONE 1.7s
+
+#25 [production 6/8] COPY --from=builder --chown=dify:dify /app/web/.next/static ./targets/next/web/.next/static
+#25 DONE 0.7s
+
+#26 [production 7/8] COPY --from=builder --chown=dify:dify /app/web/dist/standalone ./targets/vinext
+#26 DONE 2.3s
+
+#27 [production 8/8] COPY --chown=dify:dify --chmod=755 web/docker/entrypoint.sh ./entrypoint.sh
+#27 DONE 0.2s
+
+#28 exporting to image
+#28 exporting layers
+#28 exporting layers 2.8s done
+#28 writing image sha256:0ae50b4527b8968f89ffb9bc70f100216b2f2002a0a807af2de4cc45f556990d done
+#28 naming to docker.io/library/dify-web-enterprise:1.16.0-enterprise 0.0s done
+#28 DONE 2.9s
+
+#29 resolving provenance for metadata file
+#29 DONE 0.0s
+ Image dify-web-enterprise:1.16.0-enterprise Built

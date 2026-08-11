@@ -1,0 +1,20 @@
+# compose-config.log
+head=0f63806aa3143067a4b4e0f9c0d2fd24102a4152
+DIFY_ENTERPRISE_VERSION=1.16.0-enterprise
+COMPOSE_PROFILES=weaviate,postgresql,collaboration
+command: docker compose -p dify-b8-phase-f -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml -f /tmp/dify-b8-phase-f.override.yaml config -q
+config_q_exit=0
+
+## config --images | sort -u
+busybox:latest
+dify-api-enterprise:1.16.0-enterprise
+dify-web-enterprise:1.16.0-enterprise
+langgenius/dify-agent-backend:1.16.0
+langgenius/dify-agent-local-sandbox:1.16.0
+langgenius/dify-plugin-daemon:0.6.3-local
+langgenius/dify-sandbox:0.2.15
+nginx:latest
+postgres:15-alpine
+redis:6-alpine
+semitechnologies/weaviate:1.27.0
+ubuntu/squid:latest

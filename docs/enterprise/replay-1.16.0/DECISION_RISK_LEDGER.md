@@ -40,7 +40,7 @@
 | Phase C | OpenAPI/contracts 生成 | ✅ B4 两次 deterministic | pnpm | 契约漂移、手写类型 | 已完成 |
 | Phase D | migration 图 + 真库升级矩阵 | ✅ 真库 6 行全 PASS（隔离副本） | 隔离 PostgreSQL/备份副本 | 升级失败、数据丢失、uuidv7、双 head | 已完成（6/6 PASS，evidence/phase-d） |
 | Phase E | Compose 静态验证 | ✅ B6/B8 静态 | docker compose config | overlay 丢失依赖/安全变量 | 已完成 |
-| Phase F | 镜像构建 + 容器身份 | ⚠️ NOT_RUN | Docker build/daemon | image ID 不一致、构建缺文件 | 中 |
+| Phase F | 镜像构建 + 容器身份 | ✅ 已做（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`） | Docker build/daemon | image ID 不一致、构建缺文件 | 中 |
 | Phase G | 运行验收（browser/API/Agent） | ⚠️ NOT_RUN | 完整运行栈 + 浏览器 | 登录/权限/marketplace/Agent/WebSocket/secret | 高 |
 | Phase H | 离线包 load + `--pull never` smoke | ⚠️ 静态扫描已做；真实 NOT_RUN | 无外网 Docker 目标 | 离线包不可用、含 secret、缺镜像 | 中 |
 | 回滚 | 备份/恢复演练 | ✅ 真库演练 PASS（DB 级） | 隔离卷/备份 | 回滚失败、数据回灌问题 | 已完成（evidence/phase-d/rollback-drill） |
@@ -275,7 +275,8 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 
 ### 已知限制
 
-- ⚠️ Phase F build/recreate/image ID NOT_RUN。
+- ✅ Phase F build/recreate/image ID 已运行验证：`replay-116-b8-phase-f-validator`（2026-08-11），
+  5 runtime 容器 image ID 断言 PASS，`evidence/phase-f/**`。
 - ⚠️ Phase G 运行 NOT_RUN。
 
 ### 待判断
@@ -356,7 +357,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 按已接受决策 D：
 
 1. ~~Phase D：隔离副本真库升级矩阵（PG 15.17 企业 1.15→1.16、官方 1.15→1.16、PG18 空库/应用升级、回滚）~~ ✅ 已完成（`replay-116-b8-phase-d-validator`，6/6 PASS，`evidence/phase-d/**`）。
-2. Phase F：build + 五容器 image ID 断言。
+2. ~~Phase F：build + 五容器 image ID 断言~~ ✅ 已完成（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`）。
 3. Phase G：完整运行验收（platform-admin/marketplace/Agent 12 场景/Workflow/HITL/WebSocket/browser/E2E/secret）。
 4. Phase H：离线 `docker load` + `up --pull never` + smoke + 重复 secret 扫描。
 
@@ -368,7 +369,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 | --- | --- | --- | --- |
 | migration 升级失败/数据丢失 | Phase D | ✅ 已验（6/6 PASS，隔离副本） | 隔离副本 |
 | uuidv7/PG18 不兼容 | Phase D | ✅ 已验（PG18 uuidv7 版本 7；`1c9ba48be8e4` 不重跑） | 必跑 |
-| image ID 不一致 | Phase F | NOT_RUN | 五容器 inspect |
+| image ID 不一致 | Phase F | ✅ 已验（api==worker==worker_beat==api_websocket，web 为企业 Web image；PASS） | 五容器 inspect |
 | 浏览器/交互回归 | Phase G | NOT_RUN | E2E 5 组 |
 | Agent/WebSocket 故障 | Phase G | NOT_RUN | 12 场景 |
 | secret 泄漏到运行日志/包 | Phase G/H | 静态已扫，运行未扫 | 受保护 pattern |

@@ -1,0 +1,35 @@
+# teardown.log
+head=0f63806aa3143067a4b4e0f9c0d2fd24102a4152
+## teardown command
+docker compose -p dify-b8-phase-f -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml -f /tmp/dify-b8-phase-f.override.yaml down -v
+down_exit=0
+
+## temp files removed
+- /tmp/dify-b8-phase-f.override.yaml
+- /tmp/dify-b8-phase-f.nginx.conf
+- docker/.env (temp copy of .env.example, gitignored by '*.env')
+
+## residual check (all must be 0)
+containers: 0
+volumes: 0
+networks: 0
+port 18080 listening:
+## 1.15 stack untouched (docker-* project still running)
+docker-api-1	Up 46 hours (healthy)
+docker-api_websocket-1	Up 46 hours
+docker-db_postgres-1	Up 46 hours (healthy)
+docker-nginx-1	Up 46 hours
+docker-plugin_daemon-1	Up 46 hours
+docker-redis-1	Up 46 hours (healthy)
+docker-sandbox-1	Up 46 hours (healthy)
+docker-ssrf_proxy-1	Up 46 hours
+docker-weaviate-1	Up 46 hours
+docker-web-1	Up 46 hours
+docker-worker-1	Up 46 hours
+docker-worker_beat-1	Up 46 hours
+
+## deviation / leftover on host
+docker daemon auto-created EMPTY root-owned dirs under docker/volumes/certbot/** during one
+intermediate nginx recreate (base compose binds ./volumes/certbot/**). They contain 0 files,
+are gitignored (root .gitignore:174), and were not present before this run. Removal requires
+root/sudo: sudo rm -rf docker/volumes/certbot

@@ -1,0 +1,19 @@
+# image-ids.log
+head=0f63806aa3143067a4b4e0f9c0d2fd24102a4152
+command: docker inspect <container> --format '{{.Name}} {{.Image}}'
+/dify-b8-phase-f-api-1 sha256:cb4d99a45ac1fcadbe02336e4633053c2234e775e8e65fb8bd2c8d7fdc70c347
+/dify-b8-phase-f-worker-1 sha256:cb4d99a45ac1fcadbe02336e4633053c2234e775e8e65fb8bd2c8d7fdc70c347
+/dify-b8-phase-f-worker_beat-1 sha256:cb4d99a45ac1fcadbe02336e4633053c2234e775e8e65fb8bd2c8d7fdc70c347
+/dify-b8-phase-f-api_websocket-1 sha256:cb4d99a45ac1fcadbe02336e4633053c2234e775e8e65fb8bd2c8d7fdc70c347
+/dify-b8-phase-f-web-1 sha256:0ae50b4527b8968f89ffb9bc70f100216b2f2002a0a807af2de4cc45f556990d
+/dify-b8-phase-f-nginx-1 sha256:6c3a6ea6608c89c79027066654a2ef4f0fe58a7bf2c08cc3894733406e476602
+
+dify-api-enterprise:1.16.0-enterprise id: sha256:cb4d99a45ac1fcadbe02336e4633053c2234e775e8e65fb8bd2c8d7fdc70c347
+dify-web-enterprise:1.16.0-enterprise id: sha256:0ae50b4527b8968f89ffb9bc70f100216b2f2002a0a807af2de4cc45f556990d
+
+## assertions
+assert worker == api: PASS
+assert worker_beat == api: PASS
+assert api_websocket == api: PASS
+assert api == dify-api-enterprise:1.16.0-enterprise: PASS
+assert web == dify-web-enterprise:1.16.0-enterprise: PASS

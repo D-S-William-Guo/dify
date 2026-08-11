@@ -1,0 +1,20 @@
+# repo-digests.log
+head=0f63806aa3143067a4b4e0f9c0d2fd24102a4152
+Note: images were built locally and never pushed, so RepoDigests is empty (expected for local builds).
+command: docker image inspect <image> --format '{{.Id}} {{range .RepoDigests}}{{.}}{{end}}'
+api: sha256:cb4d99a45ac1fcadbe02336e4633053c2234e775e8e65fb8bd2c8d7fdc70c347 RepoDigests=[]
+web: sha256:0ae50b4527b8968f89ffb9bc70f100216b2f2002a0a807af2de4cc45f556990d RepoDigests=[]
+
+config --images for the isolated project:
+busybox:latest
+dify-api-enterprise:1.16.0-enterprise
+dify-web-enterprise:1.16.0-enterprise
+langgenius/dify-agent-backend:1.16.0
+langgenius/dify-agent-local-sandbox:1.16.0
+langgenius/dify-plugin-daemon:0.6.3-local
+langgenius/dify-sandbox:0.2.15
+nginx:latest
+postgres:15-alpine
+redis:6-alpine
+semitechnologies/weaviate:1.27.0
+ubuntu/squid:latest

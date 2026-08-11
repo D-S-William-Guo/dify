@@ -1,0 +1,46 @@
+# commit-sha.log
+head=0f63806aa3143067a4b4e0f9c0d2fd24102a4152
+## COMMIT_SHA per container (from .Config.Env)
+api: COMMIT_SHA=1.16.0-enterprise
+worker: COMMIT_SHA=1.16.0-enterprise
+worker_beat: COMMIT_SHA=1.16.0-enterprise
+api_websocket: COMMIT_SHA=1.16.0-enterprise
+web: COMMIT_SHA=1.16.0-enterprise
+
+## started-at
+api: 2026-08-11T07:38:13.890035083Z
+worker: 2026-08-11T07:38:13.893319704Z
+worker_beat: 2026-08-11T07:38:13.751314894Z
+api_websocket: 2026-08-11T07:38:12.520518791Z
+web: 2026-08-11T07:36:49.582787149Z
+nginx: 2026-08-11T07:38:20.324099707Z
+
+## compose project / workdir / config_files
+project=dify-b8-phase-f
+workdir=/home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker
+config_files=/home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker/docker-compose.yaml,/home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker/docker-compose.enterprise.yaml,/tmp/dify-b8-phase-f.override.yaml
+
+## bind mounts of the 6 containers (no 1.15/old worktree paths)
+-- api --
+volume /home/ctyun/BigData/docker_root/volumes/dify-b8-phase-f_dify-b8-phase-f-storage/_data -> /app/api/storage
+
+-- worker --
+volume /home/ctyun/BigData/docker_root/volumes/dify-b8-phase-f_dify-b8-phase-f-storage/_data -> /app/api/storage
+
+-- worker_beat --
+
+-- api_websocket --
+
+-- web --
+
+-- nginx --
+volume /home/ctyun/BigData/docker_root/volumes/dify-b8-phase-f_dify-b8-phase-f-certbot-www/_data -> /var/www/html
+bind /tmp/dify-b8-phase-f.nginx.conf -> /etc/nginx/conf.d/default.conf
+bind /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker/nginx/nginx.conf.template -> /etc/nginx/nginx.conf.template
+bind /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker/nginx/docker-entrypoint.sh -> /docker-entrypoint-mount.sh
+bind /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker/nginx/ssl -> /etc/ssl
+bind /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker/nginx/proxy.conf.template -> /etc/nginx/proxy.conf.template
+volume /home/ctyun/BigData/docker_root/volumes/dify-b8-phase-f_dify-b8-phase-f-certbot-live/_data -> /etc/letsencrypt/live
+bind /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker/nginx/https.conf.template -> /etc/nginx/https.conf.template
+bind /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-f-validator_18caad5c265de202/docker/nginx/conf.d -> /etc/nginx/conf.d
+volume /home/ctyun/BigData/docker_root/volumes/dify-b8-phase-f_dify-b8-phase-f-certbot-conf/_data -> /etc/letsencrypt
