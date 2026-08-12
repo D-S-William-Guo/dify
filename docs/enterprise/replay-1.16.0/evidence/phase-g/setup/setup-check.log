@@ -1,0 +1,11 @@
+=== Phase G setup evidence (primary migrated DB) ===
+date: 2026-08-12T03:17:54Z
+
+[1] GET /console/api/setup
+{"step":"finished","setup_at":"2026-05-01T13:32:09"}
+[2] GET / (root)
+status=307 redirect=http://127.0.0.1:18080/auth/refresh?redirect_url=%2F
+[3] GET /install (upgrade DB must NOT show install wizard)
+<!DOCTYPE html><html lang="en-US" class="h-full"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/><link rel="stylesheet" href="/_ne
+[4] console setup check via api
+POST /console/api/setup status=422

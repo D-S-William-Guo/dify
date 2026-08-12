@@ -1,0 +1,14 @@
+=== Phase G teardown ===
+date: 2026-08-12T07:09:40Z
+cmd: docker compose -p dify-b8-phase-g down -v
+
+## Post-teardown verification
+- docker compose down -v: all phase-g containers/volumes/networks removed
+- standalone containers/volumes (db-primary, db-empty, redis) removed
+- networks (dify-b8-phase-g_default, -net) removed; ollama disconnected
+- temp files removed: /tmp/dify-b8-phase-g.override.yaml, install-override.yaml,
+  /tmp/replay-116-phase-g sandbox/nginx-conf dirs, docker/.env (gitignored temp)
+- git status: only evidence/phase-g + DECISION_RISK_LEDGER.md (allowed write paths)
+- docker/volumes/** untouched; 1.15 stack (12 containers) still running
+- compose config -q: exit 0 DURING the run (recorded in setup). After teardown it
+  returns 1 because the gitignored temp docker/.env is removed (same as Phase E baseline).

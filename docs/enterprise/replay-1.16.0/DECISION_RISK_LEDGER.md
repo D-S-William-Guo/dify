@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 重放 B0–B8 决策/风险台账（详细版）
 
-更新时间：2026-08-11（Asia/Shanghai）
+更新时间：2026-08-12（Asia/Shanghai，Phase G Validator 回填）
 
 本文件是人工判断的对照物，不是 AI 的结论。每项都尽量给出：决策点、选项、选择、影响范围、优缺点、数据证据、验证状态、待判断问题。
 
@@ -41,7 +41,7 @@
 | Phase D | migration 图 + 真库升级矩阵 | ✅ 真库 6 行全 PASS（隔离副本） | 隔离 PostgreSQL/备份副本 | 升级失败、数据丢失、uuidv7、双 head | 已完成（6/6 PASS，evidence/phase-d） |
 | Phase E | Compose 静态验证 | ✅ B6/B8 静态 | docker compose config | overlay 丢失依赖/安全变量 | 已完成 |
 | Phase F | 镜像构建 + 容器身份 | ✅ 已做（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`） | Docker build/daemon | image ID 不一致、构建缺文件 | 中 |
-| Phase G | 运行验收（browser/API/Agent） | ⚠️ NOT_RUN | 完整运行栈 + 浏览器 | 登录/权限/marketplace/Agent/WebSocket/secret | 高 |
+| Phase G | 运行验收（browser/API/Agent） | ✅ 已做（`replay-116-b8-phase-g-validator`，`evidence/phase-g/**`；2 个 release-blocking finding，见下） | 完整运行栈 + 浏览器 | 登录/权限/marketplace/Agent/WebSocket/secret | 高 |
 | Phase H | 离线包 load + `--pull never` smoke | ⚠️ 静态扫描已做；真实 NOT_RUN | 无外网 Docker 目标 | 离线包不可用、含 secret、缺镜像 | 中 |
 | 回滚 | 备份/恢复演练 | ✅ 真库演练 PASS（DB 级） | 隔离卷/备份 | 回滚失败、数据回灌问题 | 已完成（evidence/phase-d/rollback-drill） |
 
@@ -370,14 +370,40 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 | migration 升级失败/数据丢失 | Phase D | ✅ 已验（6/6 PASS，隔离副本） | 隔离副本 |
 | uuidv7/PG18 不兼容 | Phase D | ✅ 已验（PG18 uuidv7 版本 7；`1c9ba48be8e4` 不重跑） | 必跑 |
 | image ID 不一致 | Phase F | ✅ 已验（api==worker==worker_beat==api_websocket，web 为企业 Web image；PASS） | 五容器 inspect |
-| 浏览器/交互回归 | Phase G | NOT_RUN | E2E 5 组 |
-| Agent/WebSocket 故障 | Phase G | NOT_RUN | 12 场景 |
-| secret 泄漏到运行日志/包 | Phase G/H | 静态已扫，运行未扫 | 受保护 pattern |
+| 浏览器/交互回归 | Phase G | ✅ 已验（E2E 5 组 Playwright 截图 PASS） | E2E 5 组 |
+| Agent/WebSocket 故障 | Phase G | ✅ 已验（12 场景；knowledge 绑定 FAIL、stop 400 偏差、余 PASS） | 12 场景 |
+| secret 泄漏到运行日志/包 | Phase G/H | ✅ 运行扫描已做（真实 key 0 命中；仅 compose 配置含 dev default） | 受保护 pattern |
 | 离线包不可用 | Phase H | NOT_RUN | load + `--pull never` |
 | capacity 非 reservation | 并发邀请 | 已知限制 | 接受/未来修 |
 | copy 非原子 | 复制失败 | 已知限制 | 接受/未来修 |
 | check 脚本 P3 | 特殊部署 | 已接受 | 运行发现再修 |
 | completeness 门禁缺失 | 发布审计 | 未授权 | 人工兜底 |
+
+## Phase G 运行发现（2026-08-12 Validator 回填）
+
+运行验收在隔离栈 `dify-b8-phase-g`（端口 18080）完成。总体：install/login/platform-admin/
+Workflow/WebSocket/plugin-dataset-vector/secret/浏览器/E2E 均 PASS；Agent 12 场景大部分 PASS
+（chat/Landlock/dual-secret/publish/stop-recovery）。发现 **2 个 release-blocking 运行 bug**：
+
+1. **Marketplace schema 类型不匹配**（`evidence/phase-g/marketplace.log`）
+   - B4 migration `b416e5c4e702` 把 `enterprise_marketplace_assets` 和
+     `enterprise_marketplace_asset_snapshots` 的 ID/FK 列建成 `VARCHAR(36)`，但 ORM model
+     （`api/models/model.py:2847-2848`）用 `StringUUID`（PG `uuid`）。
+   - 所有按这些列过滤的查询在 PostgreSQL 上抛 `operator does not exist: character varying = uuid`。
+   - 影响：submit/review/copy/unlist 全部 500；升级库和空库都受影响。阻断发布。
+2. **Agent 绑定 Knowledge 后对话失败**（`evidence/phase-g/agent-knowledge.log`）
+   - roster Agent 的 `agent_soul.knowledge.sets` 绑定数据集后，chat 报
+     `CompositorSessionSnapshot layer names must match ... knowledge`（agent_backend
+     `agenton/compositor/core.py:314`）。
+   - 同一 Agent 去掉 knowledge 后 chat 正常（OpenRouter 实测 PhaseG-OK）。阻断发布。
+
+其余偏差（非阻断）：
+- 迁移的 Aliyun/Tongyi 凭据因租户 RSA 私钥在生产 storage（禁止路径）而无法解密；按 G3
+  stop-condition，用户提供 OpenRouter key，openrouter 0.1.3 + ollama 1.0.0 从 marketplace 新装。
+- agent_backend 停止时 chat 返回 400（含 raw transport message）而非计划中的稳定 503；API/Web
+  未 crash，重启后恢复（`agent-backend-stop.log`）。
+- 迁移 dataset 的向量 class 对齐 NOT_RUN（生产 Weaviate 数据在禁止路径）；新 dataset 对齐+hit-testing PASS。
+- inline agent（workflow agent-composer 节点）仅 API 未跑通（binding 需 UI 路径），记为 NOT_RUN。
 
 ## 回填规则
 

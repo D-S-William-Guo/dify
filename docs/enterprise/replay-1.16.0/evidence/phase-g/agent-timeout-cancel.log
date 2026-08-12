@@ -1,0 +1,18 @@
+=== Phase G: Agent timeout/reconnect/cancel/cleanup ===
+date: 2026-08-12T06:54:33Z
+
+## Cancel (verified)
+POST /agent/{id}/chat-messages (long generation, streaming)
+POST /agent/{id}/chat-messages/{task_id}/stop -> 200 {result:success}
+stream events after cancel: 55 agent_thought, 2 agent_message, 1 message_end (terminated)
+message_end metadata total_tokens=0 (cancelled task, no completion counted)
+
+## Timeout (observed)
+OpenRouter occasional read timeout -> 400 completion_request_error '[models] Connection Error ... Read timed out'
+retry succeeds (transient, network); no infinite hang in agent_backend
+
+## Reconnect
+(stream reconnect covered by browser final-user conversation; no duplicate messages observed)
+
+## Cleanup
+no orphaned runs observed in agent_backend after stop/cancel (checked recovery works)

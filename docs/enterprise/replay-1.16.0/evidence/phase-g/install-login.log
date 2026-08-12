@@ -1,0 +1,43 @@
+=== Phase G: install/login/public routes evidence ===
+date: 2026-08-12T03:22:25Z
+stack: dify-b8-phase-g on 127.0.0.1:18080 (primary migrated DB)
+
+## 1. Setup state (upgrade DB must be finished, no /install)
+cmd: GET /console/api/setup
+out: {"step":"finished"} (setup_at present, value redacted)
+
+## 2. /install on upgrade DB
+cmd: GET /install  -> 200 (Next.js shell; console gate is setup finished)
+cmd: GET /        -> 307 -> /auth/refresh
+
+## 3. Login (platform admin, test password on isolated DB)
+cmd: POST /console/api/login (base64 password field)
+out: 200 {result: success} + access_token/refresh_token/csrf cookies set
+
+## 4. Auth session
+cmd: GET /console/api/account/profile
+out: 200, is_password_set=true, email redacted
+
+## 5. ALLOW_REGISTER=false / ALLOW_CREATE_WORKSPACE=false
+cmd: GET /console/api/system-features
+out: is_allow_register=false, is_allow_create_workspace=false, enable_collaboration_mode=true
+cmd: POST /console/api/email-register -> 403 forbidden (allow_register=false)
+cmd: POST /console/api/email-register/send-email -> 403
+
+## 6. platform-admin status
+cmd: GET /console/api/account/platform-admin-status
+out: 200 {is_platform_admin:true, mutation_supported:true}
+
+## 7. Invitation + activation flow (PENDING invite)
+cmd: POST /console/api/platform-admin/workspaces/{id}/members/invitations
+out: 201 {action: account_created, email_delivery: queued}; PENDING account + join created; requires_setup=true
+cmd: GET /console/api/activate/check?token={token}
+out: 200 {is_valid:true, account_status:"pending", requires_setup:true}   <- matches VALIDATION_PLAN PENDING semantics
+cmd: POST /console/api/activate {token, name, interface_language, timezone}
+out: 200 {result:"success"}; account status pending -> active
+note: activate POST with workspace_id+email routes to legacy redis key path (returns None ->
+      already_activate); token-only matches the real email-link flow and succeeds. Same code as official 1.16.0.
+
+## 8. ACTIVE-invite requires_setup=false path
+(validated via service-level invitation adapter; PENDING=>true confirmed above. ACTIVE-not-joined
+ invite recorded in platform-admin log invitation semantics.)

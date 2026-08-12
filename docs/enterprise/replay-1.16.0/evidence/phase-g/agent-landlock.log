@@ -1,0 +1,17 @@
+=== Phase G: Agent Landlock boundary scenario ===
+date: 2026-08-12T06:48:38Z
+
+## Prompt
+shell: echo hello > /tmp/phaseg-test.txt && cat it && cat /etc/passwd; whoami
+
+## Result (200, streaming)
+- write to /tmp/phaseg-test.txt: Permission denied  (out-of-workspace write blocked)
+- read /etc/passwd: Permission denied              (system file read blocked)
+- whoami -> dify                                    (non-root sandbox user)
+- echo hello > file in $HOME: OK                   (workspace write allowed)
+- agent self-corrected to $HOME after denial
+
+## Verdict
+PASS: Landlock enabled; allowed workspace paths work, out-of-workspace writes and
+system-file reads are denied. Matches VALIDATION_PLAN Landlock expectations.
+Shell ran as user 'dify' (non-root).

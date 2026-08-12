@@ -1,0 +1,4 @@
+- generic [ref=e4]:
+  - button "简体中文" [ref=e11] [cursor=pointer]
+  - status "加载中" [ref=e15]
+  - generic [ref=e22]: © 2026 LangGenius, Inc. All rights reserved.

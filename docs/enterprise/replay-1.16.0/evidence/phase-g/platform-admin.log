@@ -1,0 +1,31 @@
+=== Phase G: platform-admin evidence ===
+date: 2026-08-12T03:25:42Z
+
+## 7 routes (platform admin, admin session)
+1. GET  /console/api/account/platform-admin-status -> 200 is_platform_admin:true
+2. GET  /console/api/platform-admin/workspaces -> 200 items=5 (page+total)
+3. GET  /console/api/platform-admin/workspaces/{id} -> 200
+4. PATCH /console/api/platform-admin/workspaces/{id} (rename) -> 200, updated_at changed
+5. GET  /console/api/platform-admin/workspaces/{id}/members -> 200
+6. POST /console/api/platform-admin/workspaces/{id}/members/invitations -> 201 account_created
+7. PATCH /console/api/platform-admin/workspaces/{id}/members/{id}/role -> 200 editor->admin
+
+## Owner mutation guard
+PATCH owner member role -> 409 owner_operation_deferred (owner mutation deferred)
+
+## Permission boundaries (non-platform-admin session)
+status route -> is_platform_admin:false
+routes 2..7 -> 403 platform_admin_required
+forged X-Tenant-Id / X-Consumed-By / X-Role / X-Platform-Admin headers -> still 403 (no bypass)
+
+## RBAC_ENABLED=true fail-closed
+invite -> 503 rbac_mode_not_supported
+role mutation -> 503 rbac_mode_not_supported
+mutation_supported flag -> false
+no DB/token/task side effects: tenant_account_joins unchanged by rejected invites
+
+## Invitation semantics
+new invite -> PENDING account + join, requires_setup=true (VALIDATION_PLAN match)
+
+## editor log permissions
+(recorded in workflow/member log section)

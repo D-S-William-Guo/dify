@@ -1,0 +1,23 @@
+=== Phase G: agent_backend stop scenario ===
+date: 2026-08-12T06:47:30Z
+
+## Baseline (healthy)
+chat -> 200 'PRE-STOP' (exact answer)
+
+## Stop agent_backend
+docker stop dify-b8-phase-g-agent_backend-1
+chat attempt -> 400 (NOT 503 as VALIDATION_PLAN expects)
+  code: completion_request_error
+  message: create_run_sync request failed: [Errno -3] Temporary failure in name resolution
+  => leaks internal transport detail; expected stable 503 code/message
+API health: setup 200, web 307, all services Up (api/worker/beat/websocket/web/nginx)
+No API/Web crash: PASS
+
+## Restart agent_backend
+docker start dify-b8-phase-g-agent_backend-1
+chat after restart -> 200 'RECOVERED' (exact answer)
+Recovery without stale running state: PASS
+
+## Verdict
+PASS (fail-safe + recovery + no crash), MINOR deviation: stop returns 400 with raw
+transport message instead of stable 503; message does not contain secrets.

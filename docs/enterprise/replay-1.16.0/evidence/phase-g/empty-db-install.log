@@ -1,0 +1,25 @@
+=== Phase G: empty-DB /install flow (secondary PG15) ===
+date: 2026-08-12T07:08:08Z
+
+## Empty DB preparation
+container: dify-b8-phase-g-db-empty (postgres:15-alpine, isolated volume)
+dify db: 0 tables; dify_plugin db: 0 tables (truly empty)
+
+## Auto-migration on api start (empty -> enterprise head)
+alembic_version after api boot: b416e5c4e702
+public tables: 137 (full schema from empty)
+=> empty-DB migration path PASS (matches Phase D row-3 head)
+
+## /install flow
+GET /console/api/setup before: {step:not_started}
+GET / root -> 307 -> /install
+GET /install -> 200 (admin setup form rendered)
+POST /console/api/setup {email,name,password,language,timezone} -> 201 {result:success}
+GET /console/api/setup after: {step:finished, setup_at}
+GET / root after -> /signin (no longer /install)
+
+## Browser evidence
+screenshots: install-page-empty-db.png, install-page-filled.png (browser-screenshots/)
+
+## Verdict
+PASS: empty-DB install path (migrate + setup admin + redirect) verified end-to-end.

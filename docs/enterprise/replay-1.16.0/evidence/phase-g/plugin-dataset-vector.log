@@ -1,0 +1,34 @@
+=== Phase G: plugin/dataset/vector evidence ===
+date: 2026-08-12T06:42:58Z
+
+## Dataset create (high_quality, bge-m3 embedding) - PASS
+POST /console/api/datasets -> 201 {id, indexing_technique:high_quality}
+note: initial create defaulted to tongyi text-embedding-v4 (undecryptable) -> index error;
+      PATCH embedding_model=bge-m3/langgenius/ollama/ollama fixed; fresh doc indexed OK.
+
+## Document upload + index - PASS
+POST /console/api/datasets/{id}/documents (upload_file) -> 201
+indexing-status: completed (bge-m3 -> Weaviate)
+
+## Hit testing - PASS
+POST /console/api/datasets/{id}/hit-testing -> 1 record, score=0.7067
+retrieved content matches uploaded doc (unique PhaseG knowledge)
+
+## Weaviate class present
+vector class for dataset created (high_quality)
+
+## Plugin install (openrouter 0.1.3, ollama 1.0.0) - PASS
+upload pkg -> decode OK; install task -> success; provider list shows both
+
+## Vector class alignment
+PostgreSQL high_quality class_prefixes:
+- Vector_index_947ef84b..._Node (MIGRATED dataset)
+- Vector_index_efcffee5..._Node (NEW PhaseG dataset)
+Weaviate actual classes:
+- Vector_index_efcffee5..._Node (present)
+- Vector_index_947ef84b..._Node (ABSENT)
+
+New dataset: PostgreSQL prefix == Weaviate class, hit-testing works -> ALIGNED (PASS)
+Migrated dataset: vector data lives in PRODUCTION Weaviate volume (docker/volumes/**,
+forbidden path); isolated Weaviate is fresh -> migrated-vector alignment NOT_RUN
+(KNOWN LIMITATION of the isolated env; relational counts carried correctly in PG).

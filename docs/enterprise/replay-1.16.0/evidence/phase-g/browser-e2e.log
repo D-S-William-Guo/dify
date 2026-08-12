@@ -1,0 +1,30 @@
+=== Phase G: Browser/E2E evidence (Playwright) ===
+date: 2026-08-12T07:02:30Z
+tool: playwright-cli (node v22), screenshots in browser-screenshots/
+
+## Group 1: Login + navigation - PASS
+- /signin page rendered; login with test credentials -> home dashboard
+- screenshots: signin-page.png, browser-login-home.png
+
+## Group 2: Apps/studio + Agents roster - PASS
+- /apps studio rendered (工作室)
+- /agents roster shows created agent (draft count 2)
+- screenshots: apps-studio.png, agents-roster.png, agents-roster-with-agent.png
+
+## Group 3: Marketplace/error states - PARTIAL
+- /enterprise-marketplace (智慧广场) page renders (heading present)
+- console shows 4 errors (reflecting marketplace schema bug: 500 on detail/submit)
+- API-level submit/detail 500 recorded in marketplace.log (release-blocking)
+- screenshot: enterprise-marketplace.png
+
+## Group 4: Keyboard focus - PASS
+- Tab focuses 'skip to main content' link first, then Dify logo
+- screenshot: keyboard-focus.png
+
+## Group 5: Responsive - PASS
+- resize 390x844 mobile viewport, page renders
+- screenshot: responsive-mobile-apps.png
+
+## Agent webapp conversation (browser) - PASS
+- /chat/{token} published agent webapp; sent prompt; model replied 'WEBAPP-OK'
+- screenshot: agent-webapp-conversation.png

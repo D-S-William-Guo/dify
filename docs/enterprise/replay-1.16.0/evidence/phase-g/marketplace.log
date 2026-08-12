@@ -1,0 +1,44 @@
+=== Phase G: marketplace evidence ===
+date: 2026-08-12T03:35:20Z
+
+## RESULT: FAIL (release-blocking schema/type mismatch)
+
+## Finding
+enterprise_marketplace_assets + enterprise_marketplace_asset_snapshots ID/FK columns
+were created as VARCHAR(36) by B4 migration
+(api/migrations/versions/2026_07_21_1400-b416e5c4e702..., sa.String(length=36)),
+but the ORM model (api/models/model.py) declares them as StringUUID, which maps to
+PostgreSQL UUID type. Runtime queries that filter on these columns bind UUID params,
+and PostgreSQL rejects them against varchar columns:
+  psycopg2.errors.UndefinedFunction: operator does not exist: character varying = uuid
+
+## Blast radius (all fail with 500 unknown)
+- POST /apps/{id}/enterprise-marketplace/submissions  -> 500 (filters source_app_id)
+- GET  /enterprise-marketplace/submissions           -> 500 (filters source_tenant_id)
+- GET  /enterprise-marketplace/assets/{id}           -> 500 (filters id)
+- POST /enterprise-marketplace/assets/{id}/copies    -> 500 (filters id)
+- POST /platform-admin/.../{id}/reviews              -> 500 (filters id)
+- POST /platform-admin/.../{id}/unlist               -> 500 (filters id)
+
+## Working
+- GET  /enterprise-marketplace/assets                -> 200 (filters publication_status only)
+- GET  /platform-admin/enterprise-marketplace/assets -> 200 (admin list, items=1)
+
+## DB column types (isolated primary DB, POST-upgrade)
+accounts.id          = uuid
+apps.id              = uuid
+datasets.id          = uuid
+enterprise_marketplace_assets.id / source_app_id / source_tenant_id / submitter_account_id = varchar  <- MISMATCH
+enterprise_marketplace_asset_snapshots.id / asset_id / source_app_id / source_tenant_id / submitter_account_id = varchar  <- MISMATCH
+
+## Root cause location (read-only reference)
+model: api/models/model.py:2847-2848 EnterpriseMarketplaceAsset.source_tenant_id/source_app_id StringUUID
+migration: api/migrations/versions/2026_07_21_1400-b416e5c4e702... lines 60-71 sa.String(length=36)
+
+## Impact
+Entire marketplace lifecycle (submit->review->copy->unlist) unusable on PostgreSQL.
+Affects both upgraded production copy AND fresh installs (same migration path).
+Blocks release: VALIDATION_PLAN marketplace scenarios cannot pass.
+
+## Deviation from plan
+Marketplace scenarios executed but FAIL; root cause is a real schema bug, not an env issue.

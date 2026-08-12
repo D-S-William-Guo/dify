@@ -1,0 +1,31 @@
+=== Phase G: DB setup evidence (primary migrated copy) ===
+date: 2026-08-12T07:08:46Z
+
+## 1. Read-only production dump
+cmd: docker exec docker-db_postgres-1 pg_dump -U postgres -d dify --format=custom --no-owner --no-acl --lock-wait-timeout=10
+exit: 0; bytes: 2314617
+plugin DB dump: 168102 bytes (dify_plugin)
+
+## 2. Isolated PG15 primary restore
+container: dify-b8-phase-g-db-primary (postgres:15-alpine, network-only, volume dify-b8-phase-g-db-primary)
+pg_restore exit: 0; dify_plugin createdb + restore exit: 0
+
+## 3. Pre-upgrade baseline (restored == production)
+alembic_version: e2f0a9b7c6d5 (matches production)
+accounts=3 tenants=5 joins=6 apps=6 workflows=9 datasets=4 documents=2 segments=63 conversations=2407
+marketplace: approved=1
+
+## 4. Upgrade to enterprise head
+cmd: MODE=migration one-shot dify-api-enterprise:1.16.0-enterprise (flask upgrade-db)
+sequence: 5 official 1.16 -> empty merge a71e16c0de01 -> b416e5c4e702 (exact Phase D row-1)
+exit: 0
+
+## 5. Post-upgrade verification
+alembic_version: b416e5c4e702
+counts unchanged: 3/5/6/6/9/4/2/63/2407; marketplace approved=1 -> publication_status=unpublished snapshot_state=backfill_pending
+snapshot table exists: true
+
+## 6. Tenant RSA keys (for provider decryption)
+production per-tenant private keys live in docker/volumes/** (FORBIDDEN). Regenerated
+keypairs for all 5 tenants in isolated storage (dify-b8-phase-g-storage) so provider
+operations complete; migrated Tongyi creds (encrypted with old keys) are undecryptable.

@@ -1,0 +1,28 @@
+=== Phase G: Workflow evidence ===
+date: 2026-08-12T06:57:14Z
+
+## Workflow app create - PASS
+POST /console/api/apps (mode:workflow) -> 201
+
+## Draft sync - PASS
+POST /apps/{id}/workflows/draft (start->end graph) -> {result:success, hash}
+
+## Draft run - PASS
+POST /apps/{id}/workflows/draft/run -> SSE stream
+events: workflow_started, 2x node_started, 2x node_finished, workflow_finished
+workflow_finished: status=succeeded, total_steps=2, elapsed=0.14s, error=null
+
+## api_websocket image identity - PASS
+api_websocket .Image == api .Image == cb4d99a45ac1... (enterprise API image)
+
+## WebSocket collaboration (socket.io) - PASS
+- GET /socket.io/?EIO=4&transport=polling via nginx -> 200 {sid, upgrades:[websocket]}
+- ws upgrade: 2probe -> pong (engine.io), 40 connect -> ok
+- socket.io served by api_websocket (enterprise API image), routed through nginx 18080
+- collaboration_event/graph_event relay handlers registered (controllers/console/socketio/workflow.py)
+
+## Inline agent in workflow (agent-composer node)
+- PUT /apps/{id}/workflows/draft/nodes/{node}/agent-composer with roster binding ->
+  400 "Workflow agent binding not found" (binding row requires UI-authoring path)
+  NOT_RUN via API-only; roster binding + composer save verified at the Agent level
+  (PUT /agent/{id}/composer PASS)

@@ -1,0 +1,25 @@
+=== Phase G: Agent App Beta knowledge scenario - FAIL (release-blocking) ===
+date: 2026-08-12T06:45:43Z
+
+## Finding
+Binding a knowledge set to a roster Agent and running a chat fails with:
+  CompositorSessionSnapshot layer names must match compositor layers in order.
+  Expected [agent_app_user_prompt, execution_context, shell, config, history, llm, knowledge],
+  got [agent_app_user_prompt, execution_context, shell, config, history, llm].
+Source: dify_agent.runtime.runner.AgentRunValidationError (agent_backend),
+  agenton/compositor/core.py:314 _validate_session_snapshot.
+
+## Repro
+1. PUT /agent/{id}/composer with agent_soul.knowledge.sets=[{dataset}] -> 200 (save OK)
+2. POST /agent/{id}/publish -> success
+3. POST /agent/{id}/chat-messages (knowledge question) -> 400 completion_request_error
+   Agent backend: layer mismatch (knowledge layer missing from session snapshot)
+
+## Impact
+Agent App Beta knowledge retrieval scenario FAILS. Without knowledge binding the same
+chat works (PhaseG-OK PASS). With knowledge bound, every conversation 400s.
+Blocks release: VALIDATION_PLAN Agent knowledge scenario cannot pass.
+
+## Note
+This is a runtime integration bug between the API's runtime_request_builder and the
+agenton compositor; not an environment artifact.
