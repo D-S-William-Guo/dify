@@ -1,0 +1,12 @@
+Loaded image: langgenius/dify-agent-backend:1.16.0
+Loaded image: langgenius/dify-agent-local-sandbox:1.16.0
+Loaded image: langgenius/dify-plugin-daemon:0.6.3-local
+Loaded image: langgenius/dify-sandbox:0.2.15
+Loaded image: redis:6-alpine
+Loaded image: ubuntu/squid:latest
+Loaded image: busybox:latest
+Loaded image: dify-api-enterprise:1.16.0-enterprise
+Loaded image: dify-web-enterprise:1.16.0-enterprise
+Loaded image: nginx:latest
+Loaded image: postgres:15-alpine
+Loaded image: semitechnologies/weaviate:1.27.0

@@ -1,0 +1,20 @@
+Reusing enterprise image: dify-api-enterprise:1.16.0-enterprise
+Reusing enterprise image: dify-web-enterprise:1.16.0-enterprise
+Resolving compose image list
+Reusing local dependency image: busybox:latest
+Reusing local dependency image: langgenius/dify-agent-backend:1.16.0
+Reusing local dependency image: langgenius/dify-agent-local-sandbox:1.16.0
+Reusing local dependency image: langgenius/dify-plugin-daemon:0.6.3-local
+Reusing local dependency image: langgenius/dify-sandbox:0.2.15
+Reusing local dependency image: nginx:latest
+Reusing local dependency image: postgres:15-alpine
+Reusing local dependency image: redis:6-alpine
+Reusing local dependency image: semitechnologies/weaviate:1.27.0
+Reusing local dependency image: ubuntu/squid:latest
+Manifest written: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-validator_18cb18936db341a2/dist/offline/manifest-1.16.0-enterprise.json
+Images written  : /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-validator_18cb18936db341a2/dist/offline/images-1.16.0-enterprise.txt
+Saving offline image bundle to /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-validator_18cb18936db341a2/dist/offline/dify-enterprise-offline-1.16.0-enterprise.tar
+Offline bundle ready.
+Manifest: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-validator_18cb18936db341a2/dist/offline/manifest-1.16.0-enterprise.json
+Images : /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-validator_18cb18936db341a2/dist/offline/images-1.16.0-enterprise.txt
+Archive: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-validator_18cb18936db341a2/dist/offline/dify-enterprise-offline-1.16.0-enterprise.tar

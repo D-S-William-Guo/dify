@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 重放 B0–B8 决策/风险台账（详细版）
 
-更新时间：2026-08-12（Asia/Shanghai，Phase G Validator 回填）
+更新时间：2026-08-12（Asia/Shanghai，Phase H Validator 回填）
 
 本文件是人工判断的对照物，不是 AI 的结论。每项都尽量给出：决策点、选项、选择、影响范围、优缺点、数据证据、验证状态、待判断问题。
 
@@ -42,7 +42,7 @@
 | Phase E | Compose 静态验证 | ✅ B6/B8 静态 | docker compose config | overlay 丢失依赖/安全变量 | 已完成 |
 | Phase F | 镜像构建 + 容器身份 | ✅ 已做（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`） | Docker build/daemon | image ID 不一致、构建缺文件 | 中 |
 | Phase G | 运行验收（browser/API/Agent） | ✅ 已做（`replay-116-b8-phase-g-validator`，`evidence/phase-g/**`；2 个 release-blocking finding，见下） | 完整运行栈 + 浏览器 | 登录/权限/marketplace/Agent/WebSocket/secret | 高 |
-| Phase H | 离线包 load + `--pull never` smoke | ⚠️ 静态扫描已做；真实 NOT_RUN | 无外网 Docker 目标 | 离线包不可用、含 secret、缺镜像 | 中 |
+| Phase H | 离线包 load + `--pull never` smoke | ⚠️ 已跑（`replay-116-b8-phase-h-validator`，`evidence/phase-h/**`；链机制全 PASS，但发现 release-blocking：离线镜像缺 Phase G 修复，见下） | 同一 daemon 模拟（无独立无外网 Docker 目标） | 离线包不可用、含 secret、缺镜像 | 中 |
 | 回滚 | 备份/恢复演练 | ✅ 真库演练 PASS（DB 级） | 隔离卷/备份 | 回滚失败、数据回灌问题 | 已完成（evidence/phase-d/rollback-drill） |
 
 ## 已接受决策（2026-08-11）
@@ -359,7 +359,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 1. ~~Phase D：隔离副本真库升级矩阵（PG 15.17 企业 1.15→1.16、官方 1.15→1.16、PG18 空库/应用升级、回滚）~~ ✅ 已完成（`replay-116-b8-phase-d-validator`，6/6 PASS，`evidence/phase-d/**`）。
 2. ~~Phase F：build + 五容器 image ID 断言~~ ✅ 已完成（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`）。
 3. Phase G：完整运行验收（platform-admin/marketplace/Agent 12 场景/Workflow/HITL/WebSocket/browser/E2E/secret）。
-4. Phase H：离线 `docker load` + `up --pull never` + smoke + 重复 secret 扫描。
+4. ~~Phase H：离线 `docker load` + `up --pull never` + smoke + 重复 secret 扫描~~ ⚠️ 已跑（`replay-116-b8-phase-h-validator`，2026-08-12，`evidence/phase-h/**`），结果 FAIL：链机制全 PASS，但发现离线镜像缺 Phase G 修复（见下），须重建镜像后复跑。
 
 ---
 
@@ -373,7 +373,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 | 浏览器/交互回归 | Phase G | ✅ 已验（E2E 5 组 Playwright 截图 PASS） | E2E 5 组 |
 | Agent/WebSocket 故障 | Phase G | ✅ 已验（12 场景；knowledge 绑定已修，见 Phase G 修复；stop 400 非阻断偏差） | 12 场景 |
 | secret 泄漏到运行日志/包 | Phase G/H | ✅ 运行扫描已做（真实 key 0 命中；仅 compose 配置含 dev default） | 受保护 pattern |
-| 离线包不可用 | Phase H | NOT_RUN | load + `--pull never` |
+| 离线包不可用 | Phase H | ⚠️ 链机制跑通但 FAIL：Phase F 镜像缺 Phase G 修复 | load + `--pull never`；须重 build 后复跑 |
 | capacity 非 reservation | 并发邀请 | 已知限制 | 接受/未来修 |
 | copy 非原子 | 复制失败 | 已知限制 | 接受/未来修 |
 | check 脚本 P3 | 特殊部署 | 已接受 | 运行发现再修 |
@@ -446,6 +446,33 @@ Workflow/WebSocket/plugin-dataset-vector/secret/浏览器/E2E 均 PASS；Agent 1
 
 - agent_backend stop 400、inline-agent NOT_RUN、迁移 vector 对齐 NOT_RUN、
   plugin debug NOT_RUN。
+
+## Phase H 运行发现（2026-08-12 Validator 回填）
+
+离线链机制全部跑通：`build-enterprise-offline.sh -Mode reuse`（复用 Phase F
+镜像，exit 0，7.8G tar + manifest + images）→ `build-enterprise-config-package.sh`
+（exit 0）→ `check-enterprise-offline.sh`（13 PASS / 0 FAIL / 1 NOT_RUN，synthetic
+0600 pattern，只输出布尔）→ `docker load`（12 镜像）→ 隔离 project
+`dify-b8-phase-h` `up --pull never`（db_postgres/redis/api/web/nginx，`./volumes/**`
+全部重映射到 `dify-b8-phase-h-*` named volumes）→ smoke（nginx 18080 HTTP 200、
+api `/health` 200、web `/webpage/signin` 200、`/` 307→/install）→ teardown
+`down -v` 后无残留、`docker/volumes/**` 与 1.15 栈均未变。证据：
+`evidence/phase-h/**`。
+
+**Release-blocking 发现：Phase F 构建的 API 镜像缺 Phase G 修复。**
+
+- `dify-api-enterprise:1.16.0-enterprise`（`cb4d99a45ac1`，2026-08-11 构建）不含
+  Phase G 修复提交 `85b445c0e1`（2026-08-12 合并）。
+- 镜像内验证：`migrations/versions/` 无 `e7c0a9d2b8f3`；fresh PostgreSQL 15
+  升级到该镜像 head 后 `alembic_version = b416e5c4e702`（不是唯一企业 head
+  `e7c0a9d2b8f3`）→ marketplace ID/FK 列保持 `VARCHAR(36)`，GPH-01 500 bug 在
+  全新离线安装仍会复现。`request_builder.py` 无 `_align_snapshot_to_composition`
+  （GPH-02）→ agent 绑定 knowledge 的 bug 同样未修复。
+- 根因：B7 reuse 门禁只比较 `COMMIT_SHA`（携带 version tag，B6R-01），无法区分
+  同 tag 的两次构建；Phase H 用镜像内容 vs 候选 HEAD 交叉核对发现漂移。
+- 处置（超出 Phase H scope，待协调者）：从候选 HEAD 重建企业 API 镜像（Phase F
+  重跑）→ 复跑 Phase H，确认镜像 migration head 为 `e7c0a9d2b8f3` 且
+  `request_builder.py` 含修复，离线包才可视为 release-ready。
 
 ## 回填规则
 

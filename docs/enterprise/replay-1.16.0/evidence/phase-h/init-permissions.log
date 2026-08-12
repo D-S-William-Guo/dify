@@ -1,0 +1,8 @@
+ Container dify-b8-phase-h-init_permissions-1 Creating
+ Container dify-b8-phase-h-init_permissions-1 Created
+Attaching to init_permissions-1
+ Container dify-b8-phase-h-init_permissions-1 Starting
+ Container dify-b8-phase-h-init_permissions-1 Started
+init_permissions-1  | Initializing permissions for /app/api/storage
+init_permissions-1  | Permissions initialized. Exiting.
+[Kinit_permissions-1 exited with code 0

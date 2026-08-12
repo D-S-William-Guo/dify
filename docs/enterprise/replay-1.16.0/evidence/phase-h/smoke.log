@@ -1,0 +1,51 @@
+# Phase H smoke — minimal offline stack (isolated project dify-b8-phase-h)
+
+Date: 2026-08-12 (UTC smoke window ~15:46–15:58)
+Host port: only 127.0.0.1:18080
+Stack: db_postgres + redis + api + web + nginx (all isolated, `--pull never`),
+volumes remapped to named volumes `dify-b8-phase-h-*`.
+
+## Checks
+
+| # | Check | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | nginx `GET /` on 127.0.0.1:18080 | HTTP 200 body `phase-h-nginx-ok` | below |
+| 2 | api health via nginx proxy `GET /apihealth` | HTTP 200 `{"pid":76,"status":"ok","version":"1.16.0"}` | below |
+| 3 | web page via nginx proxy `GET /webpage/signin` | HTTP 200 Next.js shell (html lang=en-US, Dify) | below |
+| 4 | web root `GET /webpage/` | HTTP 307 -> `http://127.0.0.1:18080/install` (fresh-DB install redirect, expected) | below |
+| 5 | no network pull | up log has zero `Pulling` lines; enterprise images created 2026-08-11 (pre-existing) vs containers started 2026-08-12 | pull-never-up.log |
+
+## Raw output
+
+```
+$ curl -s -w ' HTTP=%{http_code}\n' http://127.0.0.1:18080/
+phase-h-nginx-ok
+ HTTP=200
+
+$ curl -s -w ' HTTP=%{http_code}\n' http://127.0.0.1:18080/apihealth
+{"pid": 76, "status": "ok", "version": "1.16.0"} HTTP=200
+
+$ curl -s -o /dev/null -w 'HTTP=%{http_code}\n' http://127.0.0.1:18080/webpage/
+HTTP=307
+
+$ curl -s -o /dev/null -w 'HTTP=%{http_code}\n' http://127.0.0.1:18080/webpage/signin
+HTTP=200
+
+$ curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' http://127.0.0.1:18080/webpage/
+307 -> http://127.0.0.1:18080/install
+```
+
+## Boot context (recorded because the isolated stack is minimal)
+
+- `init_permissions` one-shot ran first (chowns the storage named volume); api
+  then generated its `.dify_secret_key` in storage and booted gunicorn on 5001.
+- api reached health `healthy` after DB migration completed.
+- web reached api:5001 during SSR (earlier 500s were the pre-migration api
+  refusing connections; cleared once migration finished).
+
+## Known limitation (honest)
+
+Same-daemon simulation: all images already existed locally (Phase F build,
+2026-08-11). `docker compose up --pull never` provably never attempted a pull
+on this run, but this cannot prove a truly offline host; the equivalent proof
+on a network-isolated Docker host remains NOT_RUN.
