@@ -25,10 +25,14 @@ A71E = "a71e16c0de01"
 C8F3 = "c8f3d9d4a1be"
 F1A1 = "f1a14e1e9b41"
 E2F0 = "e2f0a9b7c6d5"
+E7C0 = "e7c0a9d2b8f3"
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[3] / "migrations"
 MIGRATION_FILE = MIGRATIONS_DIR / "versions" / (
     f"2026_07_21_1400-{B416E}_finalize_enterprise_marketplace_schema.py"
+)
+PHASE_G_MIGRATION_FILE = MIGRATIONS_DIR / "versions" / (
+    f"2026_08_12_0000-{E7C0}_align_marketplace_uuid_columns.py"
 )
 
 
@@ -52,6 +56,8 @@ def _parents(sd: ScriptDirectory, rev: str) -> tuple[str, ...]:
 def _load_migration_module(rev: str) -> ModuleType:
     if rev == B416E:
         path = MIGRATION_FILE
+    elif rev == E7C0:
+        path = PHASE_G_MIGRATION_FILE
     else:
         sd = _make_script_directory()
         script = sd.get_revision(rev)
@@ -62,6 +68,10 @@ def _load_migration_module(rev: str) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _phase_g_migration_source() -> str:
+    return PHASE_G_MIGRATION_FILE.read_text()
 
 
 def _migration_source() -> str:
@@ -107,11 +117,15 @@ class TestRevisionIdentity:
 
 
 class TestAlembicGraph:
-    def test_unique_head_is_b416e5c4e702(self) -> None:
+    def test_unique_head_is_e7c0a9d2b8f3(self) -> None:
         sd = _make_script_directory()
-        assert sd.get_heads() == [B416E]
+        assert sd.get_heads() == [E7C0]
 
-    def test_head_parent_is_a71e16c0de01(self) -> None:
+    def test_head_parent_is_b416e5c4e702(self) -> None:
+        sd = _make_script_directory()
+        assert _parents(sd, E7C0) == (B416E,)
+
+    def test_b416_parent_is_a71e16c0de01(self) -> None:
         sd = _make_script_directory()
         assert _parents(sd, B416E) == (A71E,)
 
@@ -306,6 +320,108 @@ class TestUpgradeNoStamp:
                           "import_app", "workflow_service", "dependencies_analysis")
                 for b in banned:
                     assert b not in name.lower(), f"imports business module: {name}"
+
+
+class TestPhaseGMarketplaceUuidFix:
+    """Phase G fix (GPH-01): one new revision after b416e5c4e702 that converts
+    every mismatched ID/FK column to PostgreSQL ``uuid`` with a data-preserving
+    ``USING col::uuid`` and is a no-op on other dialects (StringUUID maps to
+    CHAR(36) there)."""
+
+    _ASSETS_UUID_COLUMNS = (
+        "id",
+        "source_app_id",
+        "source_tenant_id",
+        "submitter_account_id",
+        "reviewer_account_id",
+        "published_snapshot_id",
+    )
+    _SNAPSHOTS_UUID_COLUMNS = (
+        "id",
+        "asset_id",
+        "source_app_id",
+        "source_tenant_id",
+        "submitter_account_id",
+        "reviewer_account_id",
+    )
+    _EXPECTED_ALTER_STATEMENTS = [
+        f"ALTER TABLE {table} ALTER COLUMN {column} TYPE UUID USING {column}::uuid"
+        for table, columns in (
+            ("enterprise_marketplace_assets", _ASSETS_UUID_COLUMNS),
+            ("enterprise_marketplace_asset_snapshots", _SNAPSHOTS_UUID_COLUMNS),
+        )
+        for column in columns
+    ]
+
+    def test_revision_value(self) -> None:
+        module = _load_migration_module(E7C0)
+        assert module.revision == E7C0
+
+    def test_down_revision_is_b416e5c4e702(self) -> None:
+        module = _load_migration_module(E7C0)
+        assert module.down_revision == B416E
+
+    def test_b416_file_unchanged(self) -> None:
+        assert B416E in _migration_source()
+
+    def test_docstring_records_upstream_reconciliation(self) -> None:
+        src = _phase_g_migration_source()
+        assert "enterprise fix" in src.lower()
+        assert "reconcile" in src.lower()
+        assert "upstream" in src.lower()
+
+    def test_upgrade_uses_data_preserving_alter_type_on_postgresql(self) -> None:
+        module = _load_migration_module(E7C0)
+        executed: list[str] = []
+        with mock.patch.object(module, "op") as fake_op:
+            fake_bind = mock.Mock()
+            fake_bind.dialect.name = "postgresql"
+            fake_op.get_bind.return_value = fake_bind
+            fake_op.execute = lambda stmt: executed.append(str(stmt))
+            module.upgrade()
+
+        assert executed == self._EXPECTED_ALTER_STATEMENTS
+
+    def test_upgrade_is_noop_on_non_postgresql(self) -> None:
+        module = _load_migration_module(E7C0)
+        with mock.patch.object(module, "op") as fake_op:
+            fake_bind = mock.Mock()
+            fake_bind.dialect.name = "mysql"
+            fake_op.get_bind.return_value = fake_bind
+            fake_op.execute = mock.Mock()
+            module.upgrade()
+
+        fake_op.execute.assert_not_called()
+
+    def test_downgrade_reverses_columns_to_varchar(self) -> None:
+        module = _load_migration_module(E7C0)
+        executed: list[str] = []
+        with mock.patch.object(module, "op") as fake_op:
+            fake_bind = mock.Mock()
+            fake_bind.dialect.name = "postgresql"
+            fake_op.get_bind.return_value = fake_bind
+            fake_op.execute = lambda stmt: executed.append(str(stmt))
+            module.downgrade()
+
+        assert executed == [
+            statement.replace("TYPE UUID USING", "TYPE VARCHAR(36) USING").replace("::uuid", "::text")
+            for statement in self._EXPECTED_ALTER_STATEMENTS
+        ]
+
+    def test_downgrade_is_noop_on_non_postgresql(self) -> None:
+        module = _load_migration_module(E7C0)
+        with mock.patch.object(module, "op") as fake_op:
+            fake_bind = mock.Mock()
+            fake_bind.dialect.name = "sqlite"
+            fake_op.get_bind.return_value = fake_bind
+            fake_op.execute = mock.Mock()
+            module.downgrade()
+
+        fake_op.execute.assert_not_called()
+
+    def test_imports_sqlalchemy_text(self) -> None:
+        module = _load_migration_module(E7C0)
+        assert module.sa.text is not None
 
 
 class TestKnownStatusMapping:

@@ -5,6 +5,8 @@ from typing import cast
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from agenton.compositor.schemas import LayerSessionSnapshot
+from agenton.layers.base import LifecycleState
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID
@@ -13,6 +15,7 @@ from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
     DIFY_CORE_TOOLS_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
+    DIFY_KNOWLEDGE_BASE_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
@@ -923,12 +926,72 @@ def test_build_skips_knowledge_layer_when_agent_soul_has_no_sets():
 
 
 def test_build_passes_saved_session_snapshot_to_agent_backend_request():
-    session_snapshot = CompositorSessionSnapshot(layers=[])
+    probe = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
+    names = [layer.name for layer in probe.request.composition.layers]
+    session_snapshot = CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(name=name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+            for name in names
+        ]
+    )
     context = replace(_context(), session_snapshot=session_snapshot)
 
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     assert result.request.session_snapshot is session_snapshot
+
+
+def test_build_injects_knowledge_layer_into_stale_session_snapshot():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 3},
+                        }
+                    ],
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+    builder = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider())
+    probe = builder.build(context)
+    composition_names = [layer.name for layer in probe.request.composition.layers]
+    assert DIFY_KNOWLEDGE_BASE_LAYER_ID in composition_names
+    stale_snapshot = CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(name=name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+            for name in composition_names
+            if name != DIFY_KNOWLEDGE_BASE_LAYER_ID
+        ]
+    )
+
+    result = builder.build(replace(context, session_snapshot=stale_snapshot))
+
+    assert result.request.session_snapshot is not None
+    assert [layer.name for layer in result.request.session_snapshot.layers] == composition_names
+    knowledge = next(
+        layer for layer in result.request.session_snapshot.layers if layer.name == DIFY_KNOWLEDGE_BASE_LAYER_ID
+    )
+    assert knowledge.lifecycle_state is LifecycleState.NEW
+    assert knowledge.runtime_state == {"eager_config_fingerprint": None, "eager_results": []}
 
 
 def test_requires_agent_soul_model_config():

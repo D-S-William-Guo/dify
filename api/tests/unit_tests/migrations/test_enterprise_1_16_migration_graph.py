@@ -34,6 +34,7 @@ F1A1 = "f1a14e1e9b41"
 E2F0 = "e2f0a9b7c6d5"
 A71E = "a71e16c0de01"
 B416E = "b416e5c4e702"
+E7C0 = "e7c0a9d2b8f3"
 OFFICIAL_116_HEAD = "7a1c2d9e4b60"
 OFFICIAL_115_HEAD = "d9e8f7a6b5c4"
 RECOMMENDED_APP_CATEGORIES = "a4f2d8c9b731"
@@ -114,11 +115,24 @@ class TestNewMergeParents:
 
 
 class TestSingleHead:
-    def test_graph_has_exactly_one_final_head_and_it_is_b416e5c4e702(
+    def test_graph_has_exactly_one_final_head_and_it_is_e7c0a9d2b8f3(
         self, script_directory: ScriptDirectory
     ) -> None:
         heads = script_directory.get_heads()
-        assert heads == [B416E]
+        assert heads == [E7C0]
+
+
+class TestPhaseGMarketplaceUuidFixGraph:
+    def test_e7c0_is_child_of_b416(self, script_directory: ScriptDirectory) -> None:
+        assert _parents(script_directory, E7C0) == (B416E,)
+
+    def test_b416_is_child_of_a71e(self, script_directory: ScriptDirectory) -> None:
+        assert _parents(script_directory, B416E) == (A71E,)
+
+    def test_e7c0_ancestry_still_converges(self, script_directory: ScriptDirectory) -> None:
+        ancestry = _ancestry(script_directory, E7C0)
+        assert A71E in ancestry
+        assert B416E in ancestry
 
 
 class TestEmptyMergeIsNoop:

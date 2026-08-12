@@ -12,12 +12,13 @@ composition-driven.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import ClassVar, Literal
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers import ExitIntent
+from agenton.layers.base import LifecycleState
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptLayerConfig
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
 from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
@@ -81,6 +82,51 @@ def _filter_snapshot_to_specs(
     if len(filtered_layers) == len(snapshot.layers):
         return snapshot
     return CompositorSessionSnapshot(schema_version=snapshot.schema_version, layers=filtered_layers)
+
+
+def _align_snapshot_to_composition(
+    snapshot: CompositorSessionSnapshot | None,
+    composition_layer_names: Sequence[str],
+) -> CompositorSessionSnapshot | None:
+    """Align a stored session snapshot to the current composition layer order.
+
+    The agenton compositor requires the snapshot layer names to equal the
+    composition layer names in order. A snapshot persisted by an earlier run
+    (for example one without knowledge configured) can lag the current
+    composition (for example one that now binds Agent Soul knowledge): the
+    composition adds the ``knowledge`` layer while the stale snapshot lacks it,
+    and the backend rejects the request with
+    ``CompositorSessionSnapshot layer names must match compositor layers``.
+
+    Rebuild the snapshot against the current composition: keep every existing
+    layer entry and inject a fresh ``knowledge`` entry (NEW lifecycle, empty
+    runtime state) when the composition has knowledge but the snapshot does
+    not. Stale entries no longer present in the composition are dropped. A
+    snapshot that already matches is returned unchanged so the knowledge-absent
+    path stays byte-compatible.
+    """
+    if snapshot is None:
+        return None
+    snapshot_names = [layer.name for layer in snapshot.layers]
+    if snapshot_names == list(composition_layer_names):
+        return snapshot
+    layer_by_name = {layer.name: layer for layer in snapshot.layers}
+    aligned_layers: list[LayerSessionSnapshot] = []
+    for name in composition_layer_names:
+        existing = layer_by_name.get(name)
+        if existing is not None:
+            aligned_layers.append(existing)
+        elif name == DIFY_KNOWLEDGE_BASE_LAYER_ID:
+            aligned_layers.append(
+                LayerSessionSnapshot(
+                    name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
+                    lifecycle_state=LifecycleState.NEW,
+                    runtime_state={"eager_config_fingerprint": None, "eager_results": []},
+                )
+            )
+    if [layer.name for layer in aligned_layers] == snapshot_names:
+        return snapshot
+    return CompositorSessionSnapshot(schema_version=snapshot.schema_version, layers=aligned_layers)
 
 
 def _shell_layer_deps() -> dict[str, str]:
@@ -475,11 +521,15 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        session_snapshot = _align_snapshot_to_composition(
+            run_input.session_snapshot,
+            [layer.name for layer in layers],
+        )
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
-            session_snapshot=run_input.session_snapshot,
+            session_snapshot=session_snapshot,
             deferred_tool_results=run_input.deferred_tool_results,
             on_exit=LayerExitSignals(
                 default=ExitIntent.SUSPEND if run_input.suspend_on_exit else ExitIntent.DELETE,
@@ -707,11 +757,15 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        session_snapshot = _align_snapshot_to_composition(
+            run_input.session_snapshot,
+            [layer.name for layer in layers],
+        )
         return CreateRunRequest(
             composition=RunComposition(layers=layers),
             idempotency_key=run_input.idempotency_key,
             metadata=run_input.metadata,
-            session_snapshot=run_input.session_snapshot,
+            session_snapshot=session_snapshot,
             deferred_tool_results=run_input.deferred_tool_results,
             on_exit=LayerExitSignals(
                 default=ExitIntent.SUSPEND if run_input.suspend_on_exit else ExitIntent.DELETE,

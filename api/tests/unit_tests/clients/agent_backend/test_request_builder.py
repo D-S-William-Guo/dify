@@ -49,8 +49,11 @@ from clients.agent_backend import (
     extract_runtime_layer_specs,
     redact_for_agent_backend_log,
 )
-from clients.agent_backend.request_builder import DIFY_DRIVE_LAYER_ID, DIFY_SHELL_LAYER_ID
-
+from clients.agent_backend.request_builder import (
+    AGENT_APP_USER_PROMPT_LAYER_ID,
+    DIFY_DRIVE_LAYER_ID,
+    DIFY_SHELL_LAYER_ID,
+)
 
 def _run_input() -> AgentBackendWorkflowNodeRunInput:
     return AgentBackendWorkflowNodeRunInput(
@@ -516,8 +519,140 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
     assert knowledge_config.sets[0].dataset_ids == ["dataset-1", "dataset-2"]
 
 
-# ── ENG-635 / ENG-638: ask_human layer injection + deferred_tool_results ─────
+def _snapshot_for(names: list[str]) -> CompositorSessionSnapshot:
+    return CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(name=name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+            for name in names
+        ]
+    )
 
+
+class TestSessionSnapshotKnowledgeAlignment:
+    """GPH-02: a stored session snapshot from a knowledge-absent run must be
+    aligned to a composition that now configures knowledge, otherwise the
+    agenton compositor rejects the layer-name/order mismatch."""
+
+    @staticmethod
+    def _agent_app_input_with_knowledge() -> AgentBackendAgentAppRunInput:
+        run_input = _agent_app_input()
+        run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ],
+            }
+        )
+        return run_input
+
+    def test_knowledge_present_injects_knowledge_layer_into_stale_snapshot(self):
+        run_input = self._agent_app_input_with_knowledge()
+        run_input.session_snapshot = _snapshot_for(
+            [
+                AGENT_SOUL_PROMPT_LAYER_ID,
+                AGENT_APP_USER_PROMPT_LAYER_ID,
+                DIFY_EXECUTION_CONTEXT_LAYER_ID,
+                DIFY_AGENT_HISTORY_LAYER_ID,
+                DIFY_AGENT_MODEL_LAYER_ID,
+            ]
+        )
+
+        request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+
+        assert request.session_snapshot is not None
+        snapshot_names = [layer.name for layer in request.session_snapshot.layers]
+        composition_names = [layer.name for layer in request.composition.layers]
+        assert snapshot_names == composition_names
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID in snapshot_names
+        knowledge_index = snapshot_names.index(DIFY_KNOWLEDGE_BASE_LAYER_ID)
+        assert snapshot_names[knowledge_index - 1] == DIFY_AGENT_MODEL_LAYER_ID
+        knowledge = request.session_snapshot.layers[knowledge_index]
+        assert knowledge.lifecycle_state is LifecycleState.NEW
+        assert knowledge.runtime_state == {"eager_config_fingerprint": None, "eager_results": []}
+
+    def test_knowledge_present_with_matching_snapshot_passes_through_unchanged(self):
+        probe = AgentBackendRunRequestBuilder().build_for_agent_app(self._agent_app_input_with_knowledge())
+        run_input = self._agent_app_input_with_knowledge()
+        run_input.session_snapshot = _snapshot_for([layer.name for layer in probe.composition.layers])
+
+        request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+
+        assert request.session_snapshot is run_input.session_snapshot
+
+    def test_knowledge_absent_with_matching_snapshot_passes_through_unchanged(self):
+        probe = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
+        run_input = _agent_app_input()
+        run_input.session_snapshot = _snapshot_for([layer.name for layer in probe.composition.layers])
+
+        request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+
+        assert request.session_snapshot is run_input.session_snapshot
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID not in [layer.name for layer in request.composition.layers]
+
+    def test_knowledge_absent_drops_stale_knowledge_layer_from_snapshot(self):
+        run_input = _agent_app_input()
+        run_input.session_snapshot = _snapshot_for(
+            [
+                AGENT_SOUL_PROMPT_LAYER_ID,
+                AGENT_APP_USER_PROMPT_LAYER_ID,
+                DIFY_EXECUTION_CONTEXT_LAYER_ID,
+                DIFY_AGENT_HISTORY_LAYER_ID,
+                DIFY_AGENT_MODEL_LAYER_ID,
+                DIFY_KNOWLEDGE_BASE_LAYER_ID,
+            ]
+        )
+
+        request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+
+        assert request.session_snapshot is not None
+        assert [layer.name for layer in request.session_snapshot.layers] == [
+            layer.name for layer in request.composition.layers
+        ]
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID not in [layer.name for layer in request.session_snapshot.layers]
+
+    def test_workflow_node_knowledge_present_injects_knowledge_into_stale_snapshot(self):
+        run_input = _run_input()
+        run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ],
+            }
+        )
+        run_input.session_snapshot = _snapshot_for(
+            [
+                AGENT_SOUL_PROMPT_LAYER_ID,
+                WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
+                WORKFLOW_USER_PROMPT_LAYER_ID,
+                DIFY_EXECUTION_CONTEXT_LAYER_ID,
+                DIFY_AGENT_HISTORY_LAYER_ID,
+                DIFY_AGENT_MODEL_LAYER_ID,
+                DIFY_AGENT_OUTPUT_LAYER_ID,
+            ]
+        )
+
+        request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+
+        assert request.session_snapshot is not None
+        assert [layer.name for layer in request.session_snapshot.layers] == [
+            layer.name for layer in request.composition.layers
+        ]
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID in [layer.name for layer in request.session_snapshot.layers]
+
+
+# ── ENG-635 / ENG-638: ask_human layer injection + deferred_tool_results ─────
 
 def test_ask_human_layer_injected_when_configured():
 

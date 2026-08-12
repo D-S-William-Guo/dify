@@ -3,10 +3,14 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from agenton.compositor import CompositorSessionSnapshot
+from agenton.compositor.schemas import LayerSessionSnapshot
+from agenton.layers.base import LifecycleState
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -14,6 +18,7 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
     DIFY_CORE_TOOLS_LAYER_ID,
+    DIFY_KNOWLEDGE_BASE_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
     AgentBackendAgentAppRunInput,
     AgentBackendModelConfig,
@@ -382,6 +387,71 @@ class TestAgentAppRuntimeRequestBuilder:
         with pytest.raises(AgentAppRuntimeRequestBuildError) as exc:
             builder.build(_ctx(AgentSoulConfig()))
         assert exc.value.error_code == "agent_model_not_configured"
+
+    def test_build_injects_knowledge_layer_into_stale_session_snapshot(self):
+        soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "langgenius/openai/openai",
+                    "model": "gpt-4o-mini",
+                },
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 3},
+                        }
+                    ],
+                },
+            }
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        probe = builder.build(_ctx(soul))
+        composition_names = [layer.name for layer in probe.request.composition.layers]
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID in composition_names
+        stale_snapshot = CompositorSessionSnapshot(
+            layers=[
+                LayerSessionSnapshot(name=name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+                for name in composition_names
+                if name != DIFY_KNOWLEDGE_BASE_LAYER_ID
+            ]
+        )
+
+        result = builder.build(replace(_ctx(soul), session_snapshot=stale_snapshot))
+
+        assert result.request.session_snapshot is not None
+        assert [layer.name for layer in result.request.session_snapshot.layers] == composition_names
+        knowledge = next(
+            layer for layer in result.request.session_snapshot.layers if layer.name == DIFY_KNOWLEDGE_BASE_LAYER_ID
+        )
+        assert knowledge.lifecycle_state is LifecycleState.NEW
+        assert knowledge.runtime_state == {"eager_config_fingerprint": None, "eager_results": []}
+
+    def test_build_knowledge_absent_keeps_matching_snapshot_unchanged(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        probe = builder.build(_ctx(_soul_with_model()))
+        names = [layer.name for layer in probe.request.composition.layers]
+        assert DIFY_KNOWLEDGE_BASE_LAYER_ID not in names
+        matching_snapshot = CompositorSessionSnapshot(
+            layers=[
+                LayerSessionSnapshot(name=name, lifecycle_state=LifecycleState.SUSPENDED, runtime_state={})
+                for name in names
+            ]
+        )
+
+        result = builder.build(replace(_ctx(_soul_with_model()), session_snapshot=matching_snapshot))
+
+        assert result.request.session_snapshot is matching_snapshot
 
     def test_build_maps_agent_soul_shell_settings_to_shell_layer(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)

@@ -27,7 +27,7 @@
 | 候选 HEAD | `b0f84651099ab25208b7a177d505505bf7c57324` |
 | origin | `b0f84651099ab25208b7a177d505505bf7c57324`（已 push） |
 | 官方基线 | `1.16.0` = `5c6372d2f76d240265b92fd27c16bc772ffcb107` |
-| Alembic 唯一 head | `b416e5c4e702` |
+| Alembic 唯一 head | `e7c0a9d2b8f3`（parent `b416e5c4e702`；Phase G 修复后） |
 | B8 Reviewer | PASS；B8R-01/02/03 已接受为不阻断 P3 |
 | 已接受决策 | A 跳过 Rereviewer；B completeness 暂不扩；C repair 暂不开；D 完整运行验证顺序 D→F→G→H；E push 已完成；F 本台账入库；G P3 保持接受 |
 
@@ -371,7 +371,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 | uuidv7/PG18 不兼容 | Phase D | ✅ 已验（PG18 uuidv7 版本 7；`1c9ba48be8e4` 不重跑） | 必跑 |
 | image ID 不一致 | Phase F | ✅ 已验（api==worker==worker_beat==api_websocket，web 为企业 Web image；PASS） | 五容器 inspect |
 | 浏览器/交互回归 | Phase G | ✅ 已验（E2E 5 组 Playwright 截图 PASS） | E2E 5 组 |
-| Agent/WebSocket 故障 | Phase G | ✅ 已验（12 场景；knowledge 绑定 FAIL、stop 400 偏差、余 PASS） | 12 场景 |
+| Agent/WebSocket 故障 | Phase G | ✅ 已验（12 场景；knowledge 绑定已修，见 Phase G 修复；stop 400 非阻断偏差） | 12 场景 |
 | secret 泄漏到运行日志/包 | Phase G/H | ✅ 运行扫描已做（真实 key 0 命中；仅 compose 配置含 dev default） | 受保护 pattern |
 | 离线包不可用 | Phase H | NOT_RUN | load + `--pull never` |
 | capacity 非 reservation | 并发邀请 | 已知限制 | 接受/未来修 |
@@ -404,6 +404,48 @@ Workflow/WebSocket/plugin-dataset-vector/secret/浏览器/E2E 均 PASS；Agent 1
   未 crash，重启后恢复（`agent-backend-stop.log`）。
 - 迁移 dataset 的向量 class 对齐 NOT_RUN（生产 Weaviate 数据在禁止路径）；新 dataset 对齐+hit-testing PASS。
 - inline agent（workflow agent-composer 节点）仅 API 未跑通（binding 需 UI 路径），记为 NOT_RUN。
+
+## Phase G 修复（Fixer，2026-08-12）
+
+两个 release-blocking finding 已修复（`replay-116-b8-phase-g-fixer`，分支
+`ctyun/replay-116-b8-phase-g-fixer`）：
+
+### GPH-01：Marketplace schema 类型不匹配 → 新 migration
+
+- 修复：新增 1 个 Alembic revision（`e7c0a9d2b8f3`，parent `b416e5c4e702`），在
+  PostgreSQL 上把 `enterprise_marketplace_assets` 与
+  `enterprise_marketplace_asset_snapshots` 的所有 ID/FK 列
+  （id、source_app_id、source_tenant_id、submitter_account_id、
+  reviewer_account_id、published_snapshot_id、asset_id）由 `VARCHAR(36)` 改为
+  `uuid`，使用数据保留的 `ALTER TYPE ... USING col::uuid`；索引/唯一约束/CHECK
+  由 PostgreSQL 在列类型重写中保留。其他方言为 no-op（`StringUUID` 已映射为
+  `CHAR(36)`）。
+- 决策：**不修改** `b416e5c4e702`，只在它之后追加新 revision。
+- ⚠️ **企业修复 / 上游对账（upstream reconciliation）**：`e7c0a9d2b8f3` 是
+  企业特有修复，官方 Dify 任何版本均不含。未来官方 release 若自行修复或上游化
+  这些列，升级前必须把该 revision 与新版官方 migration graph 对账，待官方 schema
+  已声明为 `uuid` 后删除本 revision。该说明已写入新 migration 的 docstring。
+- 验证：migration graph + marketplace 迁移测试更新为以 `e7c0a9d2b8f3` 为唯一
+  head；新增 PG（mock 绑定）下全部 12 列 `ALTER TYPE uuid USING col::uuid` 断言、
+  非 PG no-op、downgrade 反转断言。
+
+### GPH-02：Agent 绑定 Knowledge 后对话失败 → 运行时快照对齐
+
+- 修复：`api/clients/agent_backend/request_builder.py` 的
+  `build_for_agent_app` / `build_for_workflow_node` 在
+  `agent_soul.knowledge.sets` 非空时，若存储的 `session_snapshot` 缺
+  `knowledge` 层，则按 composition 层序注入 fresh knowledge 快照条目
+  （NEW lifecycle、空 runtime state）；若 snapshot 携带已删除的 knowledge 层则
+  丢弃；snapshot 与 composition 已一致时原样透传（knowledge-absent 路径字节级
+  兼容）。
+- 影响：仅改 API 侧请求构建路径，不触碰 dify-agent/agenton。
+- 验证：knowledge-present / knowledge-absent 单测（clients request_builder、
+  agent_app runtime_request_builder、workflow agent_v2 runtime_request_builder）。
+
+### 未触碰（非阻断偏差，按任务约束不动）
+
+- agent_backend stop 400、inline-agent NOT_RUN、迁移 vector 对齐 NOT_RUN、
+  plugin debug NOT_RUN。
 
 ## 回填规则
 
