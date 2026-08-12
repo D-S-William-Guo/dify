@@ -27,7 +27,7 @@
 | upstream | `https://github.com/langgenius/dify.git` |
 | 官方基线 tag | `1.16.0` |
 | 官方基线 commit | `5c6372d2f76d240265b92fd27c16bc772ffcb107` |
-| Alembic 最终 head | `b416e5c4e702`（唯一 head） |
+| Alembic 最终 head | `e7c0a9d2b8f3`（parent `b416e5c4e702`） |
 | Skill 源仓库 | `/home/ctyun/BigData/GitHub/codex-personal-skills` |
 | Skill 源 commit | `33928a0`（含单控制器、事件驱动清理、下一步 ownership、human-signaled completion、长提示词 human-submit、`cs create` 非交互路径与大契约 temp-file 投递） |
 | Claude Squad 定制 commit | `a1e35dc7436454cb53a584b8730166e23055ad4b`（`fix/n-overlay-small-terminal`，含 governed workflow safeguards 与小终端 overlay 修复） |

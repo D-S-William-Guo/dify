@@ -75,7 +75,7 @@ B8_PHASE_DFGH_NOT_AUTHORIZED（Phase D/F/G/H 需协调者逐项另行批准）
   manifest schema 已固化 `baseline=1.16.0/5c6372d2f7…`、`enterprise_commit`、逐镜像 id/digest
   （B7_REVIEW §4）。
 - 官方基线 tag `1.16.0` / `5c6372d2f76d240265b92fd27c16bc772ffcb107`；Alembic 唯一企业 head
-  `b416e5c4e702`（CURRENT_STATE §1，`api/tests/unit_tests/migrations/test_enterprise_1_16_migration_graph.py`
+  `e7c0a9d2b8f3`（Phase G fixer revision，parent `b416e5c4e702`；CURRENT_STATE §1，`api/tests/unit_tests/migrations/test_enterprise_1_16_migration_graph.py`
   等测试已在仓）。
 - 只读 B2 inventory 事实：PostgreSQL `15.17`、实际旧企业 head `e2f0a9b7c6d5`；
   `high_quality`+有 `class_prefix` 的 dataset 1 个、`index_struct.type=weaviate`；

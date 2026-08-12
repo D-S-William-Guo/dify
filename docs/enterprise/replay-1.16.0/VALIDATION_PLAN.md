@@ -11,7 +11,7 @@
 1. 基线保持官方 `1.16.0` / `5c6372d2f76d240265b92fd27c16bc772ffcb107`，企业提交可清晰审计。
 2. `git diff 1.16.0...HEAD` 不得包含旧源码树、`docker/volumes/**`、真实 `.env`、secret、cache、node_modules 或构建产物。
 3. 官方安全修复的回归测试全部保留。
-4. Alembic 只有一个最终企业 head `b416e5c4e702`，且空库、官方 1.15、旧企业 1.15 和官方 1.16 路径均按支持矩阵升级。
+4. Alembic 只有一个最终企业 head `e7c0a9d2b8f3`，且空库、官方 1.15、旧企业 1.15 和官方 1.16 路径均按支持矩阵升级。
 5. API、worker、worker_beat、api_websocket 使用同一企业 API image ID；Web 使用本轮企业 Web image ID。
 6. 离线 manifest 包含 Agent backend/local sandbox，并与通过 runtime 验证的 image IDs/digests 一致。
 7. 当前发布阻断组合为 PostgreSQL + Weaviate；MySQL 仅条件验证，不是本轮本地发布阻断项。
@@ -84,10 +84,10 @@ UV_CACHE_DIR=.uv-cache uv run --project api flask db history
 
 要求：
 
-- 单一最终企业 head `b416e5c4e702`。
+- 单一最终企业 head `e7c0a9d2b8f3`。
 - 历史 revision `c8f3d9d4a1be`、`f1a14e1e9b41`、`e2f0a9b7c6d5` 均可解析；文件从旧企业候选恢复并保持 revision ID、`down_revision`、`branch_labels`、`upgrade()`/`downgrade()` 历史 DDL 语义。不得重新生成 ID，不得使用 `alembic stamp` 伪造升级状态。
 - 空 merge `a71e16c0de01` 的 parents 精确为 `e2f0a9b7c6d5` 与官方 `7a1c2d9e4b60`，其 `upgrade()`/`downgrade()` 为空且不含业务 DDL。
-- B4 schema revision `b416e5c4e702` 位于 merge 后，`down_revision = "a71e16c0de01"`；所有 1.16 智慧广场新增列、索引、约束和数据迁移只在此 revision，不能塞进 merge。
+- B4 schema revision `b416e5c4e702` 位于 merge 后，`down_revision = "a71e16c0de01"`；所有 1.16 智慧广场新增列、索引、约束和数据迁移只在此 revision，不能塞进 merge；Phase G type-fix child `e7c0a9d2b8f3`（`down_revision = "b416e5c4e702"`）只调整 ID/FK 列为 UUID 类型。
 - 从官方 1.15 head 升级会执行官方实际新增的 5 个 revision，再收敛到企业 head。
 - Release 列表中三个在 1.15 已存在但 1.16 修改的 Agent migrations，以及同样被修改的 uuidv7 migration `1c9ba48be8e4`，不得被错误地当作升级时会重跑。
 
@@ -95,7 +95,7 @@ UV_CACHE_DIR=.uv-cache uv run --project api flask db history
 
 | 级别 | 数据库/场景 | 起点与操作 | 必验结果 |
 | --- | --- | --- | --- |
-| 必须运行 | 当前生产 PostgreSQL 版本，企业升级 | 企业 1.15 `e2f0a9b7c6d5` → 1.16 | 官方新链→空 merge→B4；历史资产行/状态、tenant/member/dataset 不丢；最终 head `b416e5c4e702` |
+| 必须运行 | 当前生产 PostgreSQL 版本，企业升级 | 企业 1.15 `e2f0a9b7c6d5` → 1.16 | 官方新链→空 merge→B4；历史资产行/状态、tenant/member/dataset 不丢；最终 head `e7c0a9d2b8f3` |
 | 必须运行 | 当前生产 PostgreSQL 版本，官方升级 | 官方 1.15 `d9e8f7a6b5c4` → 1.16 | 执行 5 个官方新增 revision、企业历史分支、空 merge、B4，无重复建表 |
 | 必须运行 | PostgreSQL 18 空库 | 无表 → 1.16 | 完整 history 成功；`SELECT uuidv7()` 成功且 UUID version 为 7；智慧广场最终表/索引/约束正确 |
 | 必须运行 | PostgreSQL 18 应用升级 | 在 PG18 上预置企业 1.15 副本后升级 Dify 1.16 | `1c9ba48be8e4` 的 PG18 兼容路径有效；`SELECT uuidv7()` 成功；数据与最终 head 正确 |
