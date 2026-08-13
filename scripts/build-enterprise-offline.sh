@@ -116,15 +116,43 @@ is_reusable_image() {
   [[ -n "$actual" && "$actual" == "$expected" ]]
 }
 
+# Read-only content gate: verifies a same-tag enterprise API image actually
+# matches the current candidate HEAD before it is accepted as reusable.
+# All docker operations below (run) never modify the image.
+verify_enterprise_image_content() {
+  local image="$1"
+  local repo_migrations image_migrations
+
+  repo_migrations="$(find "$REPO_ROOT/api/migrations/versions" -maxdepth 1 -type f -name '*.py' -printf '%f\n' | sort)"
+  image_migrations="$(docker run --rm --entrypoint sh "$image" -c 'ls -1 /app/api/migrations/versions/*.py 2>/dev/null | sed "s#.*/##"' 2>/dev/null | sort || true)"
+
+  if [[ "$image_migrations" != "$repo_migrations" ]]; then
+    echo "Image $image is not reusable: image migration file set differs from the repository api/migrations/versions at current HEAD." >&2
+    diff <(printf '%s\n' "$repo_migrations") <(printf '%s\n' "$image_migrations") >&2 || true
+    return 1
+  fi
+
+  if ! docker run --rm --entrypoint sh "$image" -c 'grep -Fq _align_snapshot_to_composition /app/api/clients/agent_backend/request_builder.py' >/dev/null 2>&1; then
+    echo "Image $image is not reusable: /app/api/clients/agent_backend/request_builder.py does not contain _align_snapshot_to_composition." >&2
+    return 1
+  fi
+
+  return 0
+}
+
 ensure_enterprise_image() {
   local image="$1"
   local dockerfile="$2"
   local context_path="$3"
   local expected="$4"
+  local verify_content="${5:-false}"
 
   if [[ "$CHECK_ONLY" == true || "$MODE" == "reuse" ]]; then
     if ! is_reusable_image "$image" "$expected"; then
       echo "Image $image is not reusable. Expected COMMIT_SHA=$expected." >&2
+      exit 1
+    fi
+    if [[ "$verify_content" == true ]] && ! verify_enterprise_image_content "$image"; then
       exit 1
     fi
     echo "Reusing enterprise image: $image"
@@ -132,6 +160,9 @@ ensure_enterprise_image() {
   fi
 
   if [[ "$MODE" == "smart" ]] && is_reusable_image "$image" "$expected"; then
+    if [[ "$verify_content" == true ]] && ! verify_enterprise_image_content "$image"; then
+      exit 1
+    fi
     echo "Reusing enterprise image: $image"
     return
   fi
@@ -181,7 +212,7 @@ build_enterprise_web_image() {
     "$temp_context"
 }
 
-ensure_enterprise_image "$API_IMAGE" "$REPO_ROOT/api/Dockerfile" "$REPO_ROOT/api" "$VERSION"
+ensure_enterprise_image "$API_IMAGE" "$REPO_ROOT/api/Dockerfile" "$REPO_ROOT/api" "$VERSION" true
 build_enterprise_web_image "$WEB_IMAGE" "$VERSION"
 
 echo "Resolving compose image list"

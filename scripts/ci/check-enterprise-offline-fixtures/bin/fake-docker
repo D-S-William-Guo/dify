@@ -7,6 +7,10 @@
 #   FAKE_DOCKER_LOG            file each invocation is appended to (assert no build/pull/save in dry-run)
 #   FAKE_DOCKER_NO_DIGEST      space-separated images that must report an empty RepoDigest
 #   FAKE_DOCKER_OUT            directory for `save` output (defaults to mktemp -d)
+#   FAKE_DOCKER_MIGRATIONS     newline-separated /app/api/migrations/versions file list
+#                              returned by `run`; defaults to the repo file list under $PWD
+#   FAKE_DOCKER_MISSING_FUNCTION if "true", the image's request_builder.py lacks
+#                              _align_snapshot_to_composition (reuse content gate must reject)
 
 set -euo pipefail
 
@@ -25,6 +29,11 @@ has_image() {
     [[ "$candidate" == "$img" ]] && return 0
   done
   return 1
+}
+
+fake_default_migrations() {
+  local root="${FAKE_DOCKER_REPO_ROOT:-$PWD}"
+  find "$root/api/migrations/versions" -maxdepth 1 -type f -name '*.py' -printf '%f\n' | sort
 }
 
 cmd="$1"
@@ -106,6 +115,35 @@ case "$cmd" in
         tar cf "$out" manifest.json repositories ab12cd34/layer.tar
       )
     fi
+    exit 0
+    ;;
+  run)
+    # Gate form: docker run --rm --entrypoint sh IMAGE -c SCRIPT
+    image=""
+    script=""
+    prev=""
+    for arg in "$@"; do
+      if [[ "$prev" == "-c" ]]; then
+        script="$arg"
+      elif [[ "$arg" == *:* && -z "$image" ]]; then
+        image="$arg"
+      fi
+      prev="$arg"
+    done
+    case "$script" in
+      *"migrations/versions"*)
+        if [[ -n "${FAKE_DOCKER_MIGRATIONS+x}" ]]; then
+          printf '%s\n' "$FAKE_DOCKER_MIGRATIONS"
+        else
+          fake_default_migrations
+        fi
+        ;;
+      *"request_builder.py"*)
+        if [[ "${FAKE_DOCKER_MISSING_FUNCTION:-false}" == "true" ]]; then
+          exit 1
+        fi
+        ;;
+    esac
     exit 0
     ;;
   pull)

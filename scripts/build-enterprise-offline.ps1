@@ -90,6 +90,31 @@ function Test-ReusableImage {
   return -not [string]::IsNullOrEmpty($commitSha) -and $commitSha -eq $ExpectedCommitSha
 }
 
+# Read-only content gate mirror of verify_enterprise_image_content in the .sh
+# script: a same-tag enterprise API image is only reusable when its
+# /app/api/migrations/versions file set matches the repo at current HEAD and its
+# request_builder.py contains _align_snapshot_to_composition. docker run never
+# modifies the image.
+function Test-EnterpriseImageContent {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Image
+  )
+
+  $repoMigrations = @(Get-ChildItem (Join-Path $repoRoot "api/migrations/versions") -Filter "*.py" |
+    ForEach-Object { $_.Name } | Sort-Object)
+  $imageMigrations = @(docker run --rm --entrypoint sh $Image -c 'ls -1 /app/api/migrations/versions/*.py 2>/dev/null | sed "s#.*/##"' 2>$null |
+    ForEach-Object { $_ } | Sort-Object)
+  if (($repoMigrations -join "`n") -ne ($imageMigrations -join "`n")) {
+    throw "Image $Image is not reusable: image migration file set differs from the repository api/migrations/versions at current HEAD."
+  }
+
+  docker run --rm --entrypoint sh $Image -c 'grep -Fq _align_snapshot_to_composition /app/api/clients/agent_backend/request_builder.py' *> $null
+  if ($LASTEXITCODE -ne 0) {
+    throw "Image $Image is not reusable: /app/api/clients/agent_backend/request_builder.py does not contain _align_snapshot_to_composition."
+  }
+}
+
 function Ensure-EnterpriseImage {
   param(
     [Parameter(Mandatory = $true)]
@@ -99,7 +124,8 @@ function Ensure-EnterpriseImage {
     [Parameter(Mandatory = $true)]
     [string]$ContextPath,
     [Parameter(Mandatory = $true)]
-    [string]$ExpectedCommitSha
+    [string]$ExpectedCommitSha,
+    [bool]$VerifyContent = $false
   )
 
   $reusable = Test-ReusableImage -Image $Image -ExpectedCommitSha $ExpectedCommitSha
@@ -107,10 +133,16 @@ function Ensure-EnterpriseImage {
     if (-not $reusable) {
       throw "Image $Image is not reusable. Expected COMMIT_SHA=$ExpectedCommitSha."
     }
+    if ($VerifyContent) {
+      Test-EnterpriseImageContent -Image $Image
+    }
     Write-Host "Reusing enterprise image: $Image"
     return
   }
   if ($Mode -eq "smart" -and $reusable) {
+    if ($VerifyContent) {
+      Test-EnterpriseImageContent -Image $Image
+    }
     Write-Host "Reusing enterprise image: $Image"
     return
   }
@@ -123,7 +155,8 @@ Ensure-EnterpriseImage `
   -Image $apiImage `
   -Dockerfile (Join-Path $repoRoot "api/Dockerfile") `
   -ContextPath (Join-Path $repoRoot "api") `
-  -ExpectedCommitSha $Version
+  -ExpectedCommitSha $Version `
+  -VerifyContent $true
 
 Ensure-EnterpriseImage `
   -Image $webImage `

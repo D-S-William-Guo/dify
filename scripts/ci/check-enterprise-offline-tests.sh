@@ -121,6 +121,14 @@ expect_pass "reuse gate accepts matching enterprise image" \
   "$fixture" ./scripts/build-enterprise-offline.sh -Version 1.16.0-enterprise -Mode reuse
 unset FAKE_DOCKER_LOG FAKE_DOCKER_OUT
 
+if ! grep -Eq '^docker run ' "$fixture/fake-docker.log"; then
+  printf 'not ok - reuse run must run the read-only image content gate\n' >&2
+  sed -n '1,40p' "$fixture/fake-docker.log" >&2
+  exit 1
+fi
+printf 'ok - reuse run runs the read-only image content gate\n'
+pass_count=$((pass_count + 1))
+
 if grep -Eq '^docker (build|pull) ' "$fixture/fake-docker.log"; then
   printf 'not ok - reuse run must not build or pull enterprise images\n' >&2
   sed -n '1,40p' "$fixture/fake-docker.log" >&2
@@ -183,6 +191,28 @@ else
   printf 'not ok - manifest schema validation failed\n' >&2
   exit 1
 fi
+
+# --- reuse gate: stale image missing a migration (same COMMIT_SHA) --------------
+fixture=$(new_fixture reuse-stale-migration)
+export FAKE_DOCKER_IMAGES="$ALL_IMAGES"
+export FAKE_DOCKER_COMMIT_SHA="1.16.0-enterprise"
+export FAKE_DOCKER_COMPOSE_IMAGES="$COMPOSE_IMAGES"
+export FAKE_DOCKER_MIGRATIONS="$(cd "$fixture" && find api/migrations/versions -maxdepth 1 -type f -name '*.py' -printf '%f\n' | grep -v 'e7c0a9d2b8f3' | sort)"
+expect_fail "reuse gate rejects stale image missing migration e7c0a9d2b8f3" \
+  "image migration file set differs from the repository api/migrations/versions at current HEAD" \
+  "$fixture" ./scripts/build-enterprise-offline.sh -Version 1.16.0-enterprise -Mode reuse
+unset FAKE_DOCKER_IMAGES FAKE_DOCKER_COMMIT_SHA FAKE_DOCKER_COMPOSE_IMAGES FAKE_DOCKER_MIGRATIONS
+
+# --- reuse gate: stale image missing _align_snapshot_to_composition -------------
+fixture=$(new_fixture reuse-stale-function)
+export FAKE_DOCKER_IMAGES="$ALL_IMAGES"
+export FAKE_DOCKER_COMMIT_SHA="1.16.0-enterprise"
+export FAKE_DOCKER_COMPOSE_IMAGES="$COMPOSE_IMAGES"
+export FAKE_DOCKER_MISSING_FUNCTION=true
+expect_fail "reuse gate rejects stale image missing _align_snapshot_to_composition" \
+  "request_builder.py does not contain _align_snapshot_to_composition" \
+  "$fixture" ./scripts/build-enterprise-offline.sh -Version 1.16.0-enterprise -Mode reuse
+unset FAKE_DOCKER_IMAGES FAKE_DOCKER_COMMIT_SHA FAKE_DOCKER_COMPOSE_IMAGES FAKE_DOCKER_MISSING_FUNCTION
 
 # --- -CheckOnly dry-run: no build/pull/save ------------------------------------
 fixture=$(new_fixture checkonly)

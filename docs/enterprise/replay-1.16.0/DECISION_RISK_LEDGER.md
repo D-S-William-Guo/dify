@@ -474,6 +474,50 @@ api `/health` 200、web `/webpage/signin` 200、`/` 307→/install）→ teardow
   重跑）→ 复跑 Phase H，确认镜像 migration head 为 `e7c0a9d2b8f3` 且
   `request_builder.py` 含修复，离线包才可视为 release-ready。
 
+## B7 reuse gate 加固（Fixer，2026-08-13）
+
+Phase H 根因修复的自动化部分：加固 B7 离线 reuse 门禁，使其不能接受同 tag 的
+过期企业镜像。
+
+### 决策
+
+| 决策 | 选项 | 选择 | 影响 | 利弊 |
+| --- | --- | --- | --- | --- |
+| 内容核对方式 | 比较 COMMIT_SHA 之外再加镜像内容 | `docker run --rm --entrypoint sh` 只读读取 `/app/api/...` | 门禁成本 | 只读不落盘；可 fixture 模拟 |
+| 核对内容 | 只 migration / migration + 函数 | migration 文件集 + `request_builder.py` 含 `_align_snapshot_to_composition` | 覆盖 GPH-01 + GPH-02 | 两个 release-blocking finding 都拦 |
+| 失败模式 | 放行 / fail-closed | 任一不匹配 exit 1 + 明确诊断 | 构建门禁 | 安全优先 |
+| .ps1 | 不镜像 / 镜像 | 镜像相同门禁 | 双平台一致 | 本环境无 pwsh，仅镜像未运行（NOT_RUN，诚实记录） |
+
+### 变更
+
+- `scripts/build-enterprise-offline.sh`：新增只读内容核对
+  `verify_enterprise_image_content`（`docker run --rm --entrypoint sh IMAGE -c`），
+  在 API 镜像 reuse/smart/`-CheckOnly` 复用路径上强制执行：
+  1. 镜像 `/app/api/migrations/versions/*.py` 文件集 == 仓库 `api/migrations/versions`
+     当前 HEAD 文件集（缺 `e7c0a9d2b8f3` 即拒绝）；
+  2. 镜像 `/app/api/clients/agent_backend/request_builder.py` 必须含
+     `_align_snapshot_to_composition`（缺 GPH-02 即拒绝）。
+  任一不匹配：stderr 打印差异/缺失说明并 exit 1。参数契约与
+  `check-enterprise-offline.sh` 输出不变。
+- `scripts/ci/check-enterprise-offline-fixtures/bin/fake-docker`：新增 `run` 分支 +
+  `FAKE_DOCKER_MIGRATIONS` / `FAKE_DOCKER_MISSING_FUNCTION`（默认=匹配仓库）。
+- `scripts/ci/check-enterprise-offline-tests.sh`：新增 fixture 用例
+  （stale 缺 migration、stale 缺函数、匹配镜像 PASS 且必须发生 `docker run` 内容核对）。
+- `scripts/build-enterprise-offline.ps1`：镜像 `Test-EnterpriseImageContent`
+  （API 镜像 reuse/smart/CheckOnly 路径），与 .sh 行为一致。
+
+### 验证状态
+
+- ✅ `scripts/ci/check-enterprise-offline-tests.sh` 全 PASS（含 3 个新用例）。
+- ⚠️ `.ps1` 镜像门禁：NOT_RUN（本环境无 pwsh/Windows）；.sh 为权威实现。
+- ❓ 真实 Docker daemon 上对过期镜像的实测拒绝：未做（无旧镜像；fixture 已覆盖逻辑）。
+
+### 不变量保持
+
+- `scripts/ci/check-enterprise-offline.sh` 字节级未动；CLI 契约未动。
+- 内容核对只读：`docker run`（create/run/cp/inspect 允许），无 compose up/build/pull/save。
+- Web 镜像不做内容核对（Phase G 修复仅涉及后端）。
+
 ## 回填规则
 
 每完成一项运行验证：
