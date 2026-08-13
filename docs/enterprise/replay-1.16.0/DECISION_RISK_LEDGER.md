@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 重放 B0–B8 决策/风险台账（详细版）
 
-更新时间：2026-08-12（Asia/Shanghai，Phase H Validator 回填）
+更新时间：2026-08-14（Asia/Shanghai，Phase F Rebuild Validator 回填）
 
 本文件是人工判断的对照物，不是 AI 的结论。每项都尽量给出：决策点、选项、选择、影响范围、优缺点、数据证据、验证状态、待判断问题。
 
@@ -40,9 +40,9 @@
 | Phase C | OpenAPI/contracts 生成 | ✅ B4 两次 deterministic | pnpm | 契约漂移、手写类型 | 已完成 |
 | Phase D | migration 图 + 真库升级矩阵 | ✅ 真库 6 行全 PASS（隔离副本） | 隔离 PostgreSQL/备份副本 | 升级失败、数据丢失、uuidv7、双 head | 已完成（6/6 PASS，evidence/phase-d） |
 | Phase E | Compose 静态验证 | ✅ B6/B8 静态 | docker compose config | overlay 丢失依赖/安全变量 | 已完成 |
-| Phase F | 镜像构建 + 容器身份 | ✅ 已做（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`） | Docker build/daemon | image ID 不一致、构建缺文件 | 中 |
+| Phase F | 镜像构建 + 容器身份 | ✅ 已做（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`）→ 因 Phase H 发现缺 Phase G 修复，已于 2026-08-14 重建（`replay-116-b8-phase-f-rebuild`，PASS，`evidence/phase-f-rebuild/**`） | Docker build/daemon | image ID 不一致、构建缺文件 | 中 |
 | Phase G | 运行验收（browser/API/Agent） | ✅ 已做（`replay-116-b8-phase-g-validator`，`evidence/phase-g/**`；2 个 release-blocking finding，见下） | 完整运行栈 + 浏览器 | 登录/权限/marketplace/Agent/WebSocket/secret | 高 |
-| Phase H | 离线包 load + `--pull never` smoke | ⚠️ 已跑（`replay-116-b8-phase-h-validator`，`evidence/phase-h/**`；链机制全 PASS，但发现 release-blocking：离线镜像缺 Phase G 修复，见下） | 同一 daemon 模拟（无独立无外网 Docker 目标） | 离线包不可用、含 secret、缺镜像 | 中 |
+| Phase H | 离线包 load + `--pull never` smoke | ⚠️ 已跑（`replay-116-b8-phase-h-validator`，`evidence/phase-h/**`；链机制全 PASS，但当时离线镜像缺 Phase G 修复，见下）。Phase F Rebuild 已重建镜像（新 API image `566bdf4c88cf` 含 `e7c0a9d2b8f3` + `_align_snapshot_to_composition`，B7 reuse gate `-CheckOnly` exit 0）；离线链复跑（load + `--pull never` smoke）未做，仍待运行 | 同一 daemon 模拟（无独立无外网 Docker 目标） | 离线包不可用、含 secret、缺镜像 | 中 |
 | 回滚 | 备份/恢复演练 | ✅ 真库演练 PASS（DB 级） | 隔离卷/备份 | 回滚失败、数据回灌问题 | 已完成（evidence/phase-d/rollback-drill） |
 
 ## 已接受决策（2026-08-11）
@@ -369,11 +369,11 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 | --- | --- | --- | --- |
 | migration 升级失败/数据丢失 | Phase D | ✅ 已验（6/6 PASS，隔离副本） | 隔离副本 |
 | uuidv7/PG18 不兼容 | Phase D | ✅ 已验（PG18 uuidv7 版本 7；`1c9ba48be8e4` 不重跑） | 必跑 |
-| image ID 不一致 | Phase F | ✅ 已验（api==worker==worker_beat==api_websocket，web 为企业 Web image；PASS） | 五容器 inspect |
+| image ID 不一致 | Phase F | ✅ 已验（api==worker==worker_beat==api_websocket，web 为企业 Web image；PASS）；2026-08-14 重建后 API `566bdf4c88cf` != 旧 `cb4d99a45ac1` | 五容器 inspect |
 | 浏览器/交互回归 | Phase G | ✅ 已验（E2E 5 组 Playwright 截图 PASS） | E2E 5 组 |
 | Agent/WebSocket 故障 | Phase G | ✅ 已验（12 场景；knowledge 绑定已修，见 Phase G 修复；stop 400 非阻断偏差） | 12 场景 |
 | secret 泄漏到运行日志/包 | Phase G/H | ✅ 运行扫描已做（真实 key 0 命中；仅 compose 配置含 dev default） | 受保护 pattern |
-| 离线包不可用 | Phase H | ⚠️ 链机制跑通但 FAIL：Phase F 镜像缺 Phase G 修复 | load + `--pull never`；须重 build 后复跑 |
+| 离线包不可用 | Phase H | ⚠️ 链机制跑通但当时 FAIL：Phase F 镜像缺 Phase G 修复 → 2026-08-14 Phase F Rebuild 已重建镜像并通过 B7 reuse gate（exit 0）；离线链复跑待做 | load + `--pull never`；已重 build，复跑后闭环 |
 | capacity 非 reservation | 并发邀请 | 已知限制 | 接受/未来修 |
 | copy 非原子 | 复制失败 | 已知限制 | 接受/未来修 |
 | check 脚本 P3 | 特殊部署 | 已接受 | 运行发现再修 |
@@ -473,6 +473,34 @@ api `/health` 200、web `/webpage/signin` 200、`/` 307→/install）→ teardow
 - 处置（超出 Phase H scope，待协调者）：从候选 HEAD 重建企业 API 镜像（Phase F
   重跑）→ 复跑 Phase H，确认镜像 migration head 为 `e7c0a9d2b8f3` 且
   `request_builder.py` 含修复，离线包才可视为 release-ready。
+
+## Phase F Rebuild（Validator，2026-08-14）
+
+Phase H 处置的第一步已完成：从候选 HEAD 重建企业 API 与 Web 镜像
+（`replay-116-b8-phase-f-rebuild`，隔离 project `dify-b8-phase-f-rebuild`，
+build only，无 up/容器/端口/卷）。证据：`evidence/phase-f-rebuild/**`。
+
+- 命令：
+  `DIFY_ENTERPRISE_VERSION=1.16.0-enterprise COMPOSE_PROFILES=weaviate,postgresql,collaboration
+  docker compose -p dify-b8-phase-f-rebuild -f docker/docker-compose.yaml -f
+  docker/docker-compose.enterprise.yaml -f /tmp/dify-b8-phase-f-rebuild.override.yaml
+  build api web`（exit 0；temp override 复用 Phase F 环境适配：
+  `build.network: host` + proxy build-args）。
+- 新镜像 ID：API `sha256:566bdf4c88cf1bf3be5f7f6c7c39b338d5f1973ebe10f115050d9ac527930680`
+  （!= 旧 `cb4d99a45ac1`）；Web `sha256:b76919e99830040e603d6c5c1e189b839e816f9829b43cb0e44584fe9e5dd725`。
+- 镜像内容核对（`docker run --rm` 只读）：`e7c0a9d2b8f3` migration
+  `2026_08_12_0000-e7c0a9d2b8f3_align_marketplace_uuid_columns.py` PRESENT；
+  `request_builder.py` 含 `_align_snapshot_to_composition` PRESENT；镜像
+  migration 文件集 == 仓库 HEAD 文件集（206 文件）。
+- B7 reuse gate（加固后）：`scripts/build-enterprise-offline.sh -CheckOnly
+  -Version 1.16.0-enterprise -Mode reuse -OutputDir /tmp/b8-phase-f-rebuild-check`
+  → exit **0**（ACCEPTS 新 API 镜像）；manifest `enterprise_commit =
+  a7dd727ddfad1dce75be6a52ea8d7da18dfb4cb8`（候选 HEAD）；temp 输出目录已删。
+- 偏差（诚实记录）：脚本 `OUTPUT_PATH="$REPO_ROOT/$OUTPUT_DIR"`（第 62 行）会
+  把绝对 `-OutputDir /tmp/...` 拼接成 `<repo>/tmp/...`；为保持输出在 /tmp，
+  临时建了未跟踪符号链接 `<repo>/tmp -> /tmp`，跑完即删（未触碰任何跟踪路径）。
+- 未做（NOT_RUN，诚实）：Phase H 离线链复跑（load + `--pull never` boot +
+  smoke）；Web 镜像内容核对（Phase G 修复仅后端）。
 
 ## B7 reuse gate 加固（Fixer，2026-08-13）
 

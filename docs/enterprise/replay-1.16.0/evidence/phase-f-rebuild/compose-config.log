@@ -1,0 +1,3 @@
+command: docker compose -p dify-b8-phase-f-rebuild -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml -f /tmp/dify-b8-phase-f-rebuild.override.yaml config -q
+exit: 0
+utc: 2026-08-13T16:02:47Z

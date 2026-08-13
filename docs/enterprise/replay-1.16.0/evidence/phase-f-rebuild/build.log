@@ -1,0 +1,184 @@
+command: DIFY_ENTERPRISE_VERSION=1.16.0-enterprise COMPOSE_PROFILES=weaviate,postgresql,collaboration docker compose -p dify-b8-phase-f-rebuild -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml -f /tmp/dify-b8-phase-f-rebuild.override.yaml build api web
+start utc: 2026-08-13T16:02:53Z
+ Image dify-web-enterprise:1.16.0-enterprise Building
+ Image dify-api-enterprise:1.16.0-enterprise Building
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.91kB done
+#1 DONE 0.0s
+
+#2 [api internal] load build definition from Dockerfile
+#2 transferring dockerfile:
+#2 transferring dockerfile: 4.58kB done
+#2 WARN: SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "NODESOURCE_KEY_FPR") (line 59)
+#2 DONE 0.2s
+
+#3 [web internal] load build definition from Dockerfile
+#3 transferring dockerfile: 3.02kB done
+#3 DONE 0.2s
+
+#4 [api internal] load metadata for docker.io/library/python:3.12-slim-bookworm
+#4 DONE 0.0s
+
+#5 [api internal] load build context
+#5 DONE 0.0s
+
+#6 [api base 1/3] FROM docker.io/library/python:3.12-slim-bookworm
+#6 DONE 0.0s
+
+#5 [api internal] load build context
+#5 transferring context:
+#5 transferring context: 18.79MB 0.6s done
+#5 DONE 0.7s
+
+#7 [api packages 1/6] RUN apt-get update     && apt-get install -y --no-install-recommends           git g++           libmpfr-dev libmpc-dev
+#7 CACHED
+
+#8 [api base 2/3] WORKDIR /app/api
+#8 CACHED
+
+#9 [api packages 3/6] COPY api/providers ./providers
+#9 CACHED
+
+#10 [api base 3/3] RUN pip install --no-cache-dir uv==0.8.9
+#10 CACHED
+
+#11 [api packages 5/6] COPY dify-agent/src /app/dify-agent/src
+#11 CACHED
+
+#12 [api production 1/8] WORKDIR /app/api
+#12 CACHED
+
+#13 [api packages 6/6] RUN uv sync --frozen --no-dev --no-editable
+#13 CACHED
+
+#14 [api packages 4/6] COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
+#14 CACHED
+
+#15 [api packages 2/6] COPY api/pyproject.toml api/uv.lock ./
+#15 CACHED
+
+#16 [api production 5/8] RUN mkdir -p /usr/local/share/nltk_data     && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')"     && chmod -R 755 /usr/local/share/nltk_data
+#16 CACHED
+
+#17 [api production 4/8] COPY --from=packages --chown=dify:dify /app/api/.venv /app/api/.venv
+#17 CACHED
+
+#18 [api production 2/8] RUN groupadd -r -g 1001 dify &&     useradd -r -u 1001 -g 1001 -s /bin/bash dify &&     chown -R dify:dify /app
+#18 CACHED
+
+#19 [api production 3/8] RUN     apt-get update     && apt-get install -y --no-install-recommends         ca-certificates         curl         gnupg     && mkdir -p /etc/apt/keyrings     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /tmp/nodesource.gpg     && gpg --show-keys --with-colons /tmp/nodesource.gpg         | awk -F: '/^fpr:/ {print $10}'         | grep -Fx "6F71F525282841EEDAF851B42F59B5F99B1BE0B4"     && gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg /tmp/nodesource.gpg     && rm -f /tmp/nodesource.gpg     && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main"         > /etc/apt/sources.list.d/nodesource.list     && apt-get update     && apt-get install -y --no-install-recommends         nodejs=22.21.0-1nodesource1         libgmp-dev libmpfr-dev libmpc-dev         expat libldap-2.5-0=2.5.13+dfsg-5 perl libsqlite3-0=3.40.1-2+deb12u2 zlib1g=1:1.2.13.dfsg-1         fonts-noto-cjk         media-types         libmagic1     && apt-get autoremove -y     && rm -rf /var/lib/apt/lists/*
+#19 CACHED
+
+#20 [api production 6/8] RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')"     && chown -R dify:dify /app/api/.tiktoken_cache
+#20 CACHED
+
+#21 [web internal] load metadata for docker.io/library/node:22.22.1-alpine
+#21 ...
+
+#22 [api production 7/8] COPY --chown=dify:dify api /app/api/
+#22 DONE 0.8s
+
+#23 [api production 8/8] COPY --chown=dify:dify --chmod=755 api/docker/entrypoint.sh /entrypoint.sh
+#23 DONE 2.5s
+
+#21 [web internal] load metadata for docker.io/library/node:22.22.1-alpine
+#21 ...
+
+#24 [api] exporting to image
+#24 exporting layers 0.5s done
+#24 writing image sha256:566bdf4c88cf1bf3be5f7f6c7c39b338d5f1973ebe10f115050d9ac527930680 done
+#24 naming to docker.io/library/dify-api-enterprise:1.16.0-enterprise 0.0s done
+#24 DONE 0.5s
+
+#25 [api] resolving provenance for metadata file
+#25 DONE 0.0s
+
+#21 [web internal] load metadata for docker.io/library/node:22.22.1-alpine
+#21 DONE 7.2s
+
+#26 [web base 1/3] FROM docker.io/library/node:22.22.1-alpine@sha256:8094c002d08262dba12645a3b4a15cd6cd627d30bc782f53229a2ec13ee22a00
+#26 DONE 0.0s
+
+#27 [web internal] load build context
+#27 transferring context: 57B 0.1s
+#27 transferring context: 80.25MB 2.4s done
+#27 DONE 2.5s
+
+#28 [web production 5/8] COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./targets/next/
+#28 CACHED
+
+#29 [web builder 5/5] RUN pnpm build && pnpm build:vinext
+#29 CACHED
+
+#30 [web builder 3/5] COPY . .
+#30 CACHED
+
+#31 [web builder 4/5] WORKDIR /app/web
+#31 CACHED
+
+#32 [web packages 8/8] RUN VITE_GIT_HOOKS=0 pnpm install --frozen-lockfile
+#32 CACHED
+
+#33 [web packages 4/8] COPY e2e/package.json /app/e2e/
+#33 CACHED
+
+#34 [web packages 6/8] COPY packages /app/packages
+#34 CACHED
+
+#35 [web production 4/8] COPY --from=builder --chown=dify:dify /app/web/public ./targets/next/web/public
+#35 CACHED
+
+#36 [web production 7/8] COPY --from=builder --chown=dify:dify /app/web/dist/standalone ./targets/vinext
+#36 CACHED
+
+#37 [web packages 2/8] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
+#37 CACHED
+
+#38 [web production 3/8] WORKDIR /app
+#38 CACHED
+
+#39 [web base 2/3] RUN apk add --no-cache tzdata
+#39 CACHED
+
+#40 [web production 2/8] RUN addgroup -S -g 1001 dify &&     adduser -S -u 1001 -G dify -s /bin/ash -h /home/dify dify &&     mkdir /app &&     chown -R dify:dify /app
+#40 CACHED
+
+#41 [web packages 3/8] COPY web/package.json /app/web/
+#41 CACHED
+
+#42 [web packages 7/8] RUN corepack install
+#42 CACHED
+
+#43 [web production 1/8] RUN ln -s /usr/share/zoneinfo/UTC /etc/localtime     && echo UTC > /etc/timezone
+#43 CACHED
+
+#44 [web packages 5/8] COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
+#44 CACHED
+
+#45 [web builder 2/5] COPY --from=packages /app/ .
+#45 CACHED
+
+#46 [web packages 1/8] WORKDIR /app
+#46 CACHED
+
+#47 [web production 6/8] COPY --from=builder --chown=dify:dify /app/web/.next/static ./targets/next/web/.next/static
+#47 CACHED
+
+#48 [web base 3/3] RUN corepack enable
+#48 CACHED
+
+#49 [web production 8/8] COPY --chown=dify:dify --chmod=755 web/docker/entrypoint.sh ./entrypoint.sh
+#49 CACHED
+
+#50 [web] exporting to image
+#50 exporting layers done
+#50 writing image sha256:b76919e99830040e603d6c5c1e189b839e816f9829b43cb0e44584fe9e5dd725 0.1s done
+#50 naming to docker.io/library/dify-web-enterprise:1.16.0-enterprise 0.0s done
+#50 DONE 0.1s
+
+#51 [web] resolving provenance for metadata file
+#51 DONE 0.0s
+ Image dify-api-enterprise:1.16.0-enterprise Built
+ Image dify-web-enterprise:1.16.0-enterprise Built
+BUILD_EXIT=0
+end utc: 2026-08-13T16:03:10Z

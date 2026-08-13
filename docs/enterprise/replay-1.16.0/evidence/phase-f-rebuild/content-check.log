@@ -1,0 +1,8 @@
+image: dify-api-enterprise:1.16.0-enterprise (sha256:566bdf4c88cf1bf3be5f7f6c7c39b338d5f1973ebe10f115050d9ac527930680)
+--- GPH-01 migration presence (exact filename) ---
+PRESENT
+--- GPH-02 request_builder function ---
+PRESENT
+--- image migration file set vs repo file set ---
+FILE SET MATCH (PASS)
+utc: 2026-08-13T16:03:28Z

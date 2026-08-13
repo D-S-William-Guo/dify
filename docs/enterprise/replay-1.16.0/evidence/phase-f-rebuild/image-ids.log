@@ -1,0 +1,5 @@
+old api image (phase-f): sha256:cb4d99a45ac1fcadbe02336e4633053c2234e775e8e65fb8bd2c8d7fdc70c347
+new api image: sha256:566bdf4c88cf1bf3be5f7f6c7c39b338d5f1973ebe10f115050d9ac527930680
+new web image: sha256:b76919e99830040e603d6c5c1e189b839e816f9829b43cb0e44584fe9e5dd725
+API_DIFFERS_OLD: YES (PASS)
+utc: 2026-08-13T16:03:13Z
