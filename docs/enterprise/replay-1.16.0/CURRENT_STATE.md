@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-08-08（Asia/Shanghai）
+更新时间：2026-08-14（Asia/Shanghai，B0–B8 全链 + Phase D/F/G/H 闭环后最终态）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
@@ -12,15 +12,8 @@
 | --- | --- |
 | 本地仓库 | `/home/ctyun/BigData/GitHub/dify-enterprise-1.16.0` |
 | 候选分支 | `codex/enterprise-candidate-1.16.0-20260718` |
-| B5 Plan checkpoint | `c0c398f423135dcd118b2dce8be4d6c91562c1a7`（B5 Plan Rereview） |
-| B5 Contract checkpoint | `8cd884538bf1d58e92af711e49b72f2cdf061672`（Contract Rereview PASS） |
-| B5-E i18n checkpoint | `e319481a7bc1e39ca91200f1b67a6541710c1aa4`（B5-E independent Review PASS） |
-| B5-A checkpoint | `11bae180bb8c2786dd89a45f6c062a784b63510a`（B5-A Review PASS） |
-| B5-B checkpoint | `0bc4a1e3101ff8109a84a907421b8fa0e3c03c94`（B5-B Review PASS） |
-| B5-C checkpoint | `1385ef5dbfce490ef8d224bb2f3a7838646b9046`（B5-C Rereview PASS） |
-| B5-D checkpoint | `68822f521507b890ad663ef5a5affb9c2ef91b56`（B5-D Rereview PASS） |
-| B5 Final checkpoint | `e7d487538fb1431a3b769a8d3fe9d8354487ceea`（Final Review PASS） |
-| B4 产品 checkpoint | `9c4c0356f3f2374c22b383ba96331e1dd92505fd` |
+| 候选 HEAD | `83e1bd5418d645bc72929cb3b517c1fda5cd01fc`（B0–B8 + Phase D/F/G/H 全闭环） |
+| 候选 HEAD 历史 checkpoint | B4 `9c4c0356f3f2374c22b383ba96331e1dd92505fd`、B5 Final `e7d487538fb1431a3b769a8d3fe9d8354487ceea`、B8 Review `b0f84651099ab25208b7a177d505505bf7c57324`、Phase H Rerun evidence `83e1bd5418`（全部为 HEAD 祖先） |
 | 交接文档 commit | 使用 `git log -1 --format=%H -- docs/enterprise/replay-1.16.0/CURRENT_STATE.md` 获取，避免文件自引用 commit |
 | 远端跟踪 | `origin/codex/enterprise-candidate-1.16.0-20260718` |
 | origin | `https://github.com/D-S-William-Guo/dify.git` |
@@ -32,8 +25,8 @@
 | Skill 源 commit | `33928a0`（含单控制器、事件驱动清理、下一步 ownership、human-signaled completion、长提示词 human-submit、`cs create` 非交互路径与大契约 temp-file 投递） |
 | Claude Squad 定制 commit | `a1e35dc7436454cb53a584b8730166e23055ad4b`（`fix/n-overlay-small-terminal`，含 governed workflow safeguards 与小终端 overlay 修复） |
 | 工作区 | 候选在 `e7d487538fb1431a3b769a8d3fe9d8354487ceea` 集成核验时干净；本文件更新期间仅允许本文件 dirty |
-| 本地与 origin | 本地已集成 B5 全链并通过 Final Review；origin 已同步（checkpoint push 完成） |
-| 当前产品里程碑 | B0～B4 已闭环；B5 全部阶段 PASS（Plan/Contract/B5-E/A/B/C/D/Full Regression/Final Review）；下一阶段 B6 enterprise overlay / 企业镜像 |
+| 本地与 origin | 一致：本地候选 HEAD `83e1bd5418` == `origin/codex/enterprise-candidate-1.16.0-20260718` |
+| 当前产品里程碑 | B0–B8 全链已闭环；Phase D/F/G/H 运行验证全部 PASS（含 Phase H rerun）；剩余为已接受已知限制（见第 5 节）与生产发布前置动作（见第 2 节） |
 
 禁止向 `upstream/langgenius/dify` 推送企业候选或创建企业 PR。企业分支只推送到用户 fork `origin`。
 
@@ -59,7 +52,7 @@ git merge-base 1.16.0 HEAD
 
 ## 2. 当前工作顺序
 
-当前已完成 B5 全链：Architect → Plan Reviewer/Fixer/Rereviewer、Contract Fixer/Reviewer/Ruff Fixer/Rereviewer、B5-E i18n Builder/Reviewer、B5-A Builder/Reviewer、B5-B Builder/Reviewer、B5-C Builder/Reviewer/Fixer/Rereviewer、B5-D Builder/Reviewer/Fixer/Rereviewer、full regression 与 Final Reviewer。B5 Final checkpoint 已 fast-forward 到候选分支。下一阶段是 B6 enterprise overlay / 企业镜像，但尚未授权创建实例。
+B0–B8 全链与 Phase D/F/G/H 运行验证均已闭环（最终总结见 `FINAL_VALIDATION_SUMMARY.md`）。候选 HEAD `83e1bd5418` 已与 origin 一致。本轮重放目标达成，进入发布准备收尾，不再启动新的重放 Builder。
 
 协作基础设施当前状态：
 
@@ -68,8 +61,8 @@ git merge-base 1.16.0 HEAD
 3. 两个 Skill 已通过结构校验；Git 起点核验脚本已通过正向/负向测试；
 4. Claude Squad 源 checkpoint 为 `a1e35dc7436454cb53a584b8730166e23055ad4b`，并启用 `"governed_mode": true`；
 5. dirty worktree 下 `c`/`p`/`D` 会拒绝危险操作；`D` 会明确提示是否删除本地分支；
-6. B5 Plan 与 Contract 角色链实例已清理；B5-A 起至 Final Reviewer 的已完成实例暂时保留，等待 checkpoint 推送后执行事件驱动清理审计；
-7. B5 全链已关闭；下一阶段 B6 不得并行启动任何 Builder。
+6. B5 Plan/Contract 及 B5-A 起至 Final Reviewer 的已完成实例已按审计清理；B6–B8 各阶段实例（Phase D/F/G/H、reuse gate 等 11 个）已全部完成并批量清理（state.json 0 实例）；
+7. B0–B8 全链已关闭；重放 Builder 不再启动。
 
 Skill 路径：
 
@@ -85,16 +78,30 @@ Codex 自动发现链接：
 
 Skill 源仓库当前只有本地 Git commit，尚未配置远端；这不影响本机使用，但未来需要异机同步时应单独配置备份/远端。
 
-产品流水线的下一阶段是：
+产品流水线已全部完成：
 
 ```text
-B5 平台管理员与智慧广场前端
-→ B6 enterprise overlay / 企业镜像
-→ B7 离线镜像包与配置包
-→ B8 数据库、vector、volume 升级和发布验证
+B0 企业重放护栏 → B1 mode 归一化 → B2 migration/inventory → B3 平台管理员后端
+→ B4 智慧广场后端/契约 → B5 企业前端全链 → B6 Compose overlay
+→ B7 离线 artifact chain（含 reuse gate 加固）→ B8 vector checker/发布验证准备
+→ Phase D 真库升级矩阵 → Phase E Compose 静态 → Phase F 镜像构建/身份
+→ Phase G 运行验收 → Phase H 离线链（rerun PASS）
 ```
 
-B9“企业会话管理”仍是产品契约澄清，不是已授权代码任务；最迟在 B6 开始前决定，未决定则保持 `DEFER`。
+B9“企业会话管理”保持 `DEFER`，本发布不包含。
+
+### 下一授权动作（生产发布前置）
+
+本轮重放闭环，但生产发布仍须走正式发布流程（见 `FINAL_VALIDATION_SUMMARY.md` 第 5/6 节）：
+
+1. 协调者审批 G1：候选分支 `83e1bd5418` 已 push origin（若尚未 push 需 push）；
+2. 已完成 G2：11 个重放实例已批量删除（state.json 0 实例）；
+3. 受保护 secret 扫描（真实受保护 pattern）；
+4. 真离线 Docker host（无外网）load + boot 验证；
+5. 正式镜像签名/审计；
+6. 独立环境部署演练（非当前 daemon）。
+
+以上 3–6 属生产发布流程，不在本重放仓库内执行。
 
 ## 3. 已完成阶段
 
@@ -280,6 +287,59 @@ formatting baseline（ESLint `NOT_RUN`）。browser/E2E 因本地环境只有 1.
 - `B5_FULL_REGRESSION_REPORT.md`
 - `B5_FINAL_REVIEW.md`
 
+### B6：Enterprise Compose overlay
+
+已闭环（`B6_REVIEW.md`、`evidence/phase-e/**`）：
+
+- overlay 74 行，覆盖 api/worker/beat/websocket/web 五 runtime；官方 compose 不动；
+- Phase E 静态断言 S-1..S-9 PASS；`CAN_REPLACE_LOGO` 普通 false / overlay true；Agent key 相等；Redis DB 不冲突；
+- 镜像身份由 Phase F 真库验证（5 容器 image ID）。
+
+### B7：离线 artifact chain + reuse gate 加固
+
+已闭环（`B7_REVIEW.md`、`B8_REUSE_GATE_REVIEW.md`）：
+
+- 21/21 fixture PASS；打包模式发布只允许 reuse；`-CheckOnly` 禁止 build/pull/save；
+- Phase H 根因修复后加固 reuse gate：`verify_enterprise_image_content`（docker run 只读）核对 API 镜像 migration 文件集 == 仓库 HEAD 文件集，且 `request_builder.py` 含 `_align_snapshot_to_composition`；.sh 与 .ps1 镜像相同门禁（.ps1 运行时 NOT_RUN）；
+- Phase F Rebuild（2026-08-14）后 gate 接受新 API image `sha256:566bdf4c88cf...`。
+
+### B8：Vector checker + 发布验证准备
+
+已闭环（`B8_REVIEW.md`、`evidence/vector-checker/**`）：
+
+- 47/47 checker fixture PASS；backend focused 158 passed；migration graph 61 passed；
+- B8R-01/02/03 已接受 P3；completeness 两脚本未授权（人工兜底）。
+
+### Phase D：真库升级矩阵（隔离副本）
+
+已闭环（`evidence/phase-d/**`）：
+
+- 6/6 PASS：企业 1.15→1.16、官方 1.15→1.16、PG18 空库、PG18 应用升级、官方 1.16→1.16、备份/恢复回滚演练；
+- fresh PG15 迁移 head 唯一 `e7c0a9d2b8f3`；PG18 uuidv7 版本 7。
+
+### Phase F：镜像构建 + 容器身份
+
+已闭环（`evidence/phase-f/**`、`evidence/phase-f-rebuild/**`）：
+
+- 2026-08-11 首轮 PASS；Phase H 发现镜像缺 Phase G 修复后，2026-08-14 从候选 HEAD 重建 PASS；
+- 新镜像 ID：API `sha256:566bdf4c88cf...`、Web `sha256:b76919e99830...`；镜像 migration 文件集 == 仓库 HEAD（206 文件）。
+
+### Phase G：运行验收
+
+已闭环（`evidence/phase-g/**`）：
+
+- install/login/platform-admin/marketplace/Workflow/WebSocket/plugin-dataset-vector/secret/浏览器/E2E/Agent 12 场景均 PASS；
+- 2 个 release-blocking bug 已修复：GPH-01 marketplace schema 类型不匹配（新 migration `e7c0a9d2b8f3` 列改 uuid）、GPH-02 agent 绑定 knowledge 后对话失败（request_builder 快照对齐）；Rereview PASS。
+
+### Phase H：离线链
+
+已闭环（`evidence/phase-h/**`、`evidence/phase-h-rerun/**`）：
+
+- 首轮 FAIL（离线镜像缺 Phase G 修复）；重建镜像 + 加固 reuse gate 后 rerun **PASS**（2026-08-14）；
+- fresh PG15 `alembic_version = e7c0a9d2b8f3`；marketplace ID/FK 12 列全 uuid；smoke 全 200；`--pull never` 无 pull；teardown 无残留。
+
+最终总结见 `FINAL_VALIDATION_SUMMARY.md`。
+
 ## 4. B4 最终契约摘要
 
 ### B3 route
@@ -336,24 +396,23 @@ type-check PASS、targeted Ruff/format PASS，以及两次 deterministic generat
 一致。禁止前端 direct fetch、手写 response/error types 或 legacy loader workaround 的
 约束继续有效；B5 只消费已生成 contracts，不得重新生成。
 
-## 5. 仍未完成的运行与升级验证
+## 5. 仍未完成的运行验证（剩余 NOT_RUN）
 
-“代码和 contracts 通过”不等于“生产升级已通过”。
+Phase D/F/G/H 已闭环，以下为本轮明确未运行（NOT_RUN）、已在 `FINAL_VALIDATION_SUMMARY.md` 第 5 节作为已知限制接受，生产发布声明必须写明：
 
-以下仍属于 B6～B8：
+- 真离线 Docker host（无外网）load + boot 未验证（同一 daemon 模拟）；
+- 镜像 bundle 层内 secret 扫描 NOT_RUN（Docker 29 OCI blob 布局，B7 门禁未覆盖）；
+- 真实受保护 secret pattern 未提供；只用 synthetic pattern；
+- `.ps1` 运行时 NOT_RUN（无 pwsh）；B7R-05 BOM 风险保持；
+- agent_backend 停止时返回 400 含 raw transport message（非 503）；无 crash，恢复正常；
+- inline agent（workflow agent-composer 节点）仅 API 未跑通（需 UI 路径）；
+- 迁移 dataset 的向量 class 对齐未验证（生产 Weaviate 数据在禁止路径）；新 dataset hit-testing PASS；
+- plugin remote-debug（5003）NOT_RUN；
+- completeness 两脚本未授权，人工审计兜底。
 
-- 真实 PostgreSQL 升级/降级演练；
-- 旧企业 1.15 数据库副本升级到 1.16；
-- 官方 1.15、官方 1.16、空库等 migration 矩阵；
-- 真实 PostgreSQL row-lock/deadlock/concurrency；
-- marketplace snapshot backfill 的隔离副本演练；
-- Weaviate object/index/hit testing；
-- Compose overlay、镜像构建、运行容器 image ID；
-- Agent backend/local sandbox；
-- 旧 volume 的备份、挂载身份、升级和回滚；
-- 离线包、无外网 smoke、最终发布证据。
+另：B9 企业会话管理保持 `DEFER`；B7R-03..06、B8R-01/02/03、B8RGR-01/02 已接受 P3。
 
-不得在开发工作树或当前运行 volume 上直接执行 migration/repair。真实演练必须使用隔离数据库/volume 副本，并采用 B2 inventory 记录的实际挂载路径。
+真实演练要求不变：不得在开发工作树或当前运行 volume 上直接执行 migration/repair；生产发布前置（受保护 secret 扫描、真离线机、镜像签名/审计、独立部署演练）不在本仓库内执行。
 
 ## 6. 已知限制与风险
 
@@ -382,10 +441,10 @@ type-check PASS、targeted Ruff/format PASS，以及两次 deterministic generat
 - 核心 Dify 实际运行版本为 Enterprise 1.15.0；
 - Weaviate/Sandbox 的创建和挂载 provenance 来自 1.14.2；
 - SSRF Proxy 仍使用 1.14.2 配置，缺少 1.15 private destination 默认拒绝和 allowlist；
-- Weaviate class 对应关系已核对，但对象完整性、hit testing 和部分 index 默认配置仍待 B8；
+- Weaviate class 对应关系已核对（B2 inventory：缺失 0、额外 0）；B8 vector checker 已闭环（47/47 fixture PASS）；Phase G 新 dataset 对齐 + hit-testing PASS；迁移 dataset 的向量 class 对齐仍 NOT_RUN（生产数据禁止路径）；
 - volume provenance 必须按实际挂载路径验证，不能只相信 Compose 文件。
 
-这些风险不得因为 B4 PASS 而被删除或降级。
+这些风险不得因为 B0–B8 PASS 而被删除或降级。
 
 ## 7. B5 当前门禁与下一任务
 
@@ -418,10 +477,9 @@ checkpoint。状态文档 checkpoint 推送完成后，还要求本地与 origin
 - Full regression：完整 Vitest 295/295、web/e2e type-check、23-locale i18n check PASS；`pnpm check` 仅 5 个 B1 baseline，ESLint `NOT_RUN`；browser/E2E `NOT_RUN`（环境 blocker 已记录）。
 - Final Review：全 B5 范围、门禁链、证据均核验；`PASS`、open findings `0/0/0`。
 
-### 下一阶段：B6 enterprise overlay / 企业镜像
+### 下一阶段：B0–B8 与 Phase D/F/G/H 已全部闭环
 
-B6 尚未授权。恢复时以创建时重新读取的候选完整 40 位 HEAD 为起点；不得重新生成
-contracts、不得修改任何 locale/i18n 文件、不得恢复旧 enterprise context/loader。
+B6–B8 与 Phase D/F/G/H 均已闭环并纳入候选 HEAD `83e1bd5418`。恢复时以创建时重新读取的候选完整 40 位 HEAD 为起点；不得重新生成 contracts、不得修改任何 locale/i18n 文件、不得恢复旧 enterprise context/loader。本轮重放不再启动新 Builder；生产发布前置动作见第 2 节。
 
 ## 8. Claude Squad / worktree 协作 SOP
 
@@ -522,11 +580,12 @@ git merge --ff-only ctyun/<instance-branch>
 
 核验通过后：
 
-1. 依据 CURRENT_STATE.md 第 7 节确认 B5 全链 PASS；
-2. 下一阶段是 B6 enterprise overlay / 企业镜像，仍需人工授权；
-3. 使用最新版 $orchestrate-claude-squad 生成 N 表单字段和完整任务契约；
-4. 把任务契约交给我人工确认后再创建 Claude Squad 实例；
-5. B5 不得重启，不得重新生成 contracts 或修改任何 locale/i18n 文件。
+1. 依据 CURRENT_STATE.md 第 2/3 节确认 B0–B8 与 Phase D/F/G/H 全部闭环；
+2. 下一授权动作是生产发布前置（受保护 secret 扫描、真离线机验证、镜像签名/审计、独立部署演练），
+   以及按决策单 G1/G2 的 push/实例清理审批；
+3. 不再创建新的重放 Builder 实例；
+4. 只读恢复，不修改业务代码，不创建实例；
+5. B0–B8 不得重启，不得重新生成 contracts 或修改任何 locale/i18n 文件。
 
 任何事实与文档不符时，先报告差异，不得自动 reset、merge、rebase、migration、Docker 或 volume。
 ```
@@ -536,31 +595,23 @@ git merge --ff-only ctyun/<instance-branch>
 不要重新阅读整段旧聊天。按以下顺序：
 
 1. `CURRENT_STATE.md`
-2. `B4_FINAL_REREVIEW.md`
-3. `ARCHITECT_HANDOFF.md`
-4. `PATCH_DECISION_MATRIX.md`
-5. `VALIDATION_PLAN.md`
-6. 下一任务相关的实施计划和最终 Review
+2. `FINAL_VALIDATION_SUMMARY.md`
+3. `DECISION_RISK_LEDGER.md`
+4. `B4_FINAL_REREVIEW.md`
+5. `ARCHITECT_HANDOFF.md`
+6. `PATCH_DECISION_MATRIX.md`
+7. `VALIDATION_PLAN.md`
+8. 下一任务相关的实施计划和最终 Review
 
 只有发现矛盾或需要追溯设计理由时，才继续读取较早的 Review/Fixer 文档。
 
 ## 11. 当前实例状态
 
-B5 Plan 与 Contract 角色链实例已经清理。当前保留 B5-A 至 Final Reviewer 的已完成实例
-（以 state.json 为准，共 14 个），其 checkpoint 均已集成到候选分支，状态文档 checkpoint
-已提交并推送。当前保留：
+B5 各阶段已完成实例均已按审计清理；B6–B8 运行验证链的 11 个已完成实例也已按
+决策单 G2 批量删除（state.json 0 实例，worktree/branch 均无残留）。其 checkpoint
+均已集成到候选分支 `83e1bd5418` 并 push 到 origin。
 
-- `replay-116-b5-a-builder`、`replay-116-b5-a-reviewer`
-- `replay-116-b5-b-builder`、`replay-116-b5-b-reviewer`
-- `replay-116-b5-c-builder`、`replay-116-b5-c-reviewer`、`replay-116-b5-c-fixer`、`replay-116-b5-c-rereviewer`
-- `replay-116-b5-d-builder`、`replay-116-b5-d-reviewer`、`replay-116-b5-d-fixer`、`replay-116-b5-d-rereviewer`
-- `replay-116-b5-regression`
-- `replay-116-b5-final-reviewer`
-
-这些实例在 checkpoint push 后按事件驱动清理审计逐项确认：worktree clean、实例 commit
-为候选 checkpoint 祖先、无未集成报告，再请求逐个删除授权。
-
-进入 B6 前执行：
+后续执行：
 
 ```bash
 git worktree prune
@@ -568,9 +619,8 @@ git worktree list
 git status --short --branch
 ```
 
-预期在获批清理后只保留候选主目录；候选分支与 origin 同步，且包含 B4 checkpoint
-`9c4c0356f3f2374c22b383ba96331e1dd92505fd`、B5 Plan Rereview checkpoint
-`c0c398f423135dcd118b2dce8be4d6c91562c1a7` 和 B5 Contract Rereview checkpoint
-`8cd884538bf1d58e92af711e49b72f2cdf061672`，以及 B5 Final checkpoint
-`e7d487538fb1431a3b769a8d3fe9d8354487ceea`。随后以创建时重新读取的候选完整
-40 位 HEAD 作为 B6 起点，不得使用移动的“latest HEAD”。
+当前只保留候选主目录；候选分支与 origin 同步（均为
+`83e1bd5418d645bc72929cb3b517c1fda5cd01fc`），且包含 B4 产品 checkpoint
+`9c4c0356f3f2374c22b383ba96331e1dd92505fd` 与 B5 Final checkpoint
+`e7d487538fb1431a3b769a8d3fe9d8354487ceea` 以及 Phase H Rerun evidence
+`83e1bd5418`。本轮重放结束，不再以“latest HEAD”启动新 Builder。
