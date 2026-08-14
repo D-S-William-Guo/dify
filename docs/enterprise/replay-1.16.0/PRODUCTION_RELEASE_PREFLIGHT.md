@@ -1,0 +1,37 @@
+# Dify Enterprise 1.16.0 生产发布前置状态
+
+更新时间：2026-08-14（Asia/Shanghai）
+候选 HEAD：`a53db8122688eb5ba00f9b8dbdb05cc22f31dc67`（origin 一致）
+
+## 已就绪
+
+| 项 | 状态 | 证据 |
+| --- | --- | --- |
+| 企业 API/Web 镜像 | ✅ `566bdf4c88cf` / `b76919e998`（本地构建，无 RepoDigest） | `evidence/phase-f-rebuild/`、`evidence/phase-h-rerun/` |
+| 离线链 smoke | ✅ 同一 daemon `--pull never` 全 PASS | `evidence/phase-h-rerun/` |
+| 私有 registry 登录态 | ✅ `~/.docker/config.json` 存在 `yd-srdart.srdcloud.cn` auth | 本地检查 |
+| 迁移/运行/离线证据 | ✅ 全部闭环 | `DECISION_RISK_LEDGER.md`、`FINAL_VALIDATION_SUMMARY.md` |
+
+## 阻塞项（需要外部输入，未执行）
+
+| # | 步骤 | 缺失输入 | 无法自动执行的证据 |
+| --- | --- | --- | --- |
+| 1 | 真实 secret pattern 扫描 | 受保护环境生成的真实 pattern 文件（0600） | 环境无受保护 pattern；之前只用 synthetic |
+| 2 | 真离线 Docker host 验证 | 无外网 Docker host 地址/SSH 访问 | `~/.ssh/config` 无 host；无 OFFLINE_HOST 环境变量 |
+| 3 | 镜像 push 到私有 registry | 仓库路径（例如 `yd-srdart.srdcloud.cn/<ns>/dify-api-enterprise`）、tag 策略、push 授权 | 本地镜像 RepoDigest 为空；registry 登录态存在但无目标 repo 名 |
+| 4 | 镜像签名/审计 | signing key / notary / cosign 配置 | `~/.docker/trust` 不存在；无签名密钥 |
+| 5 | 隔离环境部署演练 | 独立主机/Compose/存储/网络配置 | 无独立环境；当前只有 1.15 生产栈和本地 daemon |
+| 6 | 生产备份/回滚演练 | 生产运维窗口、备份存储、回滚目标 | 属生产运维操作，未获环境/窗口 |
+
+## 可立即继续的路径
+
+提供以下任一输入后可自动继续：
+
+1. 真实 secret pattern 文件路径（或受保护环境执行命令）。
+2. 离线 Docker host 的 SSH 地址/别名。
+3. 私有 registry 仓库路径与目标 tag。
+4. 签名工具与密钥位置（cosign/notary）。
+5. 隔离演练环境的连接信息。
+6. 备份/回滚演练窗口。
+
+缺少上述输入前，剩余步骤保持 NOT_RUN，不伪造执行。
