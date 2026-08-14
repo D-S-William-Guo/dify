@@ -1,0 +1,26 @@
+# Phase H rerun - fresh PostgreSQL 15 migration head + marketplace uuid check
+
+Date: 2026-08-13T16:32:07Z UTC
+DB: fresh named volume dify-b8-phase-h-rerun-db-data (postgres:15-alpine), DB_TYPE=postgresql
+
+\$ docker exec dify-b8-phase-h-rerun-db_postgres-1 psql -U postgres -d dify -tA -c "SELECT version_num FROM alembic_version;"
+alembic_version = e7c0a9d2b8f3
+
+Required: e7c0a9d2b8f3 (NOT b416e5c4e702)
+
+Marketplace ID/FK columns (must be uuid):
+                 table_name               |      column_name      | udt_name
+  ----------------------------------------+-----------------------+----------
+   enterprise_marketplace_asset_snapshots | asset_id              | uuid
+   enterprise_marketplace_asset_snapshots | id                    | uuid
+   enterprise_marketplace_asset_snapshots | reviewer_account_id   | uuid
+   enterprise_marketplace_asset_snapshots | source_app_id         | uuid
+   enterprise_marketplace_asset_snapshots | source_tenant_id      | uuid
+   enterprise_marketplace_asset_snapshots | submitter_account_id  | uuid
+   enterprise_marketplace_assets          | id                    | uuid
+   enterprise_marketplace_assets          | published_snapshot_id | uuid
+   enterprise_marketplace_assets          | reviewer_account_id   | uuid
+   enterprise_marketplace_assets          | source_app_id         | uuid
+   enterprise_marketplace_assets          | source_tenant_id      | uuid
+   enterprise_marketplace_assets          | submitter_account_id  | uuid
+  (12 rows)

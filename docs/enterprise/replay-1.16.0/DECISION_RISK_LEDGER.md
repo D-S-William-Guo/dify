@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 重放 B0–B8 决策/风险台账（详细版）
 
-更新时间：2026-08-14（Asia/Shanghai，Phase F Rebuild Validator 回填）
+更新时间：2026-08-14（Asia/Shanghai，Phase H Rerun Validator 回填）
 
 本文件是人工判断的对照物，不是 AI 的结论。每项都尽量给出：决策点、选项、选择、影响范围、优缺点、数据证据、验证状态、待判断问题。
 
@@ -42,7 +42,7 @@
 | Phase E | Compose 静态验证 | ✅ B6/B8 静态 | docker compose config | overlay 丢失依赖/安全变量 | 已完成 |
 | Phase F | 镜像构建 + 容器身份 | ✅ 已做（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`）→ 因 Phase H 发现缺 Phase G 修复，已于 2026-08-14 重建（`replay-116-b8-phase-f-rebuild`，PASS，`evidence/phase-f-rebuild/**`） | Docker build/daemon | image ID 不一致、构建缺文件 | 中 |
 | Phase G | 运行验收（browser/API/Agent） | ✅ 已做（`replay-116-b8-phase-g-validator`，`evidence/phase-g/**`；2 个 release-blocking finding，见下） | 完整运行栈 + 浏览器 | 登录/权限/marketplace/Agent/WebSocket/secret | 高 |
-| Phase H | 离线包 load + `--pull never` smoke | ⚠️ 已跑（`replay-116-b8-phase-h-validator`，`evidence/phase-h/**`；链机制全 PASS，但当时离线镜像缺 Phase G 修复，见下）。Phase F Rebuild 已重建镜像（新 API image `566bdf4c88cf` 含 `e7c0a9d2b8f3` + `_align_snapshot_to_composition`，B7 reuse gate `-CheckOnly` exit 0）；离线链复跑（load + `--pull never` smoke）未做，仍待运行 | 同一 daemon 模拟（无独立无外网 Docker 目标） | 离线包不可用、含 secret、缺镜像 | 中 |
+| Phase H | 离线包 load + `--pull never` smoke | ✅ 已做两轮。第一轮（`replay-116-b8-phase-h-validator`，`evidence/phase-h/**`）：链机制全 PASS，但当时离线镜像缺 Phase G 修复，FAIL。第二轮（`replay-116-b8-phase-h-rerun`，`evidence/phase-h-rerun/**`，2026-08-14）：用重建镜像 + 加固 B7 reuse gate 复跑，**PASS**——gate 接受新 API image `566bdf4c88cf`，manifest `enterprise_commit=c7c98b22`；fresh PG15 迁移 head = `e7c0a9d2b8f3`，marketplace ID/FK 12 列全 `uuid`；nginx 18080 / api /web smoke 全 200，`--pull never` 无 pull；check-offline 13 PASS/0 FAIL/1 NOT_RUN；teardown 无残留 | 同一 daemon 模拟（无独立无外网 Docker 目标） | 离线包不可用、含 secret、缺镜像 | 中 |
 | 回滚 | 备份/恢复演练 | ✅ 真库演练 PASS（DB 级） | 隔离卷/备份 | 回滚失败、数据回灌问题 | 已完成（evidence/phase-d/rollback-drill） |
 
 ## 已接受决策（2026-08-11）
@@ -359,7 +359,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 1. ~~Phase D：隔离副本真库升级矩阵（PG 15.17 企业 1.15→1.16、官方 1.15→1.16、PG18 空库/应用升级、回滚）~~ ✅ 已完成（`replay-116-b8-phase-d-validator`，6/6 PASS，`evidence/phase-d/**`）。
 2. ~~Phase F：build + 五容器 image ID 断言~~ ✅ 已完成（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`）。
 3. Phase G：完整运行验收（platform-admin/marketplace/Agent 12 场景/Workflow/HITL/WebSocket/browser/E2E/secret）。
-4. ~~Phase H：离线 `docker load` + `up --pull never` + smoke + 重复 secret 扫描~~ ⚠️ 已跑（`replay-116-b8-phase-h-validator`，2026-08-12，`evidence/phase-h/**`），结果 FAIL：链机制全 PASS，但发现离线镜像缺 Phase G 修复（见下），须重建镜像后复跑。
+4. ~~Phase H：离线 `docker load` + `up --pull never` + smoke + 重复 secret 扫描~~ ✅ 两轮完成：第一轮（`replay-116-b8-phase-h-validator`，2026-08-12，`evidence/phase-h/**`）FAIL——链机制全 PASS 但离线镜像缺 Phase G 修复；重建镜像 + 加固 reuse gate 后，第二轮（`replay-116-b8-phase-h-rerun`，2026-08-14，`evidence/phase-h-rerun/**`）**PASS**——gate 接受新 API image、fresh PG15 head `e7c0a9d2b8f3`、marketplace 12 列 uuid、smoke 全 200、无 pull、teardown 无残留。
 
 ---
 
@@ -373,7 +373,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 | 浏览器/交互回归 | Phase G | ✅ 已验（E2E 5 组 Playwright 截图 PASS） | E2E 5 组 |
 | Agent/WebSocket 故障 | Phase G | ✅ 已验（12 场景；knowledge 绑定已修，见 Phase G 修复；stop 400 非阻断偏差） | 12 场景 |
 | secret 泄漏到运行日志/包 | Phase G/H | ✅ 运行扫描已做（真实 key 0 命中；仅 compose 配置含 dev default） | 受保护 pattern |
-| 离线包不可用 | Phase H | ⚠️ 链机制跑通但当时 FAIL：Phase F 镜像缺 Phase G 修复 → 2026-08-14 Phase F Rebuild 已重建镜像并通过 B7 reuse gate（exit 0）；离线链复跑待做 | load + `--pull never`；已重 build，复跑后闭环 |
+| 离线包不可用 | Phase H | ✅ 已闭环（`replay-116-b8-phase-h-rerun`，`evidence/phase-h-rerun/**`，2026-08-14）：重建镜像 + 加固 gate 复跑离线链全 PASS，fresh PG15 head `e7c0a9d2b8f3`、12 列 uuid、无 pull、无残留 | load + `--pull never` |
 | capacity 非 reservation | 并发邀请 | 已知限制 | 接受/未来修 |
 | copy 非原子 | 复制失败 | 已知限制 | 接受/未来修 |
 | check 脚本 P3 | 特殊部署 | 已接受 | 运行发现再修 |
@@ -502,6 +502,41 @@ build only，无 up/容器/端口/卷）。证据：`evidence/phase-f-rebuild/**
 - 未做（NOT_RUN，诚实）：Phase H 离线链复跑（load + `--pull never` boot +
   smoke）；Web 镜像内容核对（Phase G 修复仅后端）。
 
+## Phase H Rerun（Validator，2026-08-14）
+
+Phase H 处置的第二步已完成：用重建镜像 + 加固 B7 reuse gate 复跑离线链
+（`replay-116-b8-phase-h-rerun`，隔离 project `dify-b8-phase-h-rerun`，端口
+18080）。证据：`evidence/phase-h-rerun/**`。**结果：PASS。**
+
+- B7 reuse gate：`scripts/build-enterprise-offline.sh -CheckOnly -Version
+  1.16.0-enterprise -Mode reuse -OutputDir /tmp/replay-116-phase-h-rerun`
+  → exit 0（ACCEPTS 新 API image `566bdf4c88cf`：migration 文件集匹配 +
+  `_align_snapshot_to_composition` present）。
+- 离线链：`-Mode reuse` build（exit 0，5m53s，8.28GB tar）→
+  `build-enterprise-config-package.sh`（exit 0）→
+  `check-enterprise-offline.sh`（13 PASS / 0 FAIL / 1 NOT_RUN，synthetic 0600
+  只出布尔）→ `docker load`（12 镜像）→ 隔离 project
+  `dify-b8-phase-h-rerun` `up --pull never`（db_postgres/redis/api/web/nginx，
+  `./volumes/**` 全部重映射到 `dify-b8-phase-h-rerun-*` named volumes；nginx
+  `127.0.0.1:18080:80` only）→ smoke（nginx `/` 200、api `/health` 200、web
+  `/webpage/signin` 200、`/webpage/` 307→/install；up log 无 `Pulling`）→
+  teardown `down -v` 无残留、`docker/volumes/**` 不变、1.15 栈未动。
+- **关键验证**：fresh PostgreSQL 15 库 API 启动后
+  `alembic_version = e7c0a9d2b8f3`（NOT `b416e5c4e702`）；
+  `enterprise_marketplace_assets` / `enterprise_marketplace_asset_snapshots`
+  的 12 个 ID/FK 列全为 `uuid`。GPH-01 release-blocking finding 关闭。
+- manifest：`enterprise_commit = c7c98b220d49b8b651bf87f47850a9dff5ddbd6b`
+  （本候选 HEAD）；api image id `sha256:566bdf4c88cf...`。
+- 偏差（诚实记录）：(1) `<repo>/tmp -> /tmp` 临时符号链接让脚本输出落在
+  /tmp；(2) config-package 首次用 `/tmp` 输出路径导致 config archive 成员为
+  `tmp/replay-116-phase-h-rerun/...` 使 check 脚本 2 FAIL，改为 gitignored
+  `dist/offline`（临时符号链接指向 /tmp）后成员路径符合期望，终扫
+  13/0/1；(3) compose v5 对 nginx volumes/ports 是 append 而非 replace，
+  `!override` 标签修正；(4) 启动 db_postgres/redis + init_permissions
+  one-shot（与第一轮相同，api 启动必需，均隔离重映射）。
+- 已知限制（诚实）：同一 daemon 模拟（镜像已在本机，`--pull never` 不能证明
+  真离线机）；OCI blob 层内扫描 NOT_RUN；synthetic pattern 仅布尔。
+
 ## B7 reuse gate 加固（Fixer，2026-08-13）
 
 Phase H 根因修复的自动化部分：加固 B7 离线 reuse 门禁，使其不能接受同 tag 的
@@ -560,3 +595,4 @@ Phase H 根因修复的自动化部分：加固 B7 离线 reuse 门禁，使其�
 1. 清理审计已显示 B7/B8 共 16 个实例 git_ready=true、checkpoint 已在远端；删除仍需你逐个/批量授权。
 2. 准备 Phase D 运行验证决策单与实例契约（环境、隔离副本、备份、命令、证据）。
 3. Phase D 通过后按 D→F→G→H 顺序推进。
+4. ~~Phase H 离线链复跑~~ ✅ 已完成（`replay-116-b8-phase-h-rerun`，2026-08-14，PASS，`evidence/phase-h-rerun/**`）；离线链 release-blocking finding 已关闭。剩余已知限制：真离线机（无外网 Docker host）与 OCI 层内扫描、真实 secret pattern 均为 NOT_RUN。

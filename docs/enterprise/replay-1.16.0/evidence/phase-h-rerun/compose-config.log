@@ -1,0 +1,2710 @@
+name: dify-b8-phase-h-rerun
+services:
+  agent_backend:
+    depends_on:
+      local_sandbox:
+        condition: service_started
+        required: true
+      plugin_daemon:
+        condition: service_started
+        required: true
+      redis:
+        condition: service_started
+        required: true
+    environment:
+      AGENT_BACKEND_BASE_URL: http://agent_backend:5050
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: "1200"
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: "3"
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: "30"
+      ALLOW_EMBED: "false"
+      ALLOW_UNSAFE_DATA_SCHEME: "false"
+      AMPLITUDE_API_KEY: ""
+      API_SENTRY_DSN: ""
+      API_SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      API_SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      API_WEBSOCKET_GUNICORN_TIMEOUT: "360"
+      API_WEBSOCKET_WORKER_AMOUNT: "1"
+      API_WEBSOCKET_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      API_WEBSOCKET_WORKER_CONNECTIONS: "1000"
+      APP_API_URL: ""
+      APP_WEB_URL: ""
+      BROKER_USE_SSL: "false"
+      CELERY_AUTO_SCALE: "false"
+      CELERY_BACKEND: redis
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_MAX_WORKERS: ""
+      CELERY_MIN_WORKERS: ""
+      CELERY_TASK_ANNOTATIONS: "null"
+      CELERY_WORKER_AMOUNT: "4"
+      CELERY_WORKER_CLASS: ""
+      CHECK_UPDATE_URL: https://updates.dify.ai
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_CONNECT_TIMEOUT: "10"
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+      CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: "5.0"
+      CODE_EXECUTION_POOL_MAX_CONNECTIONS: "100"
+      CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      CODE_EXECUTION_READ_TIMEOUT: "60"
+      CODE_EXECUTION_SSL_VERIFY: "True"
+      CODE_EXECUTION_WRITE_TIMEOUT: "10"
+      COMPOSE_PROFILES: weaviate,postgresql,collaboration
+      COMPOSE_WORKER_HEALTHCHECK_DISABLED: "true"
+      COMPOSE_WORKER_HEALTHCHECK_INTERVAL: 30s
+      COMPOSE_WORKER_HEALTHCHECK_TIMEOUT: 30s
+      CONSOLE_API_URL: ""
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_WEB_URL: ""
+      COOKIE_DOMAIN: ""
+      CSP_WHITELIST: ""
+      DB_DATABASE: dify
+      DB_HOST: db_postgres
+      DB_PASSWORD: difyai123456
+      DB_PLUGIN_DATABASE: dify_plugin
+      DB_PORT: "5432"
+      DB_TYPE: postgresql
+      DB_USERNAME: postgres
+      DEBUG: "false"
+      DEPLOY_ENV: PRODUCTION
+      DIFY_AGENT_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      DIFY_AGENT_INNER_API_URL: http://api:5001
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      DIFY_AGENT_PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      DIFY_AGENT_REDIS_PREFIX: dify-agent
+      DIFY_AGENT_REDIS_URL: redis://:difyai123456@redis:6379/2
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "259200"
+      DIFY_AGENT_SERVER_SECRET_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ""
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://local_sandbox:5004
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "30"
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent_backend:5050/agent-stub
+      DIFY_BIND_ADDRESS: 0.0.0.0
+      DIFY_PORT: "5001"
+      ENABLE_COLLABORATION_MODE: "true"
+      ENABLE_LEARN_APP: "true"
+      ENABLE_REQUEST_LOGGING: "False"
+      ENABLE_WEBSITE_FIRECRAWL: "true"
+      ENABLE_WEBSITE_JINAREADER: "true"
+      ENABLE_WEBSITE_WATERCRAWL: "true"
+      ENDPOINT_URL_TEMPLATE: http://localhost/e/{hook_id}
+      EVENT_BUS_REDIS_CHANNEL_TYPE: pubsub
+      EVENT_BUS_REDIS_URL: ""
+      EVENT_BUS_REDIS_USE_CLUSTERS: "false"
+      EXPERIMENTAL_ENABLE_VINEXT: "false"
+      EXPOSE_NGINX_PORT: "80"
+      EXPOSE_NGINX_SSL_PORT: "443"
+      EXPOSE_PLUGIN_DAEMON_PORT: "5002"
+      EXPOSE_PLUGIN_DEBUGGING_HOST: localhost
+      EXPOSE_PLUGIN_DEBUGGING_PORT: "5003"
+      FILES_ACCESS_TIMEOUT: "300"
+      FILES_URL: ""
+      FLASK_DEBUG: "false"
+      FORCE_VERIFYING_SIGNATURE: "true"
+      GUNICORN_TIMEOUT: "360"
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "4000"
+      INIT_PASSWORD: ""
+      INTERNAL_FILES_URL: ""
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LOG_DATEFORMAT: '%Y-%m-%d %H:%M:%S'
+      LOG_FILE: /app/logs/server.log
+      LOG_FILE_BACKUP_COUNT: "5"
+      LOG_FILE_MAX_SIZE: "20"
+      LOG_LEVEL: INFO
+      LOG_OUTPUT_FORMAT: text
+      LOG_TZ: UTC
+      LOOP_NODE_MAX_COUNT: "100"
+      MARKETPLACE_API_URL: https://marketplace.dify.ai
+      MARKETPLACE_ENABLED: "true"
+      MARKETPLACE_URL: ""
+      MAX_ITERATIONS_NUM: "99"
+      MAX_PARALLEL_LIMIT: "10"
+      MAX_TOOLS_NUM: "10"
+      MAX_TREE_DEPTH: "50"
+      MIGRATION_ENABLED: "true"
+      NEXT_PUBLIC_BATCH_CONCURRENCY: "5"
+      NEXT_PUBLIC_COOKIE_DOMAIN: ""
+      NEXT_PUBLIC_ENABLE_AGENT_V2: "true"
+      NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: "true"
+      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: "false"
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+      OPENAI_API_BASE: https://api.openai.com/v1
+      OPENDAL_FS_ROOT: storage
+      OPENDAL_SCHEME: fs
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PIP_MIRROR_URL: ""
+      PLUGIN_DAEMON_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      PLUGIN_DAEMON_PORT: "5002"
+      PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      PLUGIN_DEBUGGING_HOST: 0.0.0.0
+      PLUGIN_DEBUGGING_PORT: "5003"
+      PLUGIN_DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      PLUGIN_DIFY_INNER_API_URL: http://api:5001
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PLUGIN_MAX_PACKAGE_SIZE: "52428800"
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      PLUGIN_MODEL_SCHEMA_CACHE_TTL: "3600"
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_PPROF_ENABLED: "false"
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: "120"
+      PLUGIN_SENTRY_DSN: ""
+      PLUGIN_SENTRY_ENABLED: "false"
+      PLUGIN_STDIO_BUFFER_SIZE: "1024"
+      PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_STORAGE_OSS_BUCKET: ""
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4096MB
+      POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: "0"
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_STATEMENT_TIMEOUT: "0"
+      POSTGRES_WORK_MEM: 4MB
+      PYTHONIOENCODING: utf-8
+      REDIS_DB: "0"
+      REDIS_HEALTH_CHECK_INTERVAL: "30"
+      REDIS_HOST: redis
+      REDIS_KEEPALIVE: "true"
+      REDIS_KEEPALIVE_COUNT: "10"
+      REDIS_KEEPALIVE_IDLE: "30"
+      REDIS_KEEPALIVE_INTERVAL: "10"
+      REDIS_KEY_PREFIX: ""
+      REDIS_MAX_CONNECTIONS: ""
+      REDIS_PASSWORD: difyai123456
+      REDIS_PORT: "6379"
+      REDIS_RETRY_BACKOFF_BASE: "1.0"
+      REDIS_RETRY_BACKOFF_CAP: "10.0"
+      REDIS_RETRY_RETRIES: "3"
+      REDIS_SOCKET_CONNECT_TIMEOUT: "5.0"
+      REDIS_SOCKET_TIMEOUT: "5.0"
+      REDIS_SSL_CA_CERTS: ""
+      REDIS_SSL_CERT_REQS: CERT_NONE
+      REDIS_SSL_CERTFILE: ""
+      REDIS_SSL_KEYFILE: ""
+      REDIS_USE_SSL: "false"
+      REDIS_USERNAME: ""
+      SANDBOX_API_KEY: dify-sandbox
+      SANDBOX_ENABLE_NETWORK: "true"
+      SANDBOX_GIN_MODE: release
+      SANDBOX_HTTP_PROXY: http://ssrf_proxy:3128
+      SANDBOX_HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      SANDBOX_WORKER_TIMEOUT: "15"
+      SECRET_KEY: ""
+      SERVER_CONSOLE_API_URL: http://api:5001
+      SERVER_WORKER_AMOUNT: "1"
+      SERVER_WORKER_CLASS: gevent
+      SERVER_WORKER_CONNECTIONS: "10"
+      SERVICE_API_URL: ""
+      SQLALCHEMY_ECHO: "false"
+      SQLALCHEMY_MAX_OVERFLOW: "10"
+      SQLALCHEMY_POOL_PRE_PING: "false"
+      SQLALCHEMY_POOL_RECYCLE: "3600"
+      SQLALCHEMY_POOL_RESET_ON_RETURN: rollback
+      SQLALCHEMY_POOL_SIZE: "30"
+      SQLALCHEMY_POOL_TIMEOUT: "30"
+      SQLALCHEMY_POOL_USE_LIFO: "false"
+      SSRF_COREDUMP_DIR: /var/spool/squid
+      SSRF_DEFAULT_CONNECT_TIME_OUT: "5"
+      SSRF_DEFAULT_READ_TIME_OUT: "5"
+      SSRF_DEFAULT_TIME_OUT: "5"
+      SSRF_DEFAULT_WRITE_TIME_OUT: "5"
+      SSRF_HTTP_PORT: "3128"
+      SSRF_POOL_KEEPALIVE_EXPIRY: "5.0"
+      SSRF_POOL_MAX_CONNECTIONS: "100"
+      SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      SSRF_PROXY_HTTP_URL: http://ssrf_proxy:3128
+      SSRF_PROXY_HTTPS_URL: http://ssrf_proxy:3128
+      STORAGE_TYPE: opendal
+      TEXT_GENERATION_TIMEOUT_MS: "60000"
+      TOP_K_MAX_VALUE: "10"
+      TRIGGER_URL: http://localhost
+      UV_CACHE_DIR: /tmp/.uv-cache
+      VECTOR_INDEX_NAME_PREFIX: Vector_index
+      VECTOR_STORE: weaviate
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_APIKEY_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      WEAVIATE_CLUSTER_HOSTNAME: node1
+      WEAVIATE_DEFAULT_VECTORIZER_MODULE: none
+      WEAVIATE_DISABLE_TELEMETRY: "false"
+      WEAVIATE_ENABLE_TOKENIZER_GSE: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: "false"
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      WEAVIATE_GRPC_ENDPOINT: grpc://weaviate:50051
+      WEAVIATE_PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      WEAVIATE_QUERY_DEFAULTS_LIMIT: "25"
+      WEAVIATE_TOKENIZATION: word
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_SENTRY_DSN: ""
+      WORKFLOW_GENERATION_TIMEOUT_MS: "180000"
+    image: langgenius/dify-agent-backend:1.16.0
+    networks:
+      default: null
+    restart: always
+  api:
+    build:
+      context: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: 1.16.0-enterprise
+    depends_on:
+      agent_backend:
+        condition: service_started
+        required: true
+      db_mysql:
+        condition: service_healthy
+        required: false
+      db_postgres:
+        condition: service_healthy
+        required: false
+      init_permissions:
+        condition: service_completed_successfully
+        required: true
+      oceanbase:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+        required: true
+      seekdb:
+        condition: service_healthy
+        required: false
+    environment:
+      AGENT_BACKEND_BASE_URL: http://agent_backend:5050
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: "1200"
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: "3"
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: "30"
+      ALLOW_CREATE_WORKSPACE: "false"
+      ALLOW_EMBED: "false"
+      ALLOW_REGISTER: "false"
+      ALLOW_UNSAFE_DATA_SCHEME: "false"
+      AMPLITUDE_API_KEY: ""
+      API_SENTRY_DSN: ""
+      API_SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      API_SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      API_WEBSOCKET_GUNICORN_TIMEOUT: "360"
+      API_WEBSOCKET_WORKER_AMOUNT: "1"
+      API_WEBSOCKET_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      API_WEBSOCKET_WORKER_CONNECTIONS: "1000"
+      APP_API_URL: ""
+      APP_WEB_URL: ""
+      BROKER_USE_SSL: "false"
+      CAN_REPLACE_LOGO: "true"
+      CELERY_AUTO_SCALE: "false"
+      CELERY_BACKEND: redis
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_MAX_WORKERS: ""
+      CELERY_MIN_WORKERS: ""
+      CELERY_TASK_ANNOTATIONS: "null"
+      CELERY_WORKER_AMOUNT: "4"
+      CELERY_WORKER_CLASS: ""
+      CHECK_UPDATE_URL: https://updates.dify.ai
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_CONNECT_TIMEOUT: "10"
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+      CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: "5.0"
+      CODE_EXECUTION_POOL_MAX_CONNECTIONS: "100"
+      CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      CODE_EXECUTION_READ_TIMEOUT: "60"
+      CODE_EXECUTION_SSL_VERIFY: "True"
+      CODE_EXECUTION_WRITE_TIMEOUT: "10"
+      COMPOSE_PROFILES: weaviate,postgresql,collaboration
+      COMPOSE_WORKER_HEALTHCHECK_DISABLED: "true"
+      COMPOSE_WORKER_HEALTHCHECK_INTERVAL: 30s
+      COMPOSE_WORKER_HEALTHCHECK_TIMEOUT: 30s
+      CONSOLE_API_URL: ""
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_WEB_URL: ""
+      COOKIE_DOMAIN: ""
+      CSP_WHITELIST: ""
+      DB_DATABASE: dify
+      DB_HOST: db_postgres
+      DB_PASSWORD: difyai123456
+      DB_PLUGIN_DATABASE: dify_plugin
+      DB_PORT: "5432"
+      DB_TYPE: postgresql
+      DB_USERNAME: postgres
+      DEBUG: "false"
+      DEPLOY_ENV: PRODUCTION
+      DIFY_AGENT_INNER_API_KEY: ""
+      DIFY_AGENT_INNER_API_URL: ""
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ""
+      DIFY_AGENT_PLUGIN_DAEMON_URL: ""
+      DIFY_AGENT_REDIS_PREFIX: dify-agent
+      DIFY_AGENT_REDIS_URL: ""
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "259200"
+      DIFY_AGENT_SERVER_SECRET_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ""
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://local_sandbox:5004
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "30"
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent_backend:5050/agent-stub
+      DIFY_BIND_ADDRESS: 0.0.0.0
+      DIFY_PORT: "5001"
+      ENABLE_COLLABORATION_MODE: "true"
+      ENABLE_LEARN_APP: "true"
+      ENABLE_REQUEST_LOGGING: "False"
+      ENABLE_WEBSITE_FIRECRAWL: "true"
+      ENABLE_WEBSITE_JINAREADER: "true"
+      ENABLE_WEBSITE_WATERCRAWL: "true"
+      ENDPOINT_URL_TEMPLATE: http://localhost/e/{hook_id}
+      ENTERPRISE_ENABLED: "false"
+      EVENT_BUS_REDIS_CHANNEL_TYPE: pubsub
+      EVENT_BUS_REDIS_URL: ""
+      EVENT_BUS_REDIS_USE_CLUSTERS: "false"
+      EXPERIMENTAL_ENABLE_VINEXT: "false"
+      EXPOSE_NGINX_PORT: "80"
+      EXPOSE_NGINX_SSL_PORT: "443"
+      EXPOSE_PLUGIN_DAEMON_PORT: "5002"
+      EXPOSE_PLUGIN_DEBUGGING_HOST: localhost
+      EXPOSE_PLUGIN_DEBUGGING_PORT: "5003"
+      FILES_ACCESS_TIMEOUT: "300"
+      FILES_URL: ""
+      FLASK_DEBUG: "false"
+      FORCE_VERIFYING_SIGNATURE: "true"
+      GUNICORN_TIMEOUT: "360"
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "4000"
+      INIT_PASSWORD: ""
+      INNER_API_KEY_FOR_PLUGIN: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      INTERNAL_FILES_URL: ""
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LOG_DATEFORMAT: '%Y-%m-%d %H:%M:%S'
+      LOG_FILE: /app/logs/server.log
+      LOG_FILE_BACKUP_COUNT: "5"
+      LOG_FILE_MAX_SIZE: "20"
+      LOG_LEVEL: INFO
+      LOG_OUTPUT_FORMAT: text
+      LOG_TZ: UTC
+      LOOP_NODE_MAX_COUNT: "100"
+      MARKETPLACE_API_URL: https://marketplace.dify.ai
+      MARKETPLACE_ENABLED: "true"
+      MARKETPLACE_URL: ""
+      MAX_ITERATIONS_NUM: "99"
+      MAX_PARALLEL_LIMIT: "10"
+      MAX_TOOLS_NUM: "10"
+      MAX_TREE_DEPTH: "50"
+      MIGRATION_ENABLED: "true"
+      MODE: api
+      NEXT_PUBLIC_BATCH_CONCURRENCY: "5"
+      NEXT_PUBLIC_COOKIE_DOMAIN: ""
+      NEXT_PUBLIC_ENABLE_AGENT_V2: "true"
+      NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: "true"
+      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: "false"
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+      OPENAI_API_BASE: https://api.openai.com/v1
+      OPENDAL_FS_ROOT: storage
+      OPENDAL_SCHEME: fs
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PIP_MIRROR_URL: ""
+      PLATFORM_ADMIN_EMAILS: ""
+      PLUGIN_DAEMON_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      PLUGIN_DAEMON_PORT: "5002"
+      PLUGIN_DAEMON_TIMEOUT: "600.0"
+      PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      PLUGIN_DEBUGGING_HOST: 0.0.0.0
+      PLUGIN_DEBUGGING_PORT: "5003"
+      PLUGIN_DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      PLUGIN_DIFY_INNER_API_URL: http://api:5001
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PLUGIN_MAX_PACKAGE_SIZE: "52428800"
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      PLUGIN_MODEL_SCHEMA_CACHE_TTL: "3600"
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_PPROF_ENABLED: "false"
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: "120"
+      PLUGIN_REMOTE_INSTALL_HOST: localhost
+      PLUGIN_REMOTE_INSTALL_PORT: "5003"
+      PLUGIN_SENTRY_DSN: ""
+      PLUGIN_SENTRY_ENABLED: "false"
+      PLUGIN_STDIO_BUFFER_SIZE: "1024"
+      PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_STORAGE_OSS_BUCKET: ""
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4096MB
+      POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: "0"
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_STATEMENT_TIMEOUT: "0"
+      POSTGRES_WORK_MEM: 4MB
+      PYTHONIOENCODING: utf-8
+      REDIS_DB: "0"
+      REDIS_HEALTH_CHECK_INTERVAL: "30"
+      REDIS_HOST: redis
+      REDIS_KEEPALIVE: "true"
+      REDIS_KEEPALIVE_COUNT: "10"
+      REDIS_KEEPALIVE_IDLE: "30"
+      REDIS_KEEPALIVE_INTERVAL: "10"
+      REDIS_KEY_PREFIX: ""
+      REDIS_MAX_CONNECTIONS: ""
+      REDIS_PASSWORD: difyai123456
+      REDIS_PORT: "6379"
+      REDIS_RETRY_BACKOFF_BASE: "1.0"
+      REDIS_RETRY_BACKOFF_CAP: "10.0"
+      REDIS_RETRY_RETRIES: "3"
+      REDIS_SOCKET_CONNECT_TIMEOUT: "5.0"
+      REDIS_SOCKET_TIMEOUT: "5.0"
+      REDIS_SSL_CA_CERTS: ""
+      REDIS_SSL_CERT_REQS: CERT_NONE
+      REDIS_SSL_CERTFILE: ""
+      REDIS_SSL_KEYFILE: ""
+      REDIS_USE_SSL: "false"
+      REDIS_USERNAME: ""
+      SANDBOX_API_KEY: dify-sandbox
+      SANDBOX_ENABLE_NETWORK: "true"
+      SANDBOX_GIN_MODE: release
+      SANDBOX_HTTP_PROXY: http://ssrf_proxy:3128
+      SANDBOX_HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      SANDBOX_WORKER_TIMEOUT: "15"
+      SECRET_KEY: ""
+      SENTRY_DSN: ""
+      SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      SERVER_CONSOLE_API_URL: http://api:5001
+      SERVER_WORKER_AMOUNT: "1"
+      SERVER_WORKER_CLASS: gevent
+      SERVER_WORKER_CONNECTIONS: "10"
+      SERVICE_API_URL: ""
+      SQLALCHEMY_ECHO: "false"
+      SQLALCHEMY_MAX_OVERFLOW: "10"
+      SQLALCHEMY_POOL_PRE_PING: "false"
+      SQLALCHEMY_POOL_RECYCLE: "3600"
+      SQLALCHEMY_POOL_RESET_ON_RETURN: rollback
+      SQLALCHEMY_POOL_SIZE: "30"
+      SQLALCHEMY_POOL_TIMEOUT: "30"
+      SQLALCHEMY_POOL_USE_LIFO: "false"
+      SSRF_COREDUMP_DIR: /var/spool/squid
+      SSRF_DEFAULT_CONNECT_TIME_OUT: "5"
+      SSRF_DEFAULT_READ_TIME_OUT: "5"
+      SSRF_DEFAULT_TIME_OUT: "5"
+      SSRF_DEFAULT_WRITE_TIME_OUT: "5"
+      SSRF_HTTP_PORT: "3128"
+      SSRF_POOL_KEEPALIVE_EXPIRY: "5.0"
+      SSRF_POOL_MAX_CONNECTIONS: "100"
+      SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      SSRF_PROXY_HTTP_URL: http://ssrf_proxy:3128
+      SSRF_PROXY_HTTPS_URL: http://ssrf_proxy:3128
+      STORAGE_TYPE: opendal
+      TEXT_GENERATION_TIMEOUT_MS: "60000"
+      TOP_K_MAX_VALUE: "10"
+      TRIGGER_URL: http://localhost
+      UV_CACHE_DIR: /tmp/.uv-cache
+      VECTOR_INDEX_NAME_PREFIX: Vector_index
+      VECTOR_STORE: weaviate
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_APIKEY_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      WEAVIATE_CLUSTER_HOSTNAME: node1
+      WEAVIATE_DEFAULT_VECTORIZER_MODULE: none
+      WEAVIATE_DISABLE_TELEMETRY: "false"
+      WEAVIATE_ENABLE_TOKENIZER_GSE: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: "false"
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      WEAVIATE_GRPC_ENDPOINT: grpc://weaviate:50051
+      WEAVIATE_PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      WEAVIATE_QUERY_DEFAULTS_LIMIT: "25"
+      WEAVIATE_TOKENIZATION: word
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_SENTRY_DSN: ""
+      WORKFLOW_GENERATION_TIMEOUT_MS: "180000"
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:5001/health
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 30s
+    image: dify-api-enterprise:1.16.0-enterprise
+    networks:
+      default: null
+      ssrf_proxy_network: null
+    restart: always
+    volumes:
+      - type: volume
+        source: dify-b8-phase-h-rerun-api-storage
+        target: /app/api/storage
+        volume: {}
+  api_websocket:
+    profiles:
+      - collaboration
+    build:
+      context: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: 1.16.0-enterprise
+    depends_on:
+      db_mysql:
+        condition: service_healthy
+        required: false
+      db_postgres:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+        required: true
+    environment:
+      AGENT_BACKEND_BASE_URL: http://agent_backend:5050
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: "1200"
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: "3"
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: "30"
+      ALLOW_CREATE_WORKSPACE: "false"
+      ALLOW_EMBED: "false"
+      ALLOW_REGISTER: "false"
+      ALLOW_UNSAFE_DATA_SCHEME: "false"
+      AMPLITUDE_API_KEY: ""
+      API_SENTRY_DSN: ""
+      API_SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      API_SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      API_WEBSOCKET_GUNICORN_TIMEOUT: "360"
+      API_WEBSOCKET_WORKER_AMOUNT: "1"
+      API_WEBSOCKET_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      API_WEBSOCKET_WORKER_CONNECTIONS: "1000"
+      APP_API_URL: ""
+      APP_WEB_URL: ""
+      BROKER_USE_SSL: "false"
+      CAN_REPLACE_LOGO: "true"
+      CELERY_AUTO_SCALE: "false"
+      CELERY_BACKEND: redis
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_MAX_WORKERS: ""
+      CELERY_MIN_WORKERS: ""
+      CELERY_TASK_ANNOTATIONS: "null"
+      CELERY_WORKER_AMOUNT: "4"
+      CELERY_WORKER_CLASS: ""
+      CHECK_UPDATE_URL: https://updates.dify.ai
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_CONNECT_TIMEOUT: "10"
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+      CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: "5.0"
+      CODE_EXECUTION_POOL_MAX_CONNECTIONS: "100"
+      CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      CODE_EXECUTION_READ_TIMEOUT: "60"
+      CODE_EXECUTION_SSL_VERIFY: "True"
+      CODE_EXECUTION_WRITE_TIMEOUT: "10"
+      COMPOSE_PROFILES: weaviate,postgresql,collaboration
+      COMPOSE_WORKER_HEALTHCHECK_DISABLED: "true"
+      COMPOSE_WORKER_HEALTHCHECK_INTERVAL: 30s
+      COMPOSE_WORKER_HEALTHCHECK_TIMEOUT: 30s
+      CONSOLE_API_URL: ""
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_WEB_URL: ""
+      COOKIE_DOMAIN: ""
+      CSP_WHITELIST: ""
+      DB_DATABASE: dify
+      DB_HOST: db_postgres
+      DB_PASSWORD: difyai123456
+      DB_PLUGIN_DATABASE: dify_plugin
+      DB_PORT: "5432"
+      DB_TYPE: postgresql
+      DB_USERNAME: postgres
+      DEBUG: "false"
+      DEPLOY_ENV: PRODUCTION
+      DIFY_AGENT_INNER_API_KEY: ""
+      DIFY_AGENT_INNER_API_URL: ""
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ""
+      DIFY_AGENT_PLUGIN_DAEMON_URL: ""
+      DIFY_AGENT_REDIS_PREFIX: dify-agent
+      DIFY_AGENT_REDIS_URL: ""
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "259200"
+      DIFY_AGENT_SERVER_SECRET_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ""
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://local_sandbox:5004
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "30"
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent_backend:5050/agent-stub
+      DIFY_BIND_ADDRESS: 0.0.0.0
+      DIFY_PORT: "5001"
+      ENABLE_COLLABORATION_MODE: "true"
+      ENABLE_LEARN_APP: "true"
+      ENABLE_REQUEST_LOGGING: "False"
+      ENABLE_WEBSITE_FIRECRAWL: "true"
+      ENABLE_WEBSITE_JINAREADER: "true"
+      ENABLE_WEBSITE_WATERCRAWL: "true"
+      ENDPOINT_URL_TEMPLATE: http://localhost/e/{hook_id}
+      ENTERPRISE_ENABLED: "false"
+      EVENT_BUS_REDIS_CHANNEL_TYPE: pubsub
+      EVENT_BUS_REDIS_URL: ""
+      EVENT_BUS_REDIS_USE_CLUSTERS: "false"
+      EXPERIMENTAL_ENABLE_VINEXT: "false"
+      EXPOSE_NGINX_PORT: "80"
+      EXPOSE_NGINX_SSL_PORT: "443"
+      EXPOSE_PLUGIN_DAEMON_PORT: "5002"
+      EXPOSE_PLUGIN_DEBUGGING_HOST: localhost
+      EXPOSE_PLUGIN_DEBUGGING_PORT: "5003"
+      FILES_ACCESS_TIMEOUT: "300"
+      FILES_URL: ""
+      FLASK_DEBUG: "false"
+      FORCE_VERIFYING_SIGNATURE: "true"
+      GUNICORN_TIMEOUT: "360"
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "4000"
+      INIT_PASSWORD: ""
+      INTERNAL_FILES_URL: ""
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LOG_DATEFORMAT: '%Y-%m-%d %H:%M:%S'
+      LOG_FILE: /app/logs/server.log
+      LOG_FILE_BACKUP_COUNT: "5"
+      LOG_FILE_MAX_SIZE: "20"
+      LOG_LEVEL: INFO
+      LOG_OUTPUT_FORMAT: text
+      LOG_TZ: UTC
+      LOOP_NODE_MAX_COUNT: "100"
+      MARKETPLACE_API_URL: https://marketplace.dify.ai
+      MARKETPLACE_ENABLED: "true"
+      MARKETPLACE_URL: ""
+      MAX_ITERATIONS_NUM: "99"
+      MAX_PARALLEL_LIMIT: "10"
+      MAX_TOOLS_NUM: "10"
+      MAX_TREE_DEPTH: "50"
+      MIGRATION_ENABLED: "true"
+      MODE: api
+      NEXT_PUBLIC_BATCH_CONCURRENCY: "5"
+      NEXT_PUBLIC_COOKIE_DOMAIN: ""
+      NEXT_PUBLIC_ENABLE_AGENT_V2: "true"
+      NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: "true"
+      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: "false"
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+      OPENAI_API_BASE: https://api.openai.com/v1
+      OPENDAL_FS_ROOT: storage
+      OPENDAL_SCHEME: fs
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PIP_MIRROR_URL: ""
+      PLATFORM_ADMIN_EMAILS: ""
+      PLUGIN_DAEMON_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      PLUGIN_DAEMON_PORT: "5002"
+      PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      PLUGIN_DEBUGGING_HOST: 0.0.0.0
+      PLUGIN_DEBUGGING_PORT: "5003"
+      PLUGIN_DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      PLUGIN_DIFY_INNER_API_URL: http://api:5001
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PLUGIN_MAX_PACKAGE_SIZE: "52428800"
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      PLUGIN_MODEL_SCHEMA_CACHE_TTL: "3600"
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_PPROF_ENABLED: "false"
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: "120"
+      PLUGIN_SENTRY_DSN: ""
+      PLUGIN_SENTRY_ENABLED: "false"
+      PLUGIN_STDIO_BUFFER_SIZE: "1024"
+      PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_STORAGE_OSS_BUCKET: ""
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4096MB
+      POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: "0"
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_STATEMENT_TIMEOUT: "0"
+      POSTGRES_WORK_MEM: 4MB
+      PYTHONIOENCODING: utf-8
+      REDIS_DB: "0"
+      REDIS_HEALTH_CHECK_INTERVAL: "30"
+      REDIS_HOST: redis
+      REDIS_KEEPALIVE: "true"
+      REDIS_KEEPALIVE_COUNT: "10"
+      REDIS_KEEPALIVE_IDLE: "30"
+      REDIS_KEEPALIVE_INTERVAL: "10"
+      REDIS_KEY_PREFIX: ""
+      REDIS_MAX_CONNECTIONS: ""
+      REDIS_PASSWORD: difyai123456
+      REDIS_PORT: "6379"
+      REDIS_RETRY_BACKOFF_BASE: "1.0"
+      REDIS_RETRY_BACKOFF_CAP: "10.0"
+      REDIS_RETRY_RETRIES: "3"
+      REDIS_SOCKET_CONNECT_TIMEOUT: "5.0"
+      REDIS_SOCKET_TIMEOUT: "5.0"
+      REDIS_SSL_CA_CERTS: ""
+      REDIS_SSL_CERT_REQS: CERT_NONE
+      REDIS_SSL_CERTFILE: ""
+      REDIS_SSL_KEYFILE: ""
+      REDIS_USE_SSL: "false"
+      REDIS_USERNAME: ""
+      SANDBOX_API_KEY: dify-sandbox
+      SANDBOX_ENABLE_NETWORK: "true"
+      SANDBOX_GIN_MODE: release
+      SANDBOX_HTTP_PROXY: http://ssrf_proxy:3128
+      SANDBOX_HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      SANDBOX_WORKER_TIMEOUT: "15"
+      SECRET_KEY: ""
+      SERVER_CONSOLE_API_URL: http://api:5001
+      SERVER_WORKER_AMOUNT: "1"
+      SERVER_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      SERVER_WORKER_CONNECTIONS: "1000"
+      SERVICE_API_URL: ""
+      SQLALCHEMY_ECHO: "false"
+      SQLALCHEMY_MAX_OVERFLOW: "10"
+      SQLALCHEMY_POOL_PRE_PING: "false"
+      SQLALCHEMY_POOL_RECYCLE: "3600"
+      SQLALCHEMY_POOL_RESET_ON_RETURN: rollback
+      SQLALCHEMY_POOL_SIZE: "30"
+      SQLALCHEMY_POOL_TIMEOUT: "30"
+      SQLALCHEMY_POOL_USE_LIFO: "false"
+      SSRF_COREDUMP_DIR: /var/spool/squid
+      SSRF_DEFAULT_CONNECT_TIME_OUT: "5"
+      SSRF_DEFAULT_READ_TIME_OUT: "5"
+      SSRF_DEFAULT_TIME_OUT: "5"
+      SSRF_DEFAULT_WRITE_TIME_OUT: "5"
+      SSRF_HTTP_PORT: "3128"
+      SSRF_POOL_KEEPALIVE_EXPIRY: "5.0"
+      SSRF_POOL_MAX_CONNECTIONS: "100"
+      SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      SSRF_PROXY_HTTP_URL: http://ssrf_proxy:3128
+      SSRF_PROXY_HTTPS_URL: http://ssrf_proxy:3128
+      STORAGE_TYPE: opendal
+      TEXT_GENERATION_TIMEOUT_MS: "60000"
+      TOP_K_MAX_VALUE: "10"
+      TRIGGER_URL: http://localhost
+      UV_CACHE_DIR: /tmp/.uv-cache
+      VECTOR_INDEX_NAME_PREFIX: Vector_index
+      VECTOR_STORE: weaviate
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_APIKEY_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      WEAVIATE_CLUSTER_HOSTNAME: node1
+      WEAVIATE_DEFAULT_VECTORIZER_MODULE: none
+      WEAVIATE_DISABLE_TELEMETRY: "false"
+      WEAVIATE_ENABLE_TOKENIZER_GSE: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: "false"
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      WEAVIATE_GRPC_ENDPOINT: grpc://weaviate:50051
+      WEAVIATE_PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      WEAVIATE_QUERY_DEFAULTS_LIMIT: "25"
+      WEAVIATE_TOKENIZATION: word
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_SENTRY_DSN: ""
+      WORKFLOW_GENERATION_TIMEOUT_MS: "180000"
+    image: dify-api-enterprise:1.16.0-enterprise
+    networks:
+      default: null
+      ssrf_proxy_network: null
+    restart: always
+  db_postgres:
+    profiles:
+      - postgresql
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - effective_cache_size=4096MB
+      - -c
+      - statement_timeout=0
+      - -c
+      - idle_in_transaction_session_timeout=0
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_DB: dify
+      POSTGRES_PASSWORD: difyai123456
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -h
+        - db_postgres
+        - -U
+        - postgres
+        - -d
+        - dify
+      timeout: 3s
+      interval: 1s
+      retries: 60
+    image: postgres:15-alpine
+    networks:
+      default: null
+    restart: always
+    volumes:
+      - type: volume
+        source: dify-b8-phase-h-rerun-db-data
+        target: /var/lib/postgresql/data
+        volume: {}
+  init_permissions:
+    command:
+      - sh
+      - -c
+      - |
+        FLAG_FILE="/app/api/storage/.init_permissions"
+        if [ -f "$${FLAG_FILE}" ]; then
+          echo "Permissions already initialized. Exiting."
+          exit 0
+        fi
+        echo "Initializing permissions for /app/api/storage"
+        chown -R 1001:1001 /app/api/storage && touch "$${FLAG_FILE}"
+        echo "Permissions initialized. Exiting."
+    image: busybox:latest
+    networks:
+      default: null
+    restart: "no"
+    volumes:
+      - type: volume
+        source: dify-b8-phase-h-rerun-api-storage
+        target: /app/api/storage
+        volume: {}
+  local_sandbox:
+    environment:
+      SHELLCTL_AUTH_TOKEN: ""
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:5004/healthz
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 10s
+    image: langgenius/dify-agent-local-sandbox:1.16.0
+    networks:
+      default: null
+    restart: always
+  nginx:
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+      web:
+        condition: service_started
+        required: true
+    entrypoint:
+      - nginx
+      - -g
+      - daemon off;
+    environment:
+      CERTBOT_DOMAIN: ""
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+    image: nginx:latest
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 80
+        published: "18080"
+        protocol: tcp
+    restart: always
+    volumes:
+      - type: bind
+        source: /tmp/replay-116-phase-h-rerun/nginx/nginx.conf
+        target: /etc/nginx/nginx.conf
+        read_only: true
+        bind: {}
+      - type: bind
+        source: /tmp/replay-116-phase-h-rerun/nginx/default.conf
+        target: /etc/nginx/conf.d/default.conf
+        read_only: true
+        bind: {}
+  plugin_daemon:
+    depends_on:
+      db_mysql:
+        condition: service_healthy
+        required: false
+      db_postgres:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
+      seekdb:
+        condition: service_healthy
+        required: false
+    environment:
+      AGENT_BACKEND_BASE_URL: http://agent_backend:5050
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: "1200"
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: "3"
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: "30"
+      ALIYUN_OSS_ACCESS_KEY_ID: ""
+      ALIYUN_OSS_ACCESS_KEY_SECRET: ""
+      ALIYUN_OSS_AUTH_VERSION: v4
+      ALIYUN_OSS_ENDPOINT: ""
+      ALIYUN_OSS_PATH: ""
+      ALIYUN_OSS_REGION: ""
+      ALLOW_EMBED: "false"
+      ALLOW_UNSAFE_DATA_SCHEME: "false"
+      AMPLITUDE_API_KEY: ""
+      API_SENTRY_DSN: ""
+      API_SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      API_SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      API_WEBSOCKET_GUNICORN_TIMEOUT: "360"
+      API_WEBSOCKET_WORKER_AMOUNT: "1"
+      API_WEBSOCKET_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      API_WEBSOCKET_WORKER_CONNECTIONS: "1000"
+      APP_API_URL: ""
+      APP_WEB_URL: ""
+      AWS_ACCESS_KEY: ""
+      AWS_REGION: ""
+      AWS_SECRET_KEY: ""
+      AZURE_BLOB_STORAGE_CONNECTION_STRING: ""
+      AZURE_BLOB_STORAGE_CONTAINER_NAME: ""
+      BROKER_USE_SSL: "false"
+      CELERY_AUTO_SCALE: "false"
+      CELERY_BACKEND: redis
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_MAX_WORKERS: ""
+      CELERY_MIN_WORKERS: ""
+      CELERY_TASK_ANNOTATIONS: "null"
+      CELERY_WORKER_AMOUNT: "4"
+      CELERY_WORKER_CLASS: ""
+      CHECK_UPDATE_URL: https://updates.dify.ai
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_CONNECT_TIMEOUT: "10"
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+      CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: "5.0"
+      CODE_EXECUTION_POOL_MAX_CONNECTIONS: "100"
+      CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      CODE_EXECUTION_READ_TIMEOUT: "60"
+      CODE_EXECUTION_SSL_VERIFY: "True"
+      CODE_EXECUTION_WRITE_TIMEOUT: "10"
+      COMPOSE_PROFILES: weaviate,postgresql,collaboration
+      COMPOSE_WORKER_HEALTHCHECK_DISABLED: "true"
+      COMPOSE_WORKER_HEALTHCHECK_INTERVAL: 30s
+      COMPOSE_WORKER_HEALTHCHECK_TIMEOUT: 30s
+      CONSOLE_API_URL: ""
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_WEB_URL: ""
+      COOKIE_DOMAIN: ""
+      CSP_WHITELIST: ""
+      DB_DATABASE: dify_plugin
+      DB_HOST: db_postgres
+      DB_PASSWORD: difyai123456
+      DB_PLUGIN_DATABASE: dify_plugin
+      DB_PORT: "5432"
+      DB_SSL_MODE: disable
+      DB_TYPE: postgresql
+      DB_USERNAME: postgres
+      DEBUG: "false"
+      DEPLOY_ENV: PRODUCTION
+      DIFY_AGENT_INNER_API_KEY: ""
+      DIFY_AGENT_INNER_API_URL: ""
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ""
+      DIFY_AGENT_PLUGIN_DAEMON_URL: ""
+      DIFY_AGENT_REDIS_PREFIX: dify-agent
+      DIFY_AGENT_REDIS_URL: ""
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "259200"
+      DIFY_AGENT_SERVER_SECRET_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ""
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://local_sandbox:5004
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "30"
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent_backend:5050/agent-stub
+      DIFY_BIND_ADDRESS: 0.0.0.0
+      DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      DIFY_INNER_API_URL: http://api:5001
+      DIFY_PORT: "5001"
+      ENABLE_COLLABORATION_MODE: "true"
+      ENABLE_LEARN_APP: "true"
+      ENABLE_REQUEST_LOGGING: "False"
+      ENABLE_WEBSITE_FIRECRAWL: "true"
+      ENABLE_WEBSITE_JINAREADER: "true"
+      ENABLE_WEBSITE_WATERCRAWL: "true"
+      ENDPOINT_URL_TEMPLATE: http://localhost/e/{hook_id}
+      EVENT_BUS_REDIS_CHANNEL_TYPE: pubsub
+      EVENT_BUS_REDIS_URL: ""
+      EVENT_BUS_REDIS_USE_CLUSTERS: "false"
+      EXPERIMENTAL_ENABLE_VINEXT: "false"
+      EXPOSE_NGINX_PORT: "80"
+      EXPOSE_NGINX_SSL_PORT: "443"
+      EXPOSE_PLUGIN_DAEMON_PORT: "5002"
+      EXPOSE_PLUGIN_DEBUGGING_HOST: localhost
+      EXPOSE_PLUGIN_DEBUGGING_PORT: "5003"
+      FILES_ACCESS_TIMEOUT: "300"
+      FILES_URL: ""
+      FLASK_DEBUG: "false"
+      FORCE_VERIFYING_SIGNATURE: "true"
+      GUNICORN_TIMEOUT: "360"
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "4000"
+      INIT_PASSWORD: ""
+      INTERNAL_FILES_URL: ""
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LOG_DATEFORMAT: '%Y-%m-%d %H:%M:%S'
+      LOG_FILE: /app/logs/server.log
+      LOG_FILE_BACKUP_COUNT: "5"
+      LOG_FILE_MAX_SIZE: "20"
+      LOG_LEVEL: INFO
+      LOG_OUTPUT_FORMAT: text
+      LOG_TZ: UTC
+      LOOP_NODE_MAX_COUNT: "100"
+      MARKETPLACE_API_URL: https://marketplace.dify.ai
+      MARKETPLACE_ENABLED: "true"
+      MARKETPLACE_URL: ""
+      MAX_ITERATIONS_NUM: "99"
+      MAX_PARALLEL_LIMIT: "10"
+      MAX_PLUGIN_PACKAGE_SIZE: "52428800"
+      MAX_TOOLS_NUM: "10"
+      MAX_TREE_DEPTH: "50"
+      MIGRATION_ENABLED: "true"
+      NEXT_PUBLIC_BATCH_CONCURRENCY: "5"
+      NEXT_PUBLIC_COOKIE_DOMAIN: ""
+      NEXT_PUBLIC_ENABLE_AGENT_V2: "true"
+      NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: "true"
+      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: "false"
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+      OPENAI_API_BASE: https://api.openai.com/v1
+      OPENDAL_FS_ROOT: storage
+      OPENDAL_SCHEME: fs
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PIP_MIRROR_URL: ""
+      PLUGIN_DAEMON_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      PLUGIN_DAEMON_PORT: "5002"
+      PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      PLUGIN_DEBUGGING_HOST: 0.0.0.0
+      PLUGIN_DEBUGGING_PORT: "5003"
+      PLUGIN_DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      PLUGIN_DIFY_INNER_API_URL: http://api:5001
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PLUGIN_MAX_PACKAGE_SIZE: "52428800"
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      PLUGIN_MODEL_SCHEMA_CACHE_TTL: "3600"
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_PPROF_ENABLED: "false"
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: "120"
+      PLUGIN_REMOTE_INSTALLING_HOST: 0.0.0.0
+      PLUGIN_REMOTE_INSTALLING_PORT: "5003"
+      PLUGIN_SENTRY_DSN: ""
+      PLUGIN_SENTRY_ENABLED: "false"
+      PLUGIN_STDIO_BUFFER_SIZE: "1024"
+      PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_STORAGE_OSS_BUCKET: ""
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4096MB
+      POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: "0"
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_STATEMENT_TIMEOUT: "0"
+      POSTGRES_WORK_MEM: 4MB
+      PPROF_ENABLED: "false"
+      PYTHON_ENV_INIT_TIMEOUT: "120"
+      PYTHONIOENCODING: utf-8
+      REDIS_DB: "0"
+      REDIS_HEALTH_CHECK_INTERVAL: "30"
+      REDIS_HOST: redis
+      REDIS_KEEPALIVE: "true"
+      REDIS_KEEPALIVE_COUNT: "10"
+      REDIS_KEEPALIVE_IDLE: "30"
+      REDIS_KEEPALIVE_INTERVAL: "10"
+      REDIS_KEY_PREFIX: ""
+      REDIS_MAX_CONNECTIONS: ""
+      REDIS_PASSWORD: difyai123456
+      REDIS_PORT: "6379"
+      REDIS_RETRY_BACKOFF_BASE: "1.0"
+      REDIS_RETRY_BACKOFF_CAP: "10.0"
+      REDIS_RETRY_RETRIES: "3"
+      REDIS_SOCKET_CONNECT_TIMEOUT: "5.0"
+      REDIS_SOCKET_TIMEOUT: "5.0"
+      REDIS_SSL_CA_CERTS: ""
+      REDIS_SSL_CERT_REQS: CERT_NONE
+      REDIS_SSL_CERTFILE: ""
+      REDIS_SSL_KEYFILE: ""
+      REDIS_USE_SSL: "false"
+      REDIS_USERNAME: ""
+      S3_ENDPOINT: ""
+      S3_USE_AWS: "false"
+      S3_USE_AWS_MANAGED_IAM: "false"
+      S3_USE_PATH_STYLE: "false"
+      SANDBOX_API_KEY: dify-sandbox
+      SANDBOX_ENABLE_NETWORK: "true"
+      SANDBOX_GIN_MODE: release
+      SANDBOX_HTTP_PROXY: http://ssrf_proxy:3128
+      SANDBOX_HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      SANDBOX_WORKER_TIMEOUT: "15"
+      SECRET_KEY: ""
+      SENTRY_DSN: ""
+      SENTRY_ENABLED: "false"
+      SERVER_CONSOLE_API_URL: http://api:5001
+      SERVER_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      SERVER_PORT: "5002"
+      SERVER_WORKER_AMOUNT: "1"
+      SERVER_WORKER_CLASS: gevent
+      SERVER_WORKER_CONNECTIONS: "10"
+      SERVICE_API_URL: ""
+      SQLALCHEMY_ECHO: "false"
+      SQLALCHEMY_MAX_OVERFLOW: "10"
+      SQLALCHEMY_POOL_PRE_PING: "false"
+      SQLALCHEMY_POOL_RECYCLE: "3600"
+      SQLALCHEMY_POOL_RESET_ON_RETURN: rollback
+      SQLALCHEMY_POOL_SIZE: "30"
+      SQLALCHEMY_POOL_TIMEOUT: "30"
+      SQLALCHEMY_POOL_USE_LIFO: "false"
+      SSRF_COREDUMP_DIR: /var/spool/squid
+      SSRF_DEFAULT_CONNECT_TIME_OUT: "5"
+      SSRF_DEFAULT_READ_TIME_OUT: "5"
+      SSRF_DEFAULT_TIME_OUT: "5"
+      SSRF_DEFAULT_WRITE_TIME_OUT: "5"
+      SSRF_HTTP_PORT: "3128"
+      SSRF_POOL_KEEPALIVE_EXPIRY: "5.0"
+      SSRF_POOL_MAX_CONNECTIONS: "100"
+      SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      SSRF_PROXY_HTTP_URL: http://ssrf_proxy:3128
+      SSRF_PROXY_HTTPS_URL: http://ssrf_proxy:3128
+      STORAGE_TYPE: opendal
+      TENCENT_COS_REGION: ""
+      TENCENT_COS_SECRET_ID: ""
+      TENCENT_COS_SECRET_KEY: ""
+      TEXT_GENERATION_TIMEOUT_MS: "60000"
+      TOP_K_MAX_VALUE: "10"
+      TRIGGER_URL: http://localhost
+      UV_CACHE_DIR: /tmp/.uv-cache
+      VECTOR_INDEX_NAME_PREFIX: Vector_index
+      VECTOR_STORE: weaviate
+      VOLCENGINE_TOS_ACCESS_KEY: ""
+      VOLCENGINE_TOS_ENDPOINT: ""
+      VOLCENGINE_TOS_REGION: ""
+      VOLCENGINE_TOS_SECRET_KEY: ""
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_APIKEY_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      WEAVIATE_CLUSTER_HOSTNAME: node1
+      WEAVIATE_DEFAULT_VECTORIZER_MODULE: none
+      WEAVIATE_DISABLE_TELEMETRY: "false"
+      WEAVIATE_ENABLE_TOKENIZER_GSE: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: "false"
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      WEAVIATE_GRPC_ENDPOINT: grpc://weaviate:50051
+      WEAVIATE_PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      WEAVIATE_QUERY_DEFAULTS_LIMIT: "25"
+      WEAVIATE_TOKENIZATION: word
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_SENTRY_DSN: ""
+      WORKFLOW_GENERATION_TIMEOUT_MS: "180000"
+    image: langgenius/dify-plugin-daemon:0.6.3-local
+    networks:
+      default: null
+      ssrf_proxy_network: null
+    ports:
+      - mode: ingress
+        target: 5003
+        published: "5003"
+        protocol: tcp
+    restart: always
+    volumes:
+      - type: bind
+        source: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d/docker/volumes/plugin_daemon
+        target: /app/storage
+        bind: {}
+  redis:
+    command:
+      - redis-server
+      - --requirepass
+      - difyai123456
+    environment:
+      REDISCLI_AUTH: difyai123456
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli -a difyai123456 ping | grep -q PONG
+    image: redis:6-alpine
+    networks:
+      default: null
+    restart: always
+    volumes:
+      - type: volume
+        source: dify-b8-phase-h-rerun-redis-data
+        target: /data
+        volume: {}
+  sandbox:
+    environment:
+      AGENT_BACKEND_BASE_URL: http://agent_backend:5050
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: "1200"
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: "3"
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: "30"
+      ALLOW_EMBED: "false"
+      ALLOW_UNSAFE_DATA_SCHEME: "false"
+      AMPLITUDE_API_KEY: ""
+      API_KEY: dify-sandbox
+      API_SENTRY_DSN: ""
+      API_SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      API_SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      API_WEBSOCKET_GUNICORN_TIMEOUT: "360"
+      API_WEBSOCKET_WORKER_AMOUNT: "1"
+      API_WEBSOCKET_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      API_WEBSOCKET_WORKER_CONNECTIONS: "1000"
+      APP_API_URL: ""
+      APP_WEB_URL: ""
+      BROKER_USE_SSL: "false"
+      CELERY_AUTO_SCALE: "false"
+      CELERY_BACKEND: redis
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_MAX_WORKERS: ""
+      CELERY_MIN_WORKERS: ""
+      CELERY_TASK_ANNOTATIONS: "null"
+      CELERY_WORKER_AMOUNT: "4"
+      CELERY_WORKER_CLASS: ""
+      CHECK_UPDATE_URL: https://updates.dify.ai
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_CONNECT_TIMEOUT: "10"
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+      CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: "5.0"
+      CODE_EXECUTION_POOL_MAX_CONNECTIONS: "100"
+      CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      CODE_EXECUTION_READ_TIMEOUT: "60"
+      CODE_EXECUTION_SSL_VERIFY: "True"
+      CODE_EXECUTION_WRITE_TIMEOUT: "10"
+      COMPOSE_PROFILES: weaviate,postgresql,collaboration
+      COMPOSE_WORKER_HEALTHCHECK_DISABLED: "true"
+      COMPOSE_WORKER_HEALTHCHECK_INTERVAL: 30s
+      COMPOSE_WORKER_HEALTHCHECK_TIMEOUT: 30s
+      CONSOLE_API_URL: ""
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_WEB_URL: ""
+      COOKIE_DOMAIN: ""
+      CSP_WHITELIST: ""
+      DB_DATABASE: dify
+      DB_HOST: db_postgres
+      DB_PASSWORD: difyai123456
+      DB_PLUGIN_DATABASE: dify_plugin
+      DB_PORT: "5432"
+      DB_TYPE: postgresql
+      DB_USERNAME: postgres
+      DEBUG: "false"
+      DEPLOY_ENV: PRODUCTION
+      DIFY_AGENT_INNER_API_KEY: ""
+      DIFY_AGENT_INNER_API_URL: ""
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ""
+      DIFY_AGENT_PLUGIN_DAEMON_URL: ""
+      DIFY_AGENT_REDIS_PREFIX: dify-agent
+      DIFY_AGENT_REDIS_URL: ""
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "259200"
+      DIFY_AGENT_SERVER_SECRET_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ""
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://local_sandbox:5004
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "30"
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent_backend:5050/agent-stub
+      DIFY_BIND_ADDRESS: 0.0.0.0
+      DIFY_PORT: "5001"
+      ENABLE_COLLABORATION_MODE: "true"
+      ENABLE_LEARN_APP: "true"
+      ENABLE_NETWORK: "true"
+      ENABLE_REQUEST_LOGGING: "False"
+      ENABLE_WEBSITE_FIRECRAWL: "true"
+      ENABLE_WEBSITE_JINAREADER: "true"
+      ENABLE_WEBSITE_WATERCRAWL: "true"
+      ENDPOINT_URL_TEMPLATE: http://localhost/e/{hook_id}
+      EVENT_BUS_REDIS_CHANNEL_TYPE: pubsub
+      EVENT_BUS_REDIS_URL: ""
+      EVENT_BUS_REDIS_USE_CLUSTERS: "false"
+      EXPERIMENTAL_ENABLE_VINEXT: "false"
+      EXPOSE_NGINX_PORT: "80"
+      EXPOSE_NGINX_SSL_PORT: "443"
+      EXPOSE_PLUGIN_DAEMON_PORT: "5002"
+      EXPOSE_PLUGIN_DEBUGGING_HOST: localhost
+      EXPOSE_PLUGIN_DEBUGGING_PORT: "5003"
+      FILES_ACCESS_TIMEOUT: "300"
+      FILES_URL: ""
+      FLASK_DEBUG: "false"
+      FORCE_VERIFYING_SIGNATURE: "true"
+      GIN_MODE: release
+      GUNICORN_TIMEOUT: "360"
+      HTTP_PROXY: http://ssrf_proxy:3128
+      HTTPS_PROXY: http://ssrf_proxy:3128
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "4000"
+      INIT_PASSWORD: ""
+      INTERNAL_FILES_URL: ""
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LOG_DATEFORMAT: '%Y-%m-%d %H:%M:%S'
+      LOG_FILE: /app/logs/server.log
+      LOG_FILE_BACKUP_COUNT: "5"
+      LOG_FILE_MAX_SIZE: "20"
+      LOG_LEVEL: INFO
+      LOG_OUTPUT_FORMAT: text
+      LOG_TZ: UTC
+      LOOP_NODE_MAX_COUNT: "100"
+      MARKETPLACE_API_URL: https://marketplace.dify.ai
+      MARKETPLACE_ENABLED: "true"
+      MARKETPLACE_URL: ""
+      MAX_ITERATIONS_NUM: "99"
+      MAX_PARALLEL_LIMIT: "10"
+      MAX_TOOLS_NUM: "10"
+      MAX_TREE_DEPTH: "50"
+      MIGRATION_ENABLED: "true"
+      NEXT_PUBLIC_BATCH_CONCURRENCY: "5"
+      NEXT_PUBLIC_COOKIE_DOMAIN: ""
+      NEXT_PUBLIC_ENABLE_AGENT_V2: "true"
+      NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: "true"
+      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: "false"
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+      OPENAI_API_BASE: https://api.openai.com/v1
+      OPENDAL_FS_ROOT: storage
+      OPENDAL_SCHEME: fs
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PIP_MIRROR_URL: ""
+      PLUGIN_DAEMON_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      PLUGIN_DAEMON_PORT: "5002"
+      PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      PLUGIN_DEBUGGING_HOST: 0.0.0.0
+      PLUGIN_DEBUGGING_PORT: "5003"
+      PLUGIN_DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      PLUGIN_DIFY_INNER_API_URL: http://api:5001
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PLUGIN_MAX_PACKAGE_SIZE: "52428800"
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      PLUGIN_MODEL_SCHEMA_CACHE_TTL: "3600"
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_PPROF_ENABLED: "false"
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: "120"
+      PLUGIN_SENTRY_DSN: ""
+      PLUGIN_SENTRY_ENABLED: "false"
+      PLUGIN_STDIO_BUFFER_SIZE: "1024"
+      PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_STORAGE_OSS_BUCKET: ""
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4096MB
+      POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: "0"
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_STATEMENT_TIMEOUT: "0"
+      POSTGRES_WORK_MEM: 4MB
+      PYTHONIOENCODING: utf-8
+      REDIS_DB: "0"
+      REDIS_HEALTH_CHECK_INTERVAL: "30"
+      REDIS_HOST: redis
+      REDIS_KEEPALIVE: "true"
+      REDIS_KEEPALIVE_COUNT: "10"
+      REDIS_KEEPALIVE_IDLE: "30"
+      REDIS_KEEPALIVE_INTERVAL: "10"
+      REDIS_KEY_PREFIX: ""
+      REDIS_MAX_CONNECTIONS: ""
+      REDIS_PASSWORD: difyai123456
+      REDIS_PORT: "6379"
+      REDIS_RETRY_BACKOFF_BASE: "1.0"
+      REDIS_RETRY_BACKOFF_CAP: "10.0"
+      REDIS_RETRY_RETRIES: "3"
+      REDIS_SOCKET_CONNECT_TIMEOUT: "5.0"
+      REDIS_SOCKET_TIMEOUT: "5.0"
+      REDIS_SSL_CA_CERTS: ""
+      REDIS_SSL_CERT_REQS: CERT_NONE
+      REDIS_SSL_CERTFILE: ""
+      REDIS_SSL_KEYFILE: ""
+      REDIS_USE_SSL: "false"
+      REDIS_USERNAME: ""
+      SANDBOX_API_KEY: dify-sandbox
+      SANDBOX_ENABLE_NETWORK: "true"
+      SANDBOX_GIN_MODE: release
+      SANDBOX_HTTP_PROXY: http://ssrf_proxy:3128
+      SANDBOX_HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      SANDBOX_WORKER_TIMEOUT: "15"
+      SECRET_KEY: ""
+      SERVER_CONSOLE_API_URL: http://api:5001
+      SERVER_WORKER_AMOUNT: "1"
+      SERVER_WORKER_CLASS: gevent
+      SERVER_WORKER_CONNECTIONS: "10"
+      SERVICE_API_URL: ""
+      SQLALCHEMY_ECHO: "false"
+      SQLALCHEMY_MAX_OVERFLOW: "10"
+      SQLALCHEMY_POOL_PRE_PING: "false"
+      SQLALCHEMY_POOL_RECYCLE: "3600"
+      SQLALCHEMY_POOL_RESET_ON_RETURN: rollback
+      SQLALCHEMY_POOL_SIZE: "30"
+      SQLALCHEMY_POOL_TIMEOUT: "30"
+      SQLALCHEMY_POOL_USE_LIFO: "false"
+      SSRF_COREDUMP_DIR: /var/spool/squid
+      SSRF_DEFAULT_CONNECT_TIME_OUT: "5"
+      SSRF_DEFAULT_READ_TIME_OUT: "5"
+      SSRF_DEFAULT_TIME_OUT: "5"
+      SSRF_DEFAULT_WRITE_TIME_OUT: "5"
+      SSRF_HTTP_PORT: "3128"
+      SSRF_POOL_KEEPALIVE_EXPIRY: "5.0"
+      SSRF_POOL_MAX_CONNECTIONS: "100"
+      SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      SSRF_PROXY_HTTP_URL: http://ssrf_proxy:3128
+      SSRF_PROXY_HTTPS_URL: http://ssrf_proxy:3128
+      STORAGE_TYPE: opendal
+      TEXT_GENERATION_TIMEOUT_MS: "60000"
+      TOP_K_MAX_VALUE: "10"
+      TRIGGER_URL: http://localhost
+      UV_CACHE_DIR: /tmp/.uv-cache
+      VECTOR_INDEX_NAME_PREFIX: Vector_index
+      VECTOR_STORE: weaviate
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_APIKEY_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      WEAVIATE_CLUSTER_HOSTNAME: node1
+      WEAVIATE_DEFAULT_VECTORIZER_MODULE: none
+      WEAVIATE_DISABLE_TELEMETRY: "false"
+      WEAVIATE_ENABLE_TOKENIZER_GSE: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: "false"
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      WEAVIATE_GRPC_ENDPOINT: grpc://weaviate:50051
+      WEAVIATE_PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      WEAVIATE_QUERY_DEFAULTS_LIMIT: "25"
+      WEAVIATE_TOKENIZATION: word
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_SENTRY_DSN: ""
+      WORKER_TIMEOUT: "15"
+      WORKFLOW_GENERATION_TIMEOUT_MS: "180000"
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8194/health
+    image: langgenius/dify-sandbox:0.2.15
+    networks:
+      ssrf_proxy_network: null
+    restart: always
+    volumes:
+      - type: bind
+        source: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d/docker/volumes/sandbox/dependencies
+        target: /dependencies
+        bind: {}
+      - type: bind
+        source: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d/docker/volumes/sandbox/conf
+        target: /conf
+        bind: {}
+  ssrf_proxy:
+    entrypoint:
+      - sh
+      - -c
+      - "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"
+    environment:
+      COREDUMP_DIR: /var/spool/squid
+      HTTP_PORT: "3128"
+      SSRF_PROXY_ALLOW_PRIVATE_DOMAINS: ""
+      SSRF_PROXY_ALLOW_PRIVATE_IPS: ""
+    image: ubuntu/squid:latest
+    networks:
+      default: null
+      ssrf_proxy_network: null
+    restart: always
+    volumes:
+      - type: bind
+        source: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d/docker/ssrf_proxy/squid.conf.template
+        target: /etc/squid/squid.conf.template
+        bind: {}
+      - type: bind
+        source: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d/docker/ssrf_proxy/docker-entrypoint.sh
+        target: /docker-entrypoint-mount.sh
+        bind: {}
+  weaviate:
+    profiles:
+      - weaviate
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      AUTHENTICATION_APIKEY_ENABLED: "true"
+      AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      CLUSTER_HOSTNAME: node1
+      DEFAULT_VECTORIZER_MODULE: none
+      DISABLE_TELEMETRY: "false"
+      ENABLE_TOKENIZER_GSE: "false"
+      ENABLE_TOKENIZER_KAGOME_JA: "false"
+      ENABLE_TOKENIZER_KAGOME_KR: "false"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      QUERY_DEFAULTS_LIMIT: "25"
+    image: semitechnologies/weaviate:1.27.0
+    networks:
+      default: null
+    restart: always
+    volumes:
+      - type: bind
+        source: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d/docker/volumes/weaviate
+        target: /var/lib/weaviate
+        bind: {}
+  web:
+    build:
+      context: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d
+      dockerfile: web/Dockerfile
+      args:
+        COMMIT_SHA: 1.16.0-enterprise
+    environment:
+      AGENT_BACKEND_BASE_URL: http://agent_backend:5050
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: "1200"
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: "3"
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: "30"
+      ALLOW_CREATE_WORKSPACE: "false"
+      ALLOW_EMBED: "false"
+      ALLOW_REGISTER: "false"
+      ALLOW_UNSAFE_DATA_SCHEME: "false"
+      AMPLITUDE_API_KEY: ""
+      API_SENTRY_DSN: ""
+      API_SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      API_SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      API_WEBSOCKET_GUNICORN_TIMEOUT: "360"
+      API_WEBSOCKET_WORKER_AMOUNT: "1"
+      API_WEBSOCKET_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      API_WEBSOCKET_WORKER_CONNECTIONS: "1000"
+      APP_API_URL: ""
+      APP_WEB_URL: ""
+      BROKER_USE_SSL: "false"
+      CELERY_AUTO_SCALE: "false"
+      CELERY_BACKEND: redis
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_MAX_WORKERS: ""
+      CELERY_MIN_WORKERS: ""
+      CELERY_TASK_ANNOTATIONS: "null"
+      CELERY_WORKER_AMOUNT: "4"
+      CELERY_WORKER_CLASS: ""
+      CHECK_UPDATE_URL: https://updates.dify.ai
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_CONNECT_TIMEOUT: "10"
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+      CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: "5.0"
+      CODE_EXECUTION_POOL_MAX_CONNECTIONS: "100"
+      CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      CODE_EXECUTION_READ_TIMEOUT: "60"
+      CODE_EXECUTION_SSL_VERIFY: "True"
+      CODE_EXECUTION_WRITE_TIMEOUT: "10"
+      COMPOSE_PROFILES: weaviate,postgresql,collaboration
+      COMPOSE_WORKER_HEALTHCHECK_DISABLED: "true"
+      COMPOSE_WORKER_HEALTHCHECK_INTERVAL: 30s
+      COMPOSE_WORKER_HEALTHCHECK_TIMEOUT: 30s
+      CONSOLE_API_URL: ""
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_WEB_URL: ""
+      COOKIE_DOMAIN: ""
+      CSP_WHITELIST: ""
+      DB_DATABASE: dify
+      DB_HOST: db_postgres
+      DB_PASSWORD: difyai123456
+      DB_PLUGIN_DATABASE: dify_plugin
+      DB_PORT: "5432"
+      DB_TYPE: postgresql
+      DB_USERNAME: postgres
+      DEBUG: "false"
+      DEPLOY_ENV: PRODUCTION
+      DIFY_AGENT_INNER_API_KEY: ""
+      DIFY_AGENT_INNER_API_URL: ""
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ""
+      DIFY_AGENT_PLUGIN_DAEMON_URL: ""
+      DIFY_AGENT_REDIS_PREFIX: dify-agent
+      DIFY_AGENT_REDIS_URL: ""
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "259200"
+      DIFY_AGENT_SERVER_SECRET_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ""
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://local_sandbox:5004
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "30"
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent_backend:5050/agent-stub
+      DIFY_BIND_ADDRESS: 0.0.0.0
+      DIFY_PORT: "5001"
+      ENABLE_COLLABORATION_MODE: "true"
+      ENABLE_LEARN_APP: "true"
+      ENABLE_REQUEST_LOGGING: "False"
+      ENABLE_WEBSITE_FIRECRAWL: "true"
+      ENABLE_WEBSITE_JINAREADER: "true"
+      ENABLE_WEBSITE_WATERCRAWL: "true"
+      ENDPOINT_URL_TEMPLATE: http://localhost/e/{hook_id}
+      EVENT_BUS_REDIS_CHANNEL_TYPE: pubsub
+      EVENT_BUS_REDIS_URL: ""
+      EVENT_BUS_REDIS_USE_CLUSTERS: "false"
+      EXPERIMENTAL_ENABLE_VINEXT: "false"
+      EXPOSE_NGINX_PORT: "80"
+      EXPOSE_NGINX_SSL_PORT: "443"
+      EXPOSE_PLUGIN_DAEMON_PORT: "5002"
+      EXPOSE_PLUGIN_DEBUGGING_HOST: localhost
+      EXPOSE_PLUGIN_DEBUGGING_PORT: "5003"
+      FILES_ACCESS_TIMEOUT: "300"
+      FILES_URL: ""
+      FLASK_DEBUG: "false"
+      FORCE_VERIFYING_SIGNATURE: "true"
+      GUNICORN_TIMEOUT: "360"
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "4000"
+      INIT_PASSWORD: ""
+      INTERNAL_FILES_URL: ""
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LOG_DATEFORMAT: '%Y-%m-%d %H:%M:%S'
+      LOG_FILE: /app/logs/server.log
+      LOG_FILE_BACKUP_COUNT: "5"
+      LOG_FILE_MAX_SIZE: "20"
+      LOG_LEVEL: INFO
+      LOG_OUTPUT_FORMAT: text
+      LOG_TZ: UTC
+      LOOP_NODE_MAX_COUNT: "100"
+      MARKETPLACE_API_URL: https://marketplace.dify.ai
+      MARKETPLACE_ENABLED: "true"
+      MARKETPLACE_URL: https://marketplace.dify.ai
+      MAX_ITERATIONS_NUM: "99"
+      MAX_PARALLEL_LIMIT: "10"
+      MAX_TOOLS_NUM: "10"
+      MAX_TREE_DEPTH: "50"
+      MIGRATION_ENABLED: "true"
+      NEXT_PUBLIC_BATCH_CONCURRENCY: "5"
+      NEXT_PUBLIC_COOKIE_DOMAIN: ""
+      NEXT_PUBLIC_ENABLE_AGENT_V2: "true"
+      NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: "true"
+      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: "false"
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost
+      NEXT_TELEMETRY_DISABLED: "0"
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+      OPENAI_API_BASE: https://api.openai.com/v1
+      OPENDAL_FS_ROOT: storage
+      OPENDAL_SCHEME: fs
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PIP_MIRROR_URL: ""
+      PLUGIN_DAEMON_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      PLUGIN_DAEMON_PORT: "5002"
+      PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      PLUGIN_DEBUGGING_HOST: 0.0.0.0
+      PLUGIN_DEBUGGING_PORT: "5003"
+      PLUGIN_DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      PLUGIN_DIFY_INNER_API_URL: http://api:5001
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PLUGIN_MAX_PACKAGE_SIZE: "52428800"
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      PLUGIN_MODEL_SCHEMA_CACHE_TTL: "3600"
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_PPROF_ENABLED: "false"
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: "120"
+      PLUGIN_SENTRY_DSN: ""
+      PLUGIN_SENTRY_ENABLED: "false"
+      PLUGIN_STDIO_BUFFER_SIZE: "1024"
+      PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_STORAGE_OSS_BUCKET: ""
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4096MB
+      POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: "0"
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_STATEMENT_TIMEOUT: "0"
+      POSTGRES_WORK_MEM: 4MB
+      PYTHONIOENCODING: utf-8
+      REDIS_DB: "0"
+      REDIS_HEALTH_CHECK_INTERVAL: "30"
+      REDIS_HOST: redis
+      REDIS_KEEPALIVE: "true"
+      REDIS_KEEPALIVE_COUNT: "10"
+      REDIS_KEEPALIVE_IDLE: "30"
+      REDIS_KEEPALIVE_INTERVAL: "10"
+      REDIS_KEY_PREFIX: ""
+      REDIS_MAX_CONNECTIONS: ""
+      REDIS_PASSWORD: difyai123456
+      REDIS_PORT: "6379"
+      REDIS_RETRY_BACKOFF_BASE: "1.0"
+      REDIS_RETRY_BACKOFF_CAP: "10.0"
+      REDIS_RETRY_RETRIES: "3"
+      REDIS_SOCKET_CONNECT_TIMEOUT: "5.0"
+      REDIS_SOCKET_TIMEOUT: "5.0"
+      REDIS_SSL_CA_CERTS: ""
+      REDIS_SSL_CERT_REQS: CERT_NONE
+      REDIS_SSL_CERTFILE: ""
+      REDIS_SSL_KEYFILE: ""
+      REDIS_USE_SSL: "false"
+      REDIS_USERNAME: ""
+      SANDBOX_API_KEY: dify-sandbox
+      SANDBOX_ENABLE_NETWORK: "true"
+      SANDBOX_GIN_MODE: release
+      SANDBOX_HTTP_PROXY: http://ssrf_proxy:3128
+      SANDBOX_HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      SANDBOX_WORKER_TIMEOUT: "15"
+      SECRET_KEY: ""
+      SENTRY_DSN: ""
+      SERVER_CONSOLE_API_URL: http://api:5001
+      SERVER_WORKER_AMOUNT: "1"
+      SERVER_WORKER_CLASS: gevent
+      SERVER_WORKER_CONNECTIONS: "10"
+      SERVICE_API_URL: ""
+      SQLALCHEMY_ECHO: "false"
+      SQLALCHEMY_MAX_OVERFLOW: "10"
+      SQLALCHEMY_POOL_PRE_PING: "false"
+      SQLALCHEMY_POOL_RECYCLE: "3600"
+      SQLALCHEMY_POOL_RESET_ON_RETURN: rollback
+      SQLALCHEMY_POOL_SIZE: "30"
+      SQLALCHEMY_POOL_TIMEOUT: "30"
+      SQLALCHEMY_POOL_USE_LIFO: "false"
+      SSRF_COREDUMP_DIR: /var/spool/squid
+      SSRF_DEFAULT_CONNECT_TIME_OUT: "5"
+      SSRF_DEFAULT_READ_TIME_OUT: "5"
+      SSRF_DEFAULT_TIME_OUT: "5"
+      SSRF_DEFAULT_WRITE_TIME_OUT: "5"
+      SSRF_HTTP_PORT: "3128"
+      SSRF_POOL_KEEPALIVE_EXPIRY: "5.0"
+      SSRF_POOL_MAX_CONNECTIONS: "100"
+      SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      SSRF_PROXY_HTTP_URL: http://ssrf_proxy:3128
+      SSRF_PROXY_HTTPS_URL: http://ssrf_proxy:3128
+      STORAGE_TYPE: opendal
+      TEXT_GENERATION_TIMEOUT_MS: "60000"
+      TOP_K_MAX_VALUE: "10"
+      TRIGGER_URL: http://localhost
+      UV_CACHE_DIR: /tmp/.uv-cache
+      VECTOR_INDEX_NAME_PREFIX: Vector_index
+      VECTOR_STORE: weaviate
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_APIKEY_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      WEAVIATE_CLUSTER_HOSTNAME: node1
+      WEAVIATE_DEFAULT_VECTORIZER_MODULE: none
+      WEAVIATE_DISABLE_TELEMETRY: "false"
+      WEAVIATE_ENABLE_TOKENIZER_GSE: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: "false"
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      WEAVIATE_GRPC_ENDPOINT: grpc://weaviate:50051
+      WEAVIATE_PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      WEAVIATE_QUERY_DEFAULTS_LIMIT: "25"
+      WEAVIATE_TOKENIZATION: word
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_SENTRY_DSN: ""
+      WORKFLOW_GENERATION_TIMEOUT_MS: "180000"
+    image: dify-web-enterprise:1.16.0-enterprise
+    networks:
+      default: null
+    restart: always
+  worker:
+    build:
+      context: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: 1.16.0-enterprise
+    depends_on:
+      agent_backend:
+        condition: service_started
+        required: true
+      db_mysql:
+        condition: service_healthy
+        required: false
+      db_postgres:
+        condition: service_healthy
+        required: false
+      init_permissions:
+        condition: service_completed_successfully
+        required: true
+      oceanbase:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+        required: true
+      seekdb:
+        condition: service_healthy
+        required: false
+    environment:
+      AGENT_BACKEND_BASE_URL: http://agent_backend:5050
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: "1200"
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: "3"
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: "30"
+      ALLOW_CREATE_WORKSPACE: "false"
+      ALLOW_EMBED: "false"
+      ALLOW_REGISTER: "false"
+      ALLOW_UNSAFE_DATA_SCHEME: "false"
+      AMPLITUDE_API_KEY: ""
+      API_SENTRY_DSN: ""
+      API_SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      API_SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      API_WEBSOCKET_GUNICORN_TIMEOUT: "360"
+      API_WEBSOCKET_WORKER_AMOUNT: "1"
+      API_WEBSOCKET_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      API_WEBSOCKET_WORKER_CONNECTIONS: "1000"
+      APP_API_URL: ""
+      APP_WEB_URL: ""
+      BROKER_USE_SSL: "false"
+      CAN_REPLACE_LOGO: "true"
+      CELERY_AUTO_SCALE: "false"
+      CELERY_BACKEND: redis
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_MAX_WORKERS: ""
+      CELERY_MIN_WORKERS: ""
+      CELERY_TASK_ANNOTATIONS: "null"
+      CELERY_WORKER_AMOUNT: "4"
+      CELERY_WORKER_CLASS: ""
+      CHECK_UPDATE_URL: https://updates.dify.ai
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_CONNECT_TIMEOUT: "10"
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+      CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: "5.0"
+      CODE_EXECUTION_POOL_MAX_CONNECTIONS: "100"
+      CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      CODE_EXECUTION_READ_TIMEOUT: "60"
+      CODE_EXECUTION_SSL_VERIFY: "True"
+      CODE_EXECUTION_WRITE_TIMEOUT: "10"
+      COMPOSE_PROFILES: weaviate,postgresql,collaboration
+      COMPOSE_WORKER_HEALTHCHECK_DISABLED: "true"
+      COMPOSE_WORKER_HEALTHCHECK_INTERVAL: 30s
+      COMPOSE_WORKER_HEALTHCHECK_TIMEOUT: 30s
+      CONSOLE_API_URL: ""
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_WEB_URL: ""
+      COOKIE_DOMAIN: ""
+      CSP_WHITELIST: ""
+      DB_DATABASE: dify
+      DB_HOST: db_postgres
+      DB_PASSWORD: difyai123456
+      DB_PLUGIN_DATABASE: dify_plugin
+      DB_PORT: "5432"
+      DB_TYPE: postgresql
+      DB_USERNAME: postgres
+      DEBUG: "false"
+      DEPLOY_ENV: PRODUCTION
+      DIFY_AGENT_INNER_API_KEY: ""
+      DIFY_AGENT_INNER_API_URL: ""
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ""
+      DIFY_AGENT_PLUGIN_DAEMON_URL: ""
+      DIFY_AGENT_REDIS_PREFIX: dify-agent
+      DIFY_AGENT_REDIS_URL: ""
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "259200"
+      DIFY_AGENT_SERVER_SECRET_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ""
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://local_sandbox:5004
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "30"
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent_backend:5050/agent-stub
+      DIFY_BIND_ADDRESS: 0.0.0.0
+      DIFY_PORT: "5001"
+      ENABLE_COLLABORATION_MODE: "true"
+      ENABLE_LEARN_APP: "true"
+      ENABLE_REQUEST_LOGGING: "False"
+      ENABLE_WEBSITE_FIRECRAWL: "true"
+      ENABLE_WEBSITE_JINAREADER: "true"
+      ENABLE_WEBSITE_WATERCRAWL: "true"
+      ENDPOINT_URL_TEMPLATE: http://localhost/e/{hook_id}
+      ENTERPRISE_ENABLED: "false"
+      EVENT_BUS_REDIS_CHANNEL_TYPE: pubsub
+      EVENT_BUS_REDIS_URL: ""
+      EVENT_BUS_REDIS_USE_CLUSTERS: "false"
+      EXPERIMENTAL_ENABLE_VINEXT: "false"
+      EXPOSE_NGINX_PORT: "80"
+      EXPOSE_NGINX_SSL_PORT: "443"
+      EXPOSE_PLUGIN_DAEMON_PORT: "5002"
+      EXPOSE_PLUGIN_DEBUGGING_HOST: localhost
+      EXPOSE_PLUGIN_DEBUGGING_PORT: "5003"
+      FILES_ACCESS_TIMEOUT: "300"
+      FILES_URL: ""
+      FLASK_DEBUG: "false"
+      FORCE_VERIFYING_SIGNATURE: "true"
+      GUNICORN_TIMEOUT: "360"
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "4000"
+      INIT_PASSWORD: ""
+      INNER_API_KEY_FOR_PLUGIN: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      INTERNAL_FILES_URL: ""
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LOG_DATEFORMAT: '%Y-%m-%d %H:%M:%S'
+      LOG_FILE: /app/logs/server.log
+      LOG_FILE_BACKUP_COUNT: "5"
+      LOG_FILE_MAX_SIZE: "20"
+      LOG_LEVEL: INFO
+      LOG_OUTPUT_FORMAT: text
+      LOG_TZ: UTC
+      LOOP_NODE_MAX_COUNT: "100"
+      MARKETPLACE_API_URL: https://marketplace.dify.ai
+      MARKETPLACE_ENABLED: "true"
+      MARKETPLACE_URL: ""
+      MAX_ITERATIONS_NUM: "99"
+      MAX_PARALLEL_LIMIT: "10"
+      MAX_TOOLS_NUM: "10"
+      MAX_TREE_DEPTH: "50"
+      MIGRATION_ENABLED: "true"
+      MODE: worker
+      NEXT_PUBLIC_BATCH_CONCURRENCY: "5"
+      NEXT_PUBLIC_COOKIE_DOMAIN: ""
+      NEXT_PUBLIC_ENABLE_AGENT_V2: "true"
+      NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: "true"
+      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: "false"
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+      OPENAI_API_BASE: https://api.openai.com/v1
+      OPENDAL_FS_ROOT: storage
+      OPENDAL_SCHEME: fs
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PIP_MIRROR_URL: ""
+      PLATFORM_ADMIN_EMAILS: ""
+      PLUGIN_DAEMON_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      PLUGIN_DAEMON_PORT: "5002"
+      PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      PLUGIN_DEBUGGING_HOST: 0.0.0.0
+      PLUGIN_DEBUGGING_PORT: "5003"
+      PLUGIN_DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      PLUGIN_DIFY_INNER_API_URL: http://api:5001
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PLUGIN_MAX_PACKAGE_SIZE: "52428800"
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      PLUGIN_MODEL_SCHEMA_CACHE_TTL: "3600"
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_PPROF_ENABLED: "false"
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: "120"
+      PLUGIN_SENTRY_DSN: ""
+      PLUGIN_SENTRY_ENABLED: "false"
+      PLUGIN_STDIO_BUFFER_SIZE: "1024"
+      PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_STORAGE_OSS_BUCKET: ""
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4096MB
+      POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: "0"
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_STATEMENT_TIMEOUT: "0"
+      POSTGRES_WORK_MEM: 4MB
+      PYTHONIOENCODING: utf-8
+      REDIS_DB: "0"
+      REDIS_HEALTH_CHECK_INTERVAL: "30"
+      REDIS_HOST: redis
+      REDIS_KEEPALIVE: "true"
+      REDIS_KEEPALIVE_COUNT: "10"
+      REDIS_KEEPALIVE_IDLE: "30"
+      REDIS_KEEPALIVE_INTERVAL: "10"
+      REDIS_KEY_PREFIX: ""
+      REDIS_MAX_CONNECTIONS: ""
+      REDIS_PASSWORD: difyai123456
+      REDIS_PORT: "6379"
+      REDIS_RETRY_BACKOFF_BASE: "1.0"
+      REDIS_RETRY_BACKOFF_CAP: "10.0"
+      REDIS_RETRY_RETRIES: "3"
+      REDIS_SOCKET_CONNECT_TIMEOUT: "5.0"
+      REDIS_SOCKET_TIMEOUT: "5.0"
+      REDIS_SSL_CA_CERTS: ""
+      REDIS_SSL_CERT_REQS: CERT_NONE
+      REDIS_SSL_CERTFILE: ""
+      REDIS_SSL_KEYFILE: ""
+      REDIS_USE_SSL: "false"
+      REDIS_USERNAME: ""
+      SANDBOX_API_KEY: dify-sandbox
+      SANDBOX_ENABLE_NETWORK: "true"
+      SANDBOX_GIN_MODE: release
+      SANDBOX_HTTP_PROXY: http://ssrf_proxy:3128
+      SANDBOX_HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      SANDBOX_WORKER_TIMEOUT: "15"
+      SECRET_KEY: ""
+      SENTRY_DSN: ""
+      SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      SERVER_CONSOLE_API_URL: http://api:5001
+      SERVER_WORKER_AMOUNT: "1"
+      SERVER_WORKER_CLASS: gevent
+      SERVER_WORKER_CONNECTIONS: "10"
+      SERVICE_API_URL: ""
+      SQLALCHEMY_ECHO: "false"
+      SQLALCHEMY_MAX_OVERFLOW: "10"
+      SQLALCHEMY_POOL_PRE_PING: "false"
+      SQLALCHEMY_POOL_RECYCLE: "3600"
+      SQLALCHEMY_POOL_RESET_ON_RETURN: rollback
+      SQLALCHEMY_POOL_SIZE: "30"
+      SQLALCHEMY_POOL_TIMEOUT: "30"
+      SQLALCHEMY_POOL_USE_LIFO: "false"
+      SSRF_COREDUMP_DIR: /var/spool/squid
+      SSRF_DEFAULT_CONNECT_TIME_OUT: "5"
+      SSRF_DEFAULT_READ_TIME_OUT: "5"
+      SSRF_DEFAULT_TIME_OUT: "5"
+      SSRF_DEFAULT_WRITE_TIME_OUT: "5"
+      SSRF_HTTP_PORT: "3128"
+      SSRF_POOL_KEEPALIVE_EXPIRY: "5.0"
+      SSRF_POOL_MAX_CONNECTIONS: "100"
+      SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      SSRF_PROXY_HTTP_URL: http://ssrf_proxy:3128
+      SSRF_PROXY_HTTPS_URL: http://ssrf_proxy:3128
+      STORAGE_TYPE: opendal
+      TEXT_GENERATION_TIMEOUT_MS: "60000"
+      TOP_K_MAX_VALUE: "10"
+      TRIGGER_URL: http://localhost
+      UV_CACHE_DIR: /tmp/.uv-cache
+      VECTOR_INDEX_NAME_PREFIX: Vector_index
+      VECTOR_STORE: weaviate
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_APIKEY_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      WEAVIATE_CLUSTER_HOSTNAME: node1
+      WEAVIATE_DEFAULT_VECTORIZER_MODULE: none
+      WEAVIATE_DISABLE_TELEMETRY: "false"
+      WEAVIATE_ENABLE_TOKENIZER_GSE: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: "false"
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      WEAVIATE_GRPC_ENDPOINT: grpc://weaviate:50051
+      WEAVIATE_PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      WEAVIATE_QUERY_DEFAULTS_LIMIT: "25"
+      WEAVIATE_TOKENIZATION: word
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_SENTRY_DSN: ""
+      WORKFLOW_GENERATION_TIMEOUT_MS: "180000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - celery -A celery_healthcheck.celery inspect ping
+      timeout: 30s
+      interval: 30s
+      retries: 3
+      start_period: 1m0s
+      disable: true
+    image: dify-api-enterprise:1.16.0-enterprise
+    networks:
+      default: null
+      ssrf_proxy_network: null
+    restart: always
+    volumes:
+      - type: bind
+        source: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d/docker/volumes/app/storage
+        target: /app/api/storage
+        bind: {}
+  worker_beat:
+    build:
+      context: /home/ctyun/BigData/.system-data/app-data/claude-squad/worktrees/ctyun/replay-116-b8-phase-h-rerun_18cb6975dcf97b9d
+      dockerfile: api/Dockerfile
+      args:
+        COMMIT_SHA: 1.16.0-enterprise
+    depends_on:
+      db_mysql:
+        condition: service_healthy
+        required: false
+      db_postgres:
+        condition: service_healthy
+        required: false
+      init_permissions:
+        condition: service_completed_successfully
+        required: true
+      oceanbase:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_started
+        required: true
+      seekdb:
+        condition: service_healthy
+        required: false
+    environment:
+      AGENT_BACKEND_BASE_URL: http://agent_backend:5050
+      AGENT_BACKEND_RUN_TIMEOUT_SECONDS: "1200"
+      AGENT_BACKEND_STREAM_MAX_RECONNECTS: "3"
+      AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS: "30"
+      ALLOW_CREATE_WORKSPACE: "false"
+      ALLOW_EMBED: "false"
+      ALLOW_REGISTER: "false"
+      ALLOW_UNSAFE_DATA_SCHEME: "false"
+      AMPLITUDE_API_KEY: ""
+      API_SENTRY_DSN: ""
+      API_SENTRY_PROFILES_SAMPLE_RATE: "1.0"
+      API_SENTRY_TRACES_SAMPLE_RATE: "1.0"
+      API_WEBSOCKET_GUNICORN_TIMEOUT: "360"
+      API_WEBSOCKET_WORKER_AMOUNT: "1"
+      API_WEBSOCKET_WORKER_CLASS: geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+      API_WEBSOCKET_WORKER_CONNECTIONS: "1000"
+      APP_API_URL: ""
+      APP_WEB_URL: ""
+      BROKER_USE_SSL: "false"
+      CAN_REPLACE_LOGO: "true"
+      CELERY_AUTO_SCALE: "false"
+      CELERY_BACKEND: redis
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_MAX_WORKERS: ""
+      CELERY_MIN_WORKERS: ""
+      CELERY_TASK_ANNOTATIONS: "null"
+      CELERY_WORKER_AMOUNT: "4"
+      CELERY_WORKER_CLASS: ""
+      CHECK_UPDATE_URL: https://updates.dify.ai
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_EXECUTION_CONNECT_TIMEOUT: "10"
+      CODE_EXECUTION_ENDPOINT: http://sandbox:8194
+      CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY: "5.0"
+      CODE_EXECUTION_POOL_MAX_CONNECTIONS: "100"
+      CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      CODE_EXECUTION_READ_TIMEOUT: "60"
+      CODE_EXECUTION_SSL_VERIFY: "True"
+      CODE_EXECUTION_WRITE_TIMEOUT: "10"
+      COMPOSE_PROFILES: weaviate,postgresql,collaboration
+      COMPOSE_WORKER_HEALTHCHECK_DISABLED: "true"
+      COMPOSE_WORKER_HEALTHCHECK_INTERVAL: 30s
+      COMPOSE_WORKER_HEALTHCHECK_TIMEOUT: 30s
+      CONSOLE_API_URL: ""
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_WEB_URL: ""
+      COOKIE_DOMAIN: ""
+      CSP_WHITELIST: ""
+      DB_DATABASE: dify
+      DB_HOST: db_postgres
+      DB_PASSWORD: difyai123456
+      DB_PLUGIN_DATABASE: dify_plugin
+      DB_PORT: "5432"
+      DB_TYPE: postgresql
+      DB_USERNAME: postgres
+      DEBUG: "false"
+      DEPLOY_ENV: PRODUCTION
+      DIFY_AGENT_INNER_API_KEY: ""
+      DIFY_AGENT_INNER_API_URL: ""
+      DIFY_AGENT_PLUGIN_DAEMON_API_KEY: ""
+      DIFY_AGENT_PLUGIN_DAEMON_URL: ""
+      DIFY_AGENT_REDIS_PREFIX: dify-agent
+      DIFY_AGENT_REDIS_URL: ""
+      DIFY_AGENT_RUN_RETENTION_SECONDS: "259200"
+      DIFY_AGENT_SERVER_SECRET_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+      DIFY_AGENT_SHELLCTL_AUTH_TOKEN: ""
+      DIFY_AGENT_SHELLCTL_ENTRYPOINT: http://local_sandbox:5004
+      DIFY_AGENT_SHUTDOWN_GRACE_SECONDS: "30"
+      DIFY_AGENT_STUB_API_BASE_URL: http://agent_backend:5050/agent-stub
+      DIFY_BIND_ADDRESS: 0.0.0.0
+      DIFY_PORT: "5001"
+      ENABLE_COLLABORATION_MODE: "true"
+      ENABLE_LEARN_APP: "true"
+      ENABLE_REQUEST_LOGGING: "False"
+      ENABLE_WEBSITE_FIRECRAWL: "true"
+      ENABLE_WEBSITE_JINAREADER: "true"
+      ENABLE_WEBSITE_WATERCRAWL: "true"
+      ENDPOINT_URL_TEMPLATE: http://localhost/e/{hook_id}
+      ENTERPRISE_ENABLED: "false"
+      EVENT_BUS_REDIS_CHANNEL_TYPE: pubsub
+      EVENT_BUS_REDIS_URL: ""
+      EVENT_BUS_REDIS_USE_CLUSTERS: "false"
+      EXPERIMENTAL_ENABLE_VINEXT: "false"
+      EXPOSE_NGINX_PORT: "80"
+      EXPOSE_NGINX_SSL_PORT: "443"
+      EXPOSE_PLUGIN_DAEMON_PORT: "5002"
+      EXPOSE_PLUGIN_DEBUGGING_HOST: localhost
+      EXPOSE_PLUGIN_DEBUGGING_PORT: "5003"
+      FILES_ACCESS_TIMEOUT: "300"
+      FILES_URL: ""
+      FLASK_DEBUG: "false"
+      FORCE_VERIFYING_SIGNATURE: "true"
+      GUNICORN_TIMEOUT: "360"
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: "4000"
+      INIT_PASSWORD: ""
+      INTERNAL_FILES_URL: ""
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LOG_DATEFORMAT: '%Y-%m-%d %H:%M:%S'
+      LOG_FILE: /app/logs/server.log
+      LOG_FILE_BACKUP_COUNT: "5"
+      LOG_FILE_MAX_SIZE: "20"
+      LOG_LEVEL: INFO
+      LOG_OUTPUT_FORMAT: text
+      LOG_TZ: UTC
+      LOOP_NODE_MAX_COUNT: "100"
+      MARKETPLACE_API_URL: https://marketplace.dify.ai
+      MARKETPLACE_ENABLED: "true"
+      MARKETPLACE_URL: ""
+      MAX_ITERATIONS_NUM: "99"
+      MAX_PARALLEL_LIMIT: "10"
+      MAX_TOOLS_NUM: "10"
+      MAX_TREE_DEPTH: "50"
+      MIGRATION_ENABLED: "true"
+      MODE: beat
+      NEXT_PUBLIC_BATCH_CONCURRENCY: "5"
+      NEXT_PUBLIC_COOKIE_DOMAIN: ""
+      NEXT_PUBLIC_ENABLE_AGENT_V2: "true"
+      NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: "true"
+      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: "false"
+      NEXT_PUBLIC_SOCKET_URL: ws://localhost
+      NGINX_CLIENT_MAX_BODY_SIZE: 100M
+      NGINX_ENABLE_CERTBOT_CHALLENGE: "false"
+      NGINX_HTTPS_ENABLED: "false"
+      NGINX_KEEPALIVE_TIMEOUT: "65"
+      NGINX_PORT: "80"
+      NGINX_PROXY_READ_TIMEOUT: 3600s
+      NGINX_PROXY_SEND_TIMEOUT: 3600s
+      NGINX_SERVER_NAME: _
+      NGINX_SOCKET_IO_UPSTREAM: api_websocket:5001
+      NGINX_SSL_CERT_FILENAME: dify.crt
+      NGINX_SSL_CERT_KEY_FILENAME: dify.key
+      NGINX_SSL_PORT: "443"
+      NGINX_SSL_PROTOCOLS: TLSv1.2 TLSv1.3
+      NGINX_WORKER_PROCESSES: auto
+      OPENAI_API_BASE: https://api.openai.com/v1
+      OPENDAL_FS_ROOT: storage
+      OPENDAL_SCHEME: fs
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PIP_MIRROR_URL: ""
+      PLATFORM_ADMIN_EMAILS: ""
+      PLUGIN_DAEMON_KEY: lYkiYYT6owG+71oLerGzA7GXCgOT++6ovaezWAjpCjf+Sjc3ZtU+qUEi
+      PLUGIN_DAEMON_PORT: "5002"
+      PLUGIN_DAEMON_URL: http://plugin_daemon:5002
+      PLUGIN_DEBUGGING_HOST: 0.0.0.0
+      PLUGIN_DEBUGGING_PORT: "5003"
+      PLUGIN_DIFY_INNER_API_KEY: QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1
+      PLUGIN_DIFY_INNER_API_URL: http://api:5001
+      PLUGIN_INSTALLED_PATH: plugin
+      PLUGIN_MAX_EXECUTION_TIMEOUT: "600"
+      PLUGIN_MAX_PACKAGE_SIZE: "52428800"
+      PLUGIN_MEDIA_CACHE_PATH: assets
+      PLUGIN_MODEL_SCHEMA_CACHE_TTL: "3600"
+      PLUGIN_PACKAGE_CACHE_PATH: plugin_packages
+      PLUGIN_PPROF_ENABLED: "false"
+      PLUGIN_PYTHON_ENV_INIT_TIMEOUT: "120"
+      PLUGIN_SENTRY_DSN: ""
+      PLUGIN_SENTRY_ENABLED: "false"
+      PLUGIN_STDIO_BUFFER_SIZE: "1024"
+      PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+      PLUGIN_STORAGE_LOCAL_ROOT: /app/storage
+      PLUGIN_STORAGE_OSS_BUCKET: ""
+      PLUGIN_STORAGE_TYPE: local
+      PLUGIN_WORKING_PATH: /app/storage/cwd
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 4096MB
+      POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT: "0"
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_MAX_CONNECTIONS: "200"
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_STATEMENT_TIMEOUT: "0"
+      POSTGRES_WORK_MEM: 4MB
+      PYTHONIOENCODING: utf-8
+      REDIS_DB: "0"
+      REDIS_HEALTH_CHECK_INTERVAL: "30"
+      REDIS_HOST: redis
+      REDIS_KEEPALIVE: "true"
+      REDIS_KEEPALIVE_COUNT: "10"
+      REDIS_KEEPALIVE_IDLE: "30"
+      REDIS_KEEPALIVE_INTERVAL: "10"
+      REDIS_KEY_PREFIX: ""
+      REDIS_MAX_CONNECTIONS: ""
+      REDIS_PASSWORD: difyai123456
+      REDIS_PORT: "6379"
+      REDIS_RETRY_BACKOFF_BASE: "1.0"
+      REDIS_RETRY_BACKOFF_CAP: "10.0"
+      REDIS_RETRY_RETRIES: "3"
+      REDIS_SOCKET_CONNECT_TIMEOUT: "5.0"
+      REDIS_SOCKET_TIMEOUT: "5.0"
+      REDIS_SSL_CA_CERTS: ""
+      REDIS_SSL_CERT_REQS: CERT_NONE
+      REDIS_SSL_CERTFILE: ""
+      REDIS_SSL_KEYFILE: ""
+      REDIS_USE_SSL: "false"
+      REDIS_USERNAME: ""
+      SANDBOX_API_KEY: dify-sandbox
+      SANDBOX_ENABLE_NETWORK: "true"
+      SANDBOX_GIN_MODE: release
+      SANDBOX_HTTP_PROXY: http://ssrf_proxy:3128
+      SANDBOX_HTTPS_PROXY: http://ssrf_proxy:3128
+      SANDBOX_PORT: "8194"
+      SANDBOX_WORKER_TIMEOUT: "15"
+      SECRET_KEY: ""
+      SERVER_CONSOLE_API_URL: http://api:5001
+      SERVER_WORKER_AMOUNT: "1"
+      SERVER_WORKER_CLASS: gevent
+      SERVER_WORKER_CONNECTIONS: "10"
+      SERVICE_API_URL: ""
+      SQLALCHEMY_ECHO: "false"
+      SQLALCHEMY_MAX_OVERFLOW: "10"
+      SQLALCHEMY_POOL_PRE_PING: "false"
+      SQLALCHEMY_POOL_RECYCLE: "3600"
+      SQLALCHEMY_POOL_RESET_ON_RETURN: rollback
+      SQLALCHEMY_POOL_SIZE: "30"
+      SQLALCHEMY_POOL_TIMEOUT: "30"
+      SQLALCHEMY_POOL_USE_LIFO: "false"
+      SSRF_COREDUMP_DIR: /var/spool/squid
+      SSRF_DEFAULT_CONNECT_TIME_OUT: "5"
+      SSRF_DEFAULT_READ_TIME_OUT: "5"
+      SSRF_DEFAULT_TIME_OUT: "5"
+      SSRF_DEFAULT_WRITE_TIME_OUT: "5"
+      SSRF_HTTP_PORT: "3128"
+      SSRF_POOL_KEEPALIVE_EXPIRY: "5.0"
+      SSRF_POOL_MAX_CONNECTIONS: "100"
+      SSRF_POOL_MAX_KEEPALIVE_CONNECTIONS: "20"
+      SSRF_PROXY_HTTP_URL: http://ssrf_proxy:3128
+      SSRF_PROXY_HTTPS_URL: http://ssrf_proxy:3128
+      STORAGE_TYPE: opendal
+      TEXT_GENERATION_TIMEOUT_MS: "60000"
+      TOP_K_MAX_VALUE: "10"
+      TRIGGER_URL: http://localhost
+      UV_CACHE_DIR: /tmp/.uv-cache
+      VECTOR_INDEX_NAME_PREFIX: Vector_index
+      VECTOR_STORE: weaviate
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      WEAVIATE_AUTHENTICATION_APIKEY_ENABLED: "true"
+      WEAVIATE_AUTHENTICATION_APIKEY_USERS: hello@dify.ai
+      WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: hello@dify.ai
+      WEAVIATE_CLUSTER_HOSTNAME: node1
+      WEAVIATE_DEFAULT_VECTORIZER_MODULE: none
+      WEAVIATE_DISABLE_TELEMETRY: "false"
+      WEAVIATE_ENABLE_TOKENIZER_GSE: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: "false"
+      WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: "false"
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      WEAVIATE_GRPC_ENDPOINT: grpc://weaviate:50051
+      WEAVIATE_PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      WEAVIATE_QUERY_DEFAULTS_LIMIT: "25"
+      WEAVIATE_TOKENIZATION: word
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_SENTRY_DSN: ""
+      WORKFLOW_GENERATION_TIMEOUT_MS: "180000"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - celery -A celery_healthcheck.celery inspect ping
+      timeout: 30s
+      interval: 30s
+      retries: 3
+      start_period: 1m0s
+      disable: true
+    image: dify-api-enterprise:1.16.0-enterprise
+    networks:
+      default: null
+      ssrf_proxy_network: null
+    restart: always
+networks:
+  default:
+    name: dify-b8-phase-h-rerun_default
+  ssrf_proxy_network:
+    name: dify-b8-phase-h-rerun_ssrf_proxy_network
+    driver: bridge
+    internal: true
+volumes:
+  dify-b8-phase-h-rerun-api-storage:
+    name: dify-b8-phase-h-rerun_dify-b8-phase-h-rerun-api-storage
+  dify-b8-phase-h-rerun-db-data:
+    name: dify-b8-phase-h-rerun_dify-b8-phase-h-rerun-db-data
+  dify-b8-phase-h-rerun-redis-data:
+    name: dify-b8-phase-h-rerun_dify-b8-phase-h-rerun-redis-data
+x-shared-api-worker-config:
+  env_file:
+    - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/api.env
+      required: false
+    - path: ./envs/security.env
+      required: false
+    - path: ./envs/databases/db-postgres.env
+      required: false
+    - path: ./envs/databases/db-mysql.env
+      required: false
+    - path: ./envs/databases/redis.env
+      required: false
+    - path: ./envs/vectorstores/weaviate.env
+      required: false
+    - path: ./envs/vectorstores/qdrant.env
+      required: false
+    - path: ./envs/vectorstores/oceanbase.env
+      required: false
+    - path: ./envs/vectorstores/seekdb.env
+      required: false
+    - path: ./envs/vectorstores/couchbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvector.env
+      required: false
+    - path: ./envs/vectorstores/vastbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvecto-rs.env
+      required: false
+    - path: ./envs/vectorstores/chroma.env
+      required: false
+    - path: ./envs/vectorstores/iris.env
+      required: false
+    - path: ./envs/vectorstores/oracle.env
+      required: false
+    - path: ./envs/vectorstores/opengauss.env
+      required: false
+    - path: ./envs/vectorstores/myscale.env
+      required: false
+    - path: ./envs/vectorstores/matrixone.env
+      required: false
+    - path: ./envs/vectorstores/elasticsearch.env
+      required: false
+    - path: ./envs/vectorstores/opensearch.env
+      required: false
+    - path: ./envs/vectorstores/milvus.env
+      required: false
+    - path: ./envs/infrastructure/nginx.env
+      required: false
+    - path: ./envs/infrastructure/certbot.env
+      required: false
+    - path: ./envs/infrastructure/ssrf-proxy.env
+      required: false
+    - path: ./envs/infrastructure/etcd.env
+      required: false
+    - path: ./envs/infrastructure/minio.env
+      required: false
+    - path: ./envs/infrastructure/milvus-standalone.env
+      required: false
+    - ./.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+x-shared-worker-beat-config:
+  env_file:
+    - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/worker-beat.env
+      required: false
+    - path: ./envs/security.env
+      required: false
+    - path: ./envs/databases/db-postgres.env
+      required: false
+    - path: ./envs/databases/db-mysql.env
+      required: false
+    - path: ./envs/databases/redis.env
+      required: false
+    - path: ./envs/vectorstores/weaviate.env
+      required: false
+    - path: ./envs/vectorstores/qdrant.env
+      required: false
+    - path: ./envs/vectorstores/oceanbase.env
+      required: false
+    - path: ./envs/vectorstores/seekdb.env
+      required: false
+    - path: ./envs/vectorstores/couchbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvector.env
+      required: false
+    - path: ./envs/vectorstores/vastbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvecto-rs.env
+      required: false
+    - path: ./envs/vectorstores/chroma.env
+      required: false
+    - path: ./envs/vectorstores/iris.env
+      required: false
+    - path: ./envs/vectorstores/oracle.env
+      required: false
+    - path: ./envs/vectorstores/opengauss.env
+      required: false
+    - path: ./envs/vectorstores/myscale.env
+      required: false
+    - path: ./envs/vectorstores/matrixone.env
+      required: false
+    - path: ./envs/vectorstores/elasticsearch.env
+      required: false
+    - path: ./envs/vectorstores/opensearch.env
+      required: false
+    - path: ./envs/vectorstores/milvus.env
+      required: false
+    - path: ./envs/infrastructure/nginx.env
+      required: false
+    - path: ./envs/infrastructure/certbot.env
+      required: false
+    - path: ./envs/infrastructure/ssrf-proxy.env
+      required: false
+    - path: ./envs/infrastructure/etcd.env
+      required: false
+    - path: ./envs/infrastructure/minio.env
+      required: false
+    - path: ./envs/infrastructure/milvus-standalone.env
+      required: false
+    - ./.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always
+x-shared-worker-config:
+  env_file:
+    - path: ./envs/core-services/shared.env
+      required: false
+    - path: ./envs/core-services/worker.env
+      required: false
+    - path: ./envs/security.env
+      required: false
+    - path: ./envs/databases/db-postgres.env
+      required: false
+    - path: ./envs/databases/db-mysql.env
+      required: false
+    - path: ./envs/databases/redis.env
+      required: false
+    - path: ./envs/vectorstores/weaviate.env
+      required: false
+    - path: ./envs/vectorstores/qdrant.env
+      required: false
+    - path: ./envs/vectorstores/oceanbase.env
+      required: false
+    - path: ./envs/vectorstores/seekdb.env
+      required: false
+    - path: ./envs/vectorstores/couchbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvector.env
+      required: false
+    - path: ./envs/vectorstores/vastbase.env
+      required: false
+    - path: ./envs/vectorstores/pgvecto-rs.env
+      required: false
+    - path: ./envs/vectorstores/chroma.env
+      required: false
+    - path: ./envs/vectorstores/iris.env
+      required: false
+    - path: ./envs/vectorstores/oracle.env
+      required: false
+    - path: ./envs/vectorstores/opengauss.env
+      required: false
+    - path: ./envs/vectorstores/myscale.env
+      required: false
+    - path: ./envs/vectorstores/matrixone.env
+      required: false
+    - path: ./envs/vectorstores/elasticsearch.env
+      required: false
+    - path: ./envs/vectorstores/opensearch.env
+      required: false
+    - path: ./envs/vectorstores/milvus.env
+      required: false
+    - path: ./envs/infrastructure/nginx.env
+      required: false
+    - path: ./envs/infrastructure/certbot.env
+      required: false
+    - path: ./envs/infrastructure/ssrf-proxy.env
+      required: false
+    - path: ./envs/infrastructure/etcd.env
+      required: false
+    - path: ./envs/infrastructure/minio.env
+      required: false
+    - path: ./envs/infrastructure/milvus-standalone.env
+      required: false
+    - ./.env
+  networks:
+    - ssrf_proxy_network
+    - default
+  restart: always

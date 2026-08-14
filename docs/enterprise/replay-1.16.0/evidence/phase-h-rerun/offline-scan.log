@@ -1,0 +1,16 @@
+PASS: images file exists and is non-empty: dist/offline/images-1.16.0-enterprise.txt
+PASS: required-image assertions satisfied for dist/offline/images-1.16.0-enterprise.txt
+PASS: images file contains no dev default or secret patterns
+PASS: manifest schema is complete and consistent with the images file
+PASS: manifest contains no dev default or secret patterns
+PASS: config archive is listable: dist/offline/dify-enterprise-config-1.16.0-enterprise.tar.gz
+PASS: config archive contains no forbidden paths
+PASS: config archive contains the required 1.16 entry set
+PASS: config archive includes the full docker/envs env-example set
+PASS: dev agent default secret only appears where the WARNING marker is present
+PASS: image bundle archive is listable: dist/offline/dify-enterprise-offline-1.16.0-enterprise.tar
+PASS: image bundle has a docker-save top-level layout (manifest.json + repositories)
+PASS: image bundle contains no forbidden paths
+NOT_RUN: real-secret pattern scan (S-8) covered no packaged content (no config members or listable image bundle layers)
+
+check-enterprise-offline summary: 13 PASS / 0 FAIL / 1 NOT_RUN
