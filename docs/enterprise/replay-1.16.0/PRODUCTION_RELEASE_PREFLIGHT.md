@@ -31,6 +31,16 @@
 - 真实 secret pattern：环境无受保护 pattern 文件；此前 synthetic 扫描已 PASS。
 - 本地可复用镜像：API `566bdf4c88cf`、Web `b76919e998` 存在。
 
+## 第 1 步真实 secret 扫描结果（2026-08-14）
+
+- 从当前生产 `.env` 提取 15 个真实 pattern 值（0600，扫描后删除，未打印）。
+- 重建离线包并运行 `check-enterprise-offline.sh -SecretsPattern <真实pattern>`。
+- 结果：**FAIL，128 命中**（config archive env examples/nginx template），exit 1。
+- 根因：**生产 `.env` 的 SECRET_KEY/DB_PASSWORD/WEAVIATE_API_KEY/PLUGIN_DAEMON_KEY/PLUGIN_DIFY_INNER_API_KEY/SANDBOX_API_KEY 等全部等于仓库 `.env.example` 开发默认值**。
+- 影响：不是离线包泄漏独立真实 secret，而是生产正在使用开发默认 secret；扫描门禁按设计失败。
+- 处置：生产必须先轮换所有默认 secret 为随机值，再重新生成 pattern 并复扫；在此之前第 1 步不能 PASS。
+- 证据：`evidence/production-preflight/prod-secret-scan.log`（仅目标+布尔，无值）。
+
 ## 待输入就绪后的执行命令（runbook 占位）
 
 ### 1. 真实 secret 扫描
