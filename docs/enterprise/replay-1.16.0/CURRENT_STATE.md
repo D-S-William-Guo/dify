@@ -1,12 +1,26 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-08-14（Asia/Shanghai，B0–B8 全链 + Phase D/F/G/H 闭环后最终态）
+更新时间：2026-08-24（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加本地升级复验覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
 
 ## 1. 当前可信快照
+
+### 2026-08-24 覆盖（优先于下方 2026-08-14 历史快照）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 本地代码验证 checkpoint | `82b48543c08c7824b05f015f773ddf657d9e4a6e`（仅本地，未 push） |
+| origin 跟踪 head | `c65e3a94454992eefab1066bcea22279b3118cf3` |
+| 本地提交链 | `c65e3a9445` → `261ba37959`（历史升级验收记录）→ `82b48543c0`（本轮代码/验收修复）→ 本文档 checkpoint；用户尚未授权 push |
+| 本轮真实运行验证 | 本机 API/Web image 重建成功；E04 提交→审核→发布→复制→打开通过；E05 “智慧广场 → 我的提交”与平台管理员“审核应用”可见入口通过。详见 `UPGRADE_REHEARSAL_VALIDATION_2026-08-18.md` |
+| 定向测试 | 69 个运行时控制器用例通过；7 个 OpenAPI 契约用例仅缺少未生成的 `packages/contracts/openapi/console-openapi.json`，不作为代码失败 |
+| 工作树约定 | 此文档提交后应无 tracked 修改；`.playwright-cli/` 与 `output/` 是未跟踪的本机浏览器证据，不纳入 Git |
+| 发布约束 | 不得以旧 `83e1bd5418` 或 origin `c65e3a9445` 直接发布；须在用户明确确认后，以包含本轮 checkpoint 的精确 SHA 决定是否 push 和进入发布流程 |
+
+下表保留为 2026-08-14 的历史闭环记录，不得再将其中的 `83e1bd5418` 视为当前 HEAD。
 
 | 项目 | 当前值 |
 | --- | --- |
@@ -41,16 +55,18 @@ git merge-base --is-ancestor 9c4c0356f3f2374c22b383ba96331e1dd92505fd HEAD
 git merge-base 1.16.0 HEAD
 ```
 
-预期：
+预期（本地未 push 阶段）：
 
-- 本地 HEAD 包含 B5 Final checkpoint `e7d487538fb1431a3b769a8d3fe9d8354487ceea`；状态文档 checkpoint push 完成后，本地 HEAD 与 origin 相同；
+- 本地 HEAD 包含 B5 Final checkpoint `e7d487538fb1431a3b769a8d3fe9d8354487ceea`、`261ba37959` 与 `82b48543c0`；未经用户明确授权，不期待也不得使本地 HEAD 与 origin 相同；
 - B4 checkpoint `9c4c0356f3f2374c22b383ba96331e1dd92505fd` 是当前 HEAD 的祖先；
 - merge-base 为官方 1.16.0 commit；
-- 工作区无修改。
+- 除本机未跟踪浏览器证据目录外，工作区无 tracked 修改。
 
 任何一项不符时，不得直接启动新 Builder。先诊断分支、worktree 和未提交修改。
 
 ## 2. 当前工作顺序
+
+本地 1.16.0 真实滚动升级演练已在 2026-08-24 继续：优先确认历史数据可用性、镜像可构建/启动、E04/E05 可见 UI 与 RBAC 路径。当前不启动新的重放 Builder，不访问生产/灰度，也不 push；下一次动作是用户审核本地 checkpoint 后决定是否授权 push 或继续补齐未生成的 OpenAPI 契约工件。
 
 B0–B8 全链与 Phase D/F/G/H 运行验证均已闭环（最终总结见 `FINAL_VALIDATION_SUMMARY.md`）。候选 HEAD `83e1bd5418` 已与 origin 一致。本轮重放目标达成，进入发布准备收尾，不再启动新的重放 Builder。
 
