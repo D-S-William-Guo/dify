@@ -5,6 +5,7 @@ import { Pagination } from '@langgenius/dify-ui/pagination'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
+import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { mapMarketplaceError } from './errors'
 import { MarketplaceCard } from './marketplace-card'
@@ -63,10 +64,16 @@ export function MarketplaceBrowsePage() {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-background-body">
       <div className="sticky top-0 z-10 flex flex-col gap-[14px] bg-background-body px-8 pt-4 pb-2">
-        <div className="flex h-6 min-w-0 items-center">
+        <div className="flex h-6 min-w-0 items-center justify-between gap-4">
           <h1 className="system-md-semibold text-text-primary">
             {t(($) => $['enterpriseMarketplace.browse.title'], { ns: 'common' })}
           </h1>
+          <Link
+            href="/enterprise-marketplace/submissions"
+            className="shrink-0 rounded-sm system-sm-medium text-text-accent outline-hidden hover:text-text-accent-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            {t(($) => $['enterpriseMarketplace.submissions.title'], { ns: 'common' })}
+          </Link>
         </div>
         <MarketplaceFilters categories={categories} />
       </div>

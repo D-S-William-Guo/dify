@@ -165,7 +165,7 @@ class MarketplaceAdminAssetListQuery(BaseModel):
 class MarketplaceAssetResponse(ResponseModel):
     """Admin / my-submissions asset view – no DSL."""
 
-    asset_id: str
+    asset_id: str = Field(validation_alias="id")
     status: str
     publication_status: str
     snapshot_state: str

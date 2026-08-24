@@ -1,6 +1,6 @@
 # 1.15.x → 1.16.0 本地升级验收矩阵
 
-日期：2026-08-18 至 2026-08-19（Asia/Shanghai）
+日期：2026-08-18 至 2026-08-24（Asia/Shanghai）
 范围：开发机真实历史数据升级；不是生产/灰度部署。
 候选：`c65e3a9445`，运行 image：`dify-api-enterprise:1.16.0-enterprise`、`dify-web-enterprise:1.16.0-enterprise`、Agent backend/local sandbox `1.16.0`。
 
@@ -10,7 +10,7 @@
 - API、PostgreSQL、Redis、local sandbox 均 healthy；最终 `alembic_version = e7c0a9d2b8f3`。
 - 迁移后核心计数：accounts 3、tenants 5、apps 6、datasets 4；Weaviate ready。
 - 授权的历史管理员账号成功登录；历史 workspace、5 个应用、知识库、Agents beta、智慧广场和平台管理员导航均可见。
-- 浏览器证据位于 `output/playwright/replay-116-upgrade/`：`signin-loading.png`、`platform-admin-workspaces.png`、`enterprise-marketplace.png`、`datasets.png`、`chat-started.png`、`historical-chat-result.png`。截图和日志不得包含凭据。
+- 浏览器证据位于 `output/playwright/replay-116-upgrade/`：`signin-loading.png`、`platform-admin-workspaces.png`、`enterprise-marketplace.png`、`datasets.png`、`chat-started.png`、`historical-chat-result.png`、`marketplace-copy-opened-20260824.png`。截图和日志不得包含凭据。
 - 已在本机工作空间完成模型切换验证：OpenRouter 首次尝试的证据为 `openrouter-defaults-saved.png`、`knowledge-models-saved.png`；随后当前默认 LLM 改为 Tongyi `qwen3.7-plus`，该知识库明确使用 Tongyi `text-embedding-v4` 与 `qwen3-rerank`，证据为 `knowledge-tongyi-models-saved.png`。
 - 两份历史文档已通过 Dify 官方重试完成真实重建，页面完整重载后均显示“可用”；分段数复核为 2 和 61。Dify worker 已确认该 dataset collection/schema 可用，且浏览器“召回测试”实际返回 HTTP 200。
 
@@ -20,9 +20,9 @@
 | --- | --- | --- | --- |
 | E01 默认工作区 | 历史 workspace 可见；未创建专用新账号 | NOT_RUN | 隔离账号注册后验证 best-effort join，不改变历史 tenant join |
 | E02 注册/建 workspace 策略 | 登录 UI 与导航正常 | PARTIAL | 隔离账号验证 register/create 的 UI/API 一致拒绝或显式允许 |
-| E03 平台管理员 | 已用迁移管理员账号打开工作区列表，显示 5 个历史 workspace | PARTIAL | 专用测试 workspace 验证 7 条允许 route、non-admin 403、owner 保护；不改真实 workspace |
-| E04 智慧广场后端 | 页面正常，当前 workspace 无已发布资产 | PARTIAL | 专用 A/B workspace 执行 submit→review→copy；验证快照和无 secret DSL |
-| E05 智慧广场前端 | 导航和空列表正常 | PARTIAL | 随 E04 验证提交、审核、复制、深链与权限视图 |
+| E03 平台管理员 | 第二账号在加入全局平台管理员配置并本机重启后，可跨工作区打开详情；此前 non-admin 访问已真实返回 403。所有者角色控件禁用，现有普通成员已实测 `normal → admin → normal` 并恢复 | PARTIAL | 专用测试 workspace 补齐其余允许 route；成员邀请闭环须配置本机测试 SMTP 或受控激活邀请 |
+| E04 智慧广场后端 | 第一账号通过工作室卡片提交无敏感 fixture；第二账号批准后状态为 `已批准 / 已发布`，并成功复制、打开副本 | PASS | 发布前以受控 fixture 复核 snapshot 与无 secret DSL |
+| E05 智慧广场前端 | 第一账号可见提交入口、第二账号可见“审核应用”侧栏入口、发布列表/详情/复制均已真实验证；审核页入口、active state 和“智慧广场 → 我的提交”可见入口均已随本机 web image 真实验证 | PASS | 发布前以受控 fixture 复核同一用户的提交记录可见性 |
 | E06 会话管理 | 需求仍为 `DEFER` | DEFER | 获得产品契约后另开任务 |
 | E07 登录/公开路由 | 历史账号登录成功；历史 Web App 可打开并创建会话；当前 `qwen3.7-plus` 对话流已在预览中得到直接回复 | PARTIAL | 另测安全回跳与公开深链；旧模型绑定问题见 E17 |
 | E08 Compose overlay | 本机 1.16.0 Compose 解析、数据挂载和启动通过 | PASS | 生产前以实际主机挂载重做只读核对 |
@@ -36,6 +36,21 @@
 | E16 OAuth 加密兼容 | 未对真实 OAuth 凭据做调用 | NOT_RUN | 经授权用无敏感 fixture 验证旧密文解密和 builtin tool 调用 |
 | E17 generator model mode | 已通过本机 Dify UI 将历史聊天、Agent、文本生成应用和工作流的显式 `qwen3.6-plus` 绑定迁至 `qwen3.7-plus` 并发布；三项应用受控重跑成功；历史工作流以普通文本 fixture 实测文档提取、变量传递和 LLM 输出，返回“水果是苹果” | PASS | 生产前按模型绑定清单逐项迁移；保留工作流的单次、1 秒间隔失败重试 |
 | E18 旧 session 传递 | 新登录 session 正常；未复用升级前浏览器 cookie | NOT_RUN | 在升级前保存、升级后恢复专用浏览器 state，验证安全刷新与回跳 |
+
+## E04/E05 浏览器验收（2026-08-24）
+
+本机开发环境中，第一账号从“工作室”卡片的“提交到智慧广场”入口提交
+`replay-116-marketplace-fixture`（仅固定验证元数据）。其“我的提交”页显示“待审核 / 未发布”。
+第二账号从侧栏“审核应用”进入审核页，批准并填写非敏感备注后，资产显示“已批准 / 已发布”。
+随后同一账号从“智慧广场”可见列表打开详情，执行“复制应用”，收到“应用复制成功”，并打开副本
+`/app/5bfc31e7-20a7-40c9-8fea-cc7ec7d6d258/overview`。该副本位于第二账号当前工作区；该工作区未配置模型提供商，故本轮只验收复制和打开，不把未配置模型误记为重放失败。
+
+本轮还修复了实际提交接口的响应契约：持久化资产使用 `id`，公开 DTO 使用 `asset_id`，现通过
+Pydantic `validation_alias="id"` 映射，并将控制器测试 mock 改为真实实体字段。新 API image 内 DTO 自检通过；
+本机 UI 提交由原先 HTTP 400 改为成功。恢复本机依赖下载后，定向 pytest 的 69 个运行时控制器用例通过；另有 7 个 OpenAPI 契约用例仅因工作树未生成 `packages/contracts/openapi/console-openapi.json` 而无法读取，未归因为本次实现失败。
+
+Web image 重建后，第二账号从可见侧栏进入“智慧广场”，实际看到并点击新增“我的提交”入口，成功到达
+`/enterprise-marketplace/submissions`（证据：`marketplace-my-submissions-entry-20260824.png`）。该入口保持“智慧广场”主导航 active；平台管理员仍可见独立的“审核应用”入口。
 
 ## 模型提供方记录：已解除知识库阻塞
 

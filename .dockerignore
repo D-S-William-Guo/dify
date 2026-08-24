@@ -10,6 +10,9 @@
 **/.ruff_cache
 .git
 .github
+.env
+.env.*
+docker/
 *.md
 !web/README.md
 !api/README.md

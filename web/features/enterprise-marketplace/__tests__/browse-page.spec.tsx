@@ -184,6 +184,9 @@ describe('enterprise-marketplace browse page', () => {
     expect(
       screen.getByRole('heading', { name: 'common.enterpriseMarketplace.browse.title' }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'common.enterpriseMarketplace.submissions.title' }),
+    ).toHaveAttribute('href', '/enterprise-marketplace/submissions')
   })
 
   it('issues the list query with the fixed page size and the URL-driven filters', async () => {

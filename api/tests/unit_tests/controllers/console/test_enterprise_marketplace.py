@@ -596,7 +596,7 @@ def test_copy_response_only_has_required_fields() -> None:
 def test_submit_injects_session_to_service() -> None:
     mock_asset = MagicMock()
     mock_asset.configure_mock(
-        asset_id="asset-1",
+        id="asset-1",
         status="pending",
         publication_status="unpublished",
         snapshot_state="none",
@@ -637,7 +637,7 @@ def test_review_dispatch_approved_calls_approve() -> None:
     account = MagicMock(id="rev-1", current_tenant_id="t-1")
     asset = MagicMock()
     asset.configure_mock(
-        asset_id="a-1",
+        id="a-1",
         status="approved",
         publication_status="published",
         snapshot_state="ready",
@@ -672,7 +672,7 @@ def test_review_dispatch_rejected_calls_reject() -> None:
     account = MagicMock(id="rev-1", current_tenant_id="t-1")
     asset = MagicMock()
     asset.configure_mock(
-        asset_id="a-1",
+        id="a-1",
         status="rejected",
         publication_status="unpublished",
         snapshot_state="none",
