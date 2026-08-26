@@ -624,9 +624,11 @@ def test_submit_injects_session_to_service() -> None:
             em, "current_account_with_tenant", return_value=(MagicMock(id="acct-1", current_tenant_id="t-1"), "t-1")
         ):
             with patch.object(em, "console_ns", payload={"title": "T", "category": "C"}):
-                _innermost(em.MarketplaceSubmissionApi.post)(
+                response, _ = _innermost(em.MarketplaceSubmissionApi.post)(
                     em.MarketplaceSubmissionApi(), MagicMock(), app_model=MagicMock(id="app-1")
                 )
+    assert response["asset_id"] == "asset-1"
+    assert "id" not in response
     service_mock.submit_asset.assert_called_once()
     call_kwargs = service_mock.submit_asset.call_args[1]
     assert "session" not in call_kwargs
@@ -663,7 +665,11 @@ def test_review_dispatch_approved_calls_approve() -> None:
     with patch.object(em, "EnterpriseMarketplaceService", return_value=service_mock):
         with patch.object(em, "current_account_with_tenant", return_value=(account, "t-1")):
             with patch.object(em, "console_ns", payload={"decision": "approved", "expected_row_version": 1}):
-                _innermost(em.MarketplaceReviewApi.post)(em.MarketplaceReviewApi(), MagicMock(), asset_id="a-1")
+                response = _innermost(em.MarketplaceReviewApi.post)(
+                    em.MarketplaceReviewApi(), MagicMock(), asset_id="a-1"
+                )
+    assert response["asset_id"] == "a-1"
+    assert "id" not in response
     service_mock.approve_asset.assert_called_once()
     service_mock.reject_asset.assert_not_called()
 
@@ -698,7 +704,11 @@ def test_review_dispatch_rejected_calls_reject() -> None:
     with patch.object(em, "EnterpriseMarketplaceService", return_value=service_mock):
         with patch.object(em, "current_account_with_tenant", return_value=(account, "t-1")):
             with patch.object(em, "console_ns", payload={"decision": "rejected", "expected_row_version": 1}):
-                _innermost(em.MarketplaceReviewApi.post)(em.MarketplaceReviewApi(), MagicMock(), asset_id="a-1")
+                response = _innermost(em.MarketplaceReviewApi.post)(
+                    em.MarketplaceReviewApi(), MagicMock(), asset_id="a-1"
+                )
+    assert response["asset_id"] == "a-1"
+    assert "id" not in response
     service_mock.reject_asset.assert_called_once()
     service_mock.approve_asset.assert_not_called()
 

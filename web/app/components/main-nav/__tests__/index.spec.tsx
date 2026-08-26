@@ -721,6 +721,41 @@ describe('MainNav', () => {
     expect(platformAdminLink).toHaveAttribute('aria-current', 'page')
   })
 
+  it('controls enterprise marketplace review visibility, link, and active state', () => {
+    mockPathname = '/platform-admin/enterprise-marketplace'
+
+    const nonAdminNav = renderMainNav()
+
+    expect(
+      screen.queryByRole('link', { name: /common.enterpriseMarketplace.review.title/ }),
+    ).not.toBeInTheDocument()
+    nonAdminNav.unmount()
+
+    mockPlatformAdminState.isPlatformAdmin = true
+    const reviewNav = renderMainNav()
+    const reviewLink = screen.getByRole('link', {
+      name: /common.enterpriseMarketplace.review.title/,
+    })
+    const workspaceAdminLink = screen.getByRole('link', { name: /common.platformAdmin.nav.label/ })
+
+    expect(reviewLink).toHaveAttribute('href', '/platform-admin/enterprise-marketplace')
+    expect(reviewLink).toHaveAttribute('aria-current', 'page')
+    expect(workspaceAdminLink).not.toHaveAttribute('aria-current', 'page')
+    reviewNav.unmount()
+
+    mockPathname = '/platform-admin/workspaces'
+    renderMainNav()
+
+    expect(screen.getByRole('link', { name: /common.enterpriseMarketplace.review.title/ })).not.toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getByRole('link', { name: /common.platformAdmin.nav.label/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
   it('marks roster active on roster routes', () => {
     mockPathname = '/agents'
 
