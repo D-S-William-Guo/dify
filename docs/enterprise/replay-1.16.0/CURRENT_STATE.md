@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-08-24（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加本地升级复验覆盖）
+更新时间：2026-08-27（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加本地升级复验与 P2 测试闭环覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
@@ -8,17 +8,18 @@
 
 ## 1. 当前可信快照
 
-### 2026-08-24 覆盖（优先于下方 2026-08-14 历史快照）
+### 2026-08-27 覆盖（优先于下方 2026-08-14 历史快照）
 
 | 项目 | 当前值 |
 | --- | --- |
-| 本地代码验证 checkpoint | `82b48543c08c7824b05f015f773ddf657d9e4a6e`（仅本地，未 push） |
+| 本地代码验证 checkpoint | `62bd85f5fc0a2bed4f43faf18427458dc15ab293`（仅本地，未 push） |
 | origin 跟踪 head | `c65e3a94454992eefab1066bcea22279b3118cf3` |
-| 本地提交链 | `c65e3a9445` → `261ba37959`（历史升级验收记录）→ `82b48543c0`（本轮代码/验收修复）→ 本文档 checkpoint；用户尚未授权 push |
+| 本地提交链 | `c65e3a9445` → `261ba37959`（历史升级验收记录）→ `82b48543c0`（代码/验收修复）→ `4466f43901`（状态）→ `066de76391`（P2 Review）→ `62bd85f5fc`（P2 测试闭环）；用户尚未授权 push |
 | 本轮真实运行验证 | 本机 API/Web image 重建成功；E04 提交→审核→发布→复制→打开通过；E05 “智慧广场 → 我的提交”与平台管理员“审核应用”可见入口通过。详见 `UPGRADE_REHEARSAL_VALIDATION_2026-08-18.md` |
-| 定向测试 | 69 个运行时控制器用例通过；7 个 OpenAPI 契约用例仅缺少未生成的 `packages/contracts/openapi/console-openapi.json`，不作为代码失败 |
-| 工作树约定 | 此文档提交后应无 tracked 修改；`.playwright-cli/` 与 `output/` 是未跟踪的本机浏览器证据，不纳入 Git |
-| 发布约束 | 不得以旧 `83e1bd5418` 或 origin `c65e3a9445` 直接发布；须在用户明确确认后，以包含本轮 checkpoint 的精确 SHA 决定是否 push 和进入发布流程 |
+| P2 最终复审 | `MARKETPLACE_REPLAY_REVIEW_2026-08-26.md` 的 P2-A/P2-B 已由 `MARKETPLACE_REPLAY_REREVIEW_2026-08-27.md` 独立复审为 **PASS**；无新 finding |
+| 定向测试 | 运行时控制器 `69 passed, 7 deselected`；主导航完整套件 `53 passed`；P2-B 单测 `1 passed, 52 skipped`；7 个 OpenAPI 契约用例仅缺少未生成的 `packages/contracts/openapi/console-openapi.json`，保持 NOT_RUN，不作为代码失败 |
+| 工作树约定 | 三个干净 Claude Squad 实例（原 Reviewer、Fixer、Rereviewer）暂保留；`.playwright-cli/` 与 `output/` 是未跟踪的本机浏览器证据，不纳入 Git |
+| 发布约束 | 不得以旧 `83e1bd5418` 或 origin `c65e3a9445` 直接发布；须在用户明确确认后，以包含 `62bd85f5fc` 的精确 SHA 决定是否 push 和进入发布流程 |
 
 下表保留为 2026-08-14 的历史闭环记录，不得再将其中的 `83e1bd5418` 视为当前 HEAD。
 
@@ -51,13 +52,13 @@ cd /home/ctyun/BigData/GitHub/dify-enterprise-1.16.0
 git status --short --branch
 git rev-parse HEAD
 git rev-parse origin/codex/enterprise-candidate-1.16.0-20260718
-git merge-base --is-ancestor 9c4c0356f3f2374c22b383ba96331e1dd92505fd HEAD
+git merge-base --is-ancestor 62bd85f5fc0a2bed4f43faf18427458dc15ab293 HEAD
 git merge-base 1.16.0 HEAD
 ```
 
 预期（本地未 push 阶段）：
 
-- 本地 HEAD 包含 B5 Final checkpoint `e7d487538fb1431a3b769a8d3fe9d8354487ceea`、`261ba37959` 与 `82b48543c0`；未经用户明确授权，不期待也不得使本地 HEAD 与 origin 相同；
+- 本地 HEAD 包含 B5 Final checkpoint `e7d487538fb1431a3b769a8d3fe9d8354487ceea`、`261ba37959`、`82b48543c0` 与 `62bd85f5fc`；未经用户明确授权，不期待也不得使本地 HEAD 与 origin 相同；
 - B4 checkpoint `9c4c0356f3f2374c22b383ba96331e1dd92505fd` 是当前 HEAD 的祖先；
 - merge-base 为官方 1.16.0 commit；
 - 除本机未跟踪浏览器证据目录外，工作区无 tracked 修改。
@@ -66,9 +67,9 @@ git merge-base 1.16.0 HEAD
 
 ## 2. 当前工作顺序
 
-本地 1.16.0 真实滚动升级演练已在 2026-08-24 继续：优先确认历史数据可用性、镜像可构建/启动、E04/E05 可见 UI 与 RBAC 路径。当前不启动新的重放 Builder，不访问生产/灰度，也不 push；下一次动作是用户审核本地 checkpoint 后决定是否授权 push 或继续补齐未生成的 OpenAPI 契约工件。
+本地 1.16.0 真实滚动升级演练已完成 P2 测试闭环：历史数据可用性、镜像构建/启动、E04/E05 可见 UI 与 RBAC 路径以及 P2-A/P2-B 独立复审均有本机证据。当前不启动新的重放 Builder，不访问生产/灰度，也不 push；下一次动作是用户审核包含 `62bd85f5fc` 的本地 checkpoint 后决定是否授权 push 或继续补齐未生成的 OpenAPI 契约工件。
 
-B0–B8 全链与 Phase D/F/G/H 运行验证均已闭环（最终总结见 `FINAL_VALIDATION_SUMMARY.md`）。候选 HEAD `83e1bd5418` 已与 origin 一致。本轮重放目标达成，进入发布准备收尾，不再启动新的重放 Builder。
+B0–B8 全链与 Phase D/F/G/H 运行验证均已闭环（最终总结见 `FINAL_VALIDATION_SUMMARY.md`）。其中 `83e1bd5418` 与 origin 一致的叙述是 2026-08-14 历史快照；当前候选与 origin 的关系以第 1 节 2026-08-27 覆盖为准。本轮不再启动新的重放 Builder。
 
 协作基础设施当前状态：
 
@@ -77,7 +78,7 @@ B0–B8 全链与 Phase D/F/G/H 运行验证均已闭环（最终总结见 `FINA
 3. 两个 Skill 已通过结构校验；Git 起点核验脚本已通过正向/负向测试；
 4. Claude Squad 源 checkpoint 为 `a1e35dc7436454cb53a584b8730166e23055ad4b`，并启用 `"governed_mode": true`；
 5. dirty worktree 下 `c`/`p`/`D` 会拒绝危险操作；`D` 会明确提示是否删除本地分支；
-6. B5 Plan/Contract 及 B5-A 起至 Final Reviewer 的已完成实例已按审计清理；B6–B8 各阶段实例（Phase D/F/G/H、reuse gate 等 11 个）已全部完成并批量清理（state.json 0 实例）；
+6. B5 Plan/Contract 及 B5-A 起至 Final Reviewer 的已完成实例已按审计清理；B6–B8 各阶段实例（Phase D/F/G/H、reuse gate 等 11 个）也已完成历史批量清理；这不覆盖第 11 节列出的三个当前保留实例；
 7. B0–B8 全链已关闭；重放 Builder 不再启动。
 
 Skill 路径：
@@ -110,8 +111,8 @@ B9“企业会话管理”保持 `DEFER`，本发布不包含。
 
 本轮重放闭环，但生产发布仍须走正式发布流程（见 `FINAL_VALIDATION_SUMMARY.md` 第 5/6 节）：
 
-1. 协调者审批 G1：候选分支 `83e1bd5418` 已 push origin（若尚未 push 需 push）；
-2. 已完成 G2：11 个重放实例已批量删除（state.json 0 实例）；
+1. 协调者审批 G1：包含 `62bd85f5fc` 的当前候选 checkpoint 是否允许 push origin；
+2. G2 历史 11 个重放实例已批量删除；当前三个保留实例受第 11 节 `CHECKPOINT_PUSH_REQUIRED` 门禁约束；
 3. 受保护 secret 扫描（真实受保护 pattern）；
 4. 真离线 Docker host（无外网）load + boot 验证；
 5. 正式镜像签名/审计；
@@ -623,20 +624,12 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-B5 各阶段已完成实例均已按审计清理；B6–B8 运行验证链的 11 个已完成实例也已按
-决策单 G2 批量删除（state.json 0 实例，worktree/branch 均无残留）。其 checkpoint
-均已集成到候选分支 `83e1bd5418` 并 push 到 origin。
+当前保留三个干净实例，均不得删除：
 
-后续执行：
+- `replay-116-review-20260825`：原独立 Reviewer，基于 `4466f43901`；
+- `replay-116-p2-fixer-20260826`：已提交并集成的 Fixer，基于/位于 `62bd85f5fc`；
+- `replay-116-p2-rereview-20260826`：最终 PASS 的只读 Rereviewer，基于 `62bd85f5fc`。
 
-```bash
-git worktree prune
-git worktree list
-git status --short --branch
-```
-
-当前只保留候选主目录；候选分支与 origin 同步（均为
-`83e1bd5418d645bc72929cb3b517c1fda5cd01fc`），且包含 B4 产品 checkpoint
-`9c4c0356f3f2374c22b383ba96331e1dd92505fd` 与 B5 Final checkpoint
-`e7d487538fb1431a3b769a8d3fe9d8354487ceea` 以及 Phase H Rerun evidence
-`83e1bd5418`。本轮重放结束，不再以“latest HEAD”启动新 Builder。
+候选 checkpoint `62bd85f5fc` 尚未位于 origin，因此清理门禁为
+`CHECKPOINT_PUSH_REQUIRED`。在用户单独授权 push 并核验远端精确 SHA 前，不得执行
+`git worktree prune`、删除实例、删除 worktree 或分支。本轮重放不再以“latest HEAD”启动新 Builder。
