@@ -1,6 +1,6 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-08-27（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加本地升级复验与 P2 测试闭环覆盖）
+更新时间：2026-08-28（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加已 push 的 P2 测试闭环覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
@@ -12,14 +12,14 @@
 
 | 项目 | 当前值 |
 | --- | --- |
-| 本地代码验证 checkpoint | `62bd85f5fc0a2bed4f43faf18427458dc15ab293`（仅本地，未 push） |
-| origin 跟踪 head | `c65e3a94454992eefab1066bcea22279b3118cf3` |
-| 本地提交链 | `c65e3a9445` → `261ba37959`（历史升级验收记录）→ `82b48543c0`（代码/验收修复）→ `4466f43901`（状态）→ `066de76391`（P2 Review）→ `62bd85f5fc`（P2 测试闭环）；用户尚未授权 push |
+| 本地代码验证 checkpoint | `62bd85f5fc0a2bed4f43faf18427458dc15ab293`（已是远端 checkpoint `3ca0ef2a85` 的祖先） |
+| 已验证远端 checkpoint | `3ca0ef2a855b98feddb280498b71a1f03266cf87`（包含 P2 代码闭环、Review 与 Rereview 交接；本次状态更新提交后须重新读取 origin 精确 SHA） |
+| 本地提交链 | `c65e3a9445` → `261ba37959`（历史升级验收记录）→ `82b48543c0`（代码/验收修复）→ `4466f43901`（状态）→ `066de76391`（P2 Review）→ `62bd85f5fc`（P2 测试闭环）→ `3ca0ef2a85`（Rereview/交接，已 push） |
 | 本轮真实运行验证 | 本机 API/Web image 重建成功；E04 提交→审核→发布→复制→打开通过；E05 “智慧广场 → 我的提交”与平台管理员“审核应用”可见入口通过。详见 `UPGRADE_REHEARSAL_VALIDATION_2026-08-18.md` |
 | P2 最终复审 | `MARKETPLACE_REPLAY_REVIEW_2026-08-26.md` 的 P2-A/P2-B 已由 `MARKETPLACE_REPLAY_REREVIEW_2026-08-27.md` 独立复审为 **PASS**；无新 finding |
 | 定向测试 | 运行时控制器 `69 passed, 7 deselected`；主导航完整套件 `53 passed`；P2-B 单测 `1 passed, 52 skipped`；7 个 OpenAPI 契约用例仅缺少未生成的 `packages/contracts/openapi/console-openapi.json`，保持 NOT_RUN，不作为代码失败 |
-| 工作树约定 | 三个干净 Claude Squad 实例（原 Reviewer、Fixer、Rereviewer）暂保留；`.playwright-cli/` 与 `output/` 是未跟踪的本机浏览器证据，不纳入 Git |
-| 发布约束 | 不得以旧 `83e1bd5418` 或 origin `c65e3a9445` 直接发布；须在用户明确确认后，以包含 `62bd85f5fc` 的精确 SHA 决定是否 push 和进入发布流程 |
+| 工作树约定 | 三个干净 Claude Squad 实例（原 Reviewer、Fixer、Rereviewer）已具备 Git 清理资格但仍暂保留；`.playwright-cli/` 与 `output/` 是未跟踪的本机浏览器证据，不纳入 Git |
+| 发布约束 | 不得以旧 `83e1bd5418` 或 origin `c65e3a9445` 直接发布；每次发布前须重新读取 origin 的精确 SHA，并获得单独的部署授权 |
 
 下表保留为 2026-08-14 的历史闭环记录，不得再将其中的 `83e1bd5418` 视为当前 HEAD。
 
@@ -56,9 +56,9 @@ git merge-base --is-ancestor 62bd85f5fc0a2bed4f43faf18427458dc15ab293 HEAD
 git merge-base 1.16.0 HEAD
 ```
 
-预期（本地未 push 阶段）：
+预期（`3ca0ef2a85` 已 push；本次状态更新提交前）：
 
-- 本地 HEAD 包含 B5 Final checkpoint `e7d487538fb1431a3b769a8d3fe9d8354487ceea`、`261ba37959`、`82b48543c0` 与 `62bd85f5fc`；未经用户明确授权，不期待也不得使本地 HEAD 与 origin 相同；
+- 本地 HEAD 包含 B5 Final checkpoint `e7d487538fb1431a3b769a8d3fe9d8354487ceea`、`261ba37959`、`82b48543c0` 与 `62bd85f5fc`；当前状态文档提交后，可仅在本次授权范围内 push 该 docs commit 并核验 origin；
 - B4 checkpoint `9c4c0356f3f2374c22b383ba96331e1dd92505fd` 是当前 HEAD 的祖先；
 - merge-base 为官方 1.16.0 commit；
 - 除本机未跟踪浏览器证据目录外，工作区无 tracked 修改。
@@ -67,7 +67,7 @@ git merge-base 1.16.0 HEAD
 
 ## 2. 当前工作顺序
 
-本地 1.16.0 真实滚动升级演练已完成 P2 测试闭环：历史数据可用性、镜像构建/启动、E04/E05 可见 UI 与 RBAC 路径以及 P2-A/P2-B 独立复审均有本机证据。当前不启动新的重放 Builder，不访问生产/灰度，也不 push；下一次动作是用户审核包含 `62bd85f5fc` 的本地 checkpoint 后决定是否授权 push 或继续补齐未生成的 OpenAPI 契约工件。
+本地 1.16.0 真实滚动升级演练已完成 P2 测试闭环：历史数据可用性、镜像构建/启动、E04/E05 可见 UI 与 RBAC 路径以及 P2-A/P2-B 独立复审均有本机证据。`3ca0ef2a85` 已 push 并核验；当前仅将本次状态更新提交/push。其后不启动新的重放 Builder、不访问生产/灰度，下一次需由用户决定实例清理或发布前置验证。
 
 B0–B8 全链与 Phase D/F/G/H 运行验证均已闭环（最终总结见 `FINAL_VALIDATION_SUMMARY.md`）。其中 `83e1bd5418` 与 origin 一致的叙述是 2026-08-14 历史快照；当前候选与 origin 的关系以第 1 节 2026-08-27 覆盖为准。本轮不再启动新的重放 Builder。
 
@@ -111,8 +111,8 @@ B9“企业会话管理”保持 `DEFER`，本发布不包含。
 
 本轮重放闭环，但生产发布仍须走正式发布流程（见 `FINAL_VALIDATION_SUMMARY.md` 第 5/6 节）：
 
-1. 协调者审批 G1：包含 `62bd85f5fc` 的当前候选 checkpoint 是否允许 push origin；
-2. G2 历史 11 个重放实例已批量删除；当前三个保留实例受第 11 节 `CHECKPOINT_PUSH_REQUIRED` 门禁约束；
+1. G1 已完成：`3ca0ef2a85` 已 push origin 并核验；本次状态更新提交/push 后须再次读取精确远端 SHA；
+2. G2 历史 11 个重放实例已批量删除；当前三个保留实例已具备 Git 清理资格，但仍需单独、逐名删除授权；
 3. 受保护 secret 扫描（真实受保护 pattern）；
 4. 真离线 Docker host（无外网）load + boot 验证；
 5. 正式镜像签名/审计；
@@ -624,12 +624,12 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-当前保留三个干净实例，均不得删除：
+当前保留三个干净实例，均已具备 Git 清理资格，但未经用户逐名授权仍不得删除：
 
 - `replay-116-review-20260825`：原独立 Reviewer，基于 `4466f43901`；
 - `replay-116-p2-fixer-20260826`：已提交并集成的 Fixer，基于/位于 `62bd85f5fc`；
 - `replay-116-p2-rereview-20260826`：最终 PASS 的只读 Rereviewer，基于 `62bd85f5fc`。
 
-候选 checkpoint `62bd85f5fc` 尚未位于 origin，因此清理门禁为
-`CHECKPOINT_PUSH_REQUIRED`。在用户单独授权 push 并核验远端精确 SHA 前，不得执行
-`git worktree prune`、删除实例、删除 worktree 或分支。本轮重放不再以“latest HEAD”启动新 Builder。
+候选 checkpoint `3ca0ef2a85` 已在 origin 并已核验，原 `CHECKPOINT_PUSH_REQUIRED`
+已关闭。清理仍需要用户逐名授权；在获得授权前不得执行 `git worktree prune`、删除实例、
+删除 worktree 或分支。本轮重放不再以“latest HEAD”启动新 Builder。
