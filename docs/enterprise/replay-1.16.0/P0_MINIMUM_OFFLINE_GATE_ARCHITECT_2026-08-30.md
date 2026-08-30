@@ -6,21 +6,28 @@ Role: Architect
 
 Environment: Development / isolated rehearsal
 
+Plan Fixer revision: incorporates accepted findings P1-01, P1-02, P1-03, P1-04, P2-01,
+and P2-02 without changing their severities.
+
 ## Verdict
 
 `KEEP_MINIMAL_PATCH`, with deletion of the superseded normal layer scanner.
 
-The minimum gate can prove that actual deployment values cannot enter the offline artifacts by controlling construction inputs and verifying immutable artifact identity. A normal first-party image-content scan is not necessary after those boundaries are enforced. A normal third-party layer scan is expressly out of scope.
+The minimum gate can prove that actual deployment values cannot enter the offline artifacts by controlling construction inputs and verifying immutable artifact identity. A normal first-party image-content scan is not necessary after both first-party images are rebuilt from the clean exact candidate through those controlled contexts. A normal third-party layer scan is expressly out of scope.
 
 The smallest missing controls are:
 
-1. make the configuration archive's regular-file member set exact instead of recursively archiving `docker/nginx` and `docker/ssrf_proxy`;
+1. derive the configuration archive's exact regular-file member set from candidate-tracked paths instead of working-tree discovery or recursive directory operands;
 2. use the repository root as the API Docker build context so the existing `api/Dockerfile.dockerignore` allowlist matches `api/Dockerfile`'s `COPY api/...` and `COPY dify-agent/...` instructions;
-3. bind both first-party image `COMMIT_SHA` values to the exact candidate commit instead of the mutable version string;
-4. validate release-manifest image identity and Docker-save metadata without reading layer contents; and
-5. replace broad layer/content-scan fixtures with focused synthetic path, archive-metadata, context, and identity regressions.
+3. prune nested `.env` and `.env.*` paths from the temporary Web context and prove the boundary with a synthetic canary;
+4. require the normal release package to rebuild both first-party images with explicit `-Mode rebuild` from a clean exact candidate SHA before validation;
+5. validate release-manifest image identity, repository-matched dependency RepoDigests, and Docker-save metadata without reading layer contents;
+6. retain the public development-default-with-warning safeguard over bounded exact regular config members; and
+7. replace broad layer/content-scan fixtures with focused synthetic path, archive-metadata, context, identity, and public-default regressions.
 
-No application, Docker Compose, Dockerfile, or Docker-ignore change is needed. The existing ignore files already express the required first-party context boundaries once the API caller supplies the correct root context.
+No application, Docker Compose, Dockerfile, or Docker-ignore change is needed. The existing ignore
+contracts, the corrected API root context, and the minimal Web temporary-context prune together
+express the required first-party context boundaries.
 
 ## Start branch and SHA
 
@@ -93,13 +100,25 @@ The copied `web/Dockerfile.dockerignore` is a deny-by-default Dockerfile-specifi
 - it explicitly excludes `web/.env`, `web/.env.*`, logs, dependency directories, and generated outputs; and
 - `web/Dockerfile:77-82` copies only compiled public/standalone outputs and the entrypoint into the production stage.
 
-This context is already auditable and is `VERIFY_ONLY`. No separate Web context builder, new scanner, or ignore edit is justified.
+The producer does not currently prune nested `.env` or `.env.*` paths. The two root-only ignore
+patterns therefore do not prevent a nested synthetic environment file from reaching the builder
+stage's `COPY . .`. The temporary context remains the right producer, but it requires a minimal
+prune of all nested `.env`/`.env.*` paths before `docker build` plus a synthetic context canary.
+No separate Web context builder, Dockerfile/Docker-ignore edit, or scanner is justified.
 
 ### Candidate and first-party image provenance
 
 `scripts/build-enterprise-offline.sh:105-117` decides reuse from image `COMMIT_SHA`, but lines 215-216 pass `$VERSION`, not the Git commit. The manifest later records `git rev-parse HEAD` at lines 280-323. The image provenance field and release manifest can therefore disagree semantically even when both contain nonempty strings.
 
-The two narrow API content probes at lines 119-141 compare migration filenames and one function name. They neither cover Web nor prove the full candidate source. Binding a clean stage's audited build contexts and both image `COMMIT_SHA` values to the exact candidate commit is smaller and more complete. Those probes should be deleted once the commit binding replaces them.
+The two narrow API content probes at lines 119-141 compare migration filenames and one function name. They neither cover Web nor prove the full candidate source. A caller-controlled label cannot prove how a reused image was built, so label-only `reuse` cannot satisfy normal release provenance.
+
+The accepted solution is A: a normal offline release-gate package must start from a clean exact
+candidate SHA and explicitly use `-Mode rebuild` for both first-party API and Web images before
+package validation. Their audited contexts and candidate-SHA labels then bind the resulting image
+IDs and Docker-save metadata to that build. `reuse` and `smart` may remain fail-closed local
+convenience/check-only modes, but cannot produce a normal release-gate package. The two narrow API
+content probes may be deleted after this rebuild-only release path applies to both images. No
+rebuild-record format, attestation framework, dependency, or helper is needed.
 
 ### Image-list and manifest provenance
 
@@ -118,10 +137,10 @@ The generator permits empty identity fields. The checker at lines 225-267 valida
 For the minimum gate, immutable identity means:
 
 - first-party: exact expected name, candidate commit in both image `COMMIT_SHA` and release manifest, plus a content-addressed `sha256:` image ID;
-- dependency: exact resolved name plus at least one content-addressed identity, preferably RepoDigest and otherwise the Docker image ID recorded for the bundled image; and
+- dependency: exact resolved name plus a content-addressed image ID for bundle identity, and registry-origin provenance only when a RepoDigest's normalized repository matches the image-list entry's normalized repository; and
 - bundle binding: Docker-save `manifest.json` RepoTags equal the image list and each Config digest corresponds to the release manifest image ID.
 
-A mutable tag such as `latest` is not provenance by itself. It is acceptable in the image list only when the bundle and release manifest pin the saved content by immutable ID. Re-resolving that tag later is not equivalent to using the accepted bundle.
+A mutable tag such as `latest` is not provenance by itself. It is acceptable in the image list only when the bundle and release manifest pin the saved content by immutable ID. Re-resolving that tag later is not equivalent to using the accepted bundle. If no repository-matched RepoDigest exists, record no registry-origin digest, retain only the image ID, and report the registry-origin provenance limitation explicitly.
 
 The Docker-save metadata can be checked with Python standard-library `tarfile` and `json`: read only the single bounded, regular top-level `manifest.json`; do not open or scan any layer member. Support both legacy `<digest>.json` and Docker 29 `blobs/sha256/<digest>` Config names.
 
@@ -134,7 +153,13 @@ The checker currently proves:
 - Docker-save archive listability and a superficial top-level layout; and
 - a known public development-default diagnostic plus optional protected-pattern content matching.
 
-It does not prove exact config membership or immutable image identity. Its layer loop at lines 405-451 only selects `*/layer.tar`, treats inner layers as gzip, scans any matching dependency layer, and can see zero layers without recording `NOT_RUN`. The final S-8 logic at lines 463-483 can conflate incomplete coverage with success. Those are the known defects behind the superseded P0 plan; they are reasons to delete the normal layer scanner, not reasons to repair it.
+It does not prove exact config membership or immutable image identity. Its bounded known public
+development-default diagnostic is a distinct safeguard that must remain: it reads only exact
+regular config members with Python `tarfile`, without extraction, and requires the warning when
+the public default is present. Its layer loop at lines 405-451 only selects `*/layer.tar`, treats
+inner layers as gzip, scans any matching dependency layer, and can see zero layers without
+recording `NOT_RUN`. The final S-8 logic at lines 463-483 can conflate incomplete coverage with
+success. Those are reasons to delete the normal layer scanner, not reasons to repair it.
 
 `scripts/ci/check-enterprise-offline-tests.sh` currently covers reuse/version matching, the two partial API probes, dry-run side effects, required image names, manifest field presence, config required members, `.env`, volume and public-development-default canaries, and a fake gzip `*/layer.tar`. It lacks exact member, key/certificate/credential path, archive type/path, API root-context, candidate-SHA, malformed identity, missing provenance, and bundle-metadata binding cases.
 
@@ -146,12 +171,12 @@ The normal release invariant is:
 
 Accepted normal Development controls:
 
-1. exact configuration-package member allowlisting;
+1. exact candidate-tracked configuration-package member allowlisting;
 2. fail-closed rejection of real environment files, runtime volumes, private keys, certificates, credential-bearing paths, unsafe archive paths, non-regular allowed members, duplicates, and unexpected members;
-3. deny-by-default first-party API/Web Docker contexts with candidate-commit binding;
+3. deny-by-default first-party API/Web Docker contexts, including nested Web environment-path pruning, followed by an explicit clean exact-candidate `rebuild` of both images for every normal release-gate package;
 4. exact first-party image-name checks and immutable identity for every manifest entry;
 5. Docker-save metadata-to-release-manifest binding without layer reads; and
-6. synthetic canaries only.
+6. a bounded public development-default-with-warning check over exact regular config members, plus synthetic canaries only.
 
 Non-goals:
 
@@ -167,19 +192,19 @@ Non-goals:
 
 | Current control | Disposition | Minimum action |
 | --- | --- | --- |
-| Config producer fixed files and 37 `*.env.example` inputs | `KEEP_MINIMAL_PATCH` | Keep the intended files; replace recursive directory operands with the exact nine fixed regular-file paths and deterministic env-example set. |
+| Config producer fixed files and 37 `*.env.example` inputs | `KEEP_MINIMAL_PATCH` | Derive the 37 env examples from the exact candidate tree, require the 49 tracked source paths plus the two version-matched generated members, and replace recursive directory operands with the exact nine fixed tracked paths. Reject untracked or changed membership before packaging. |
 | Config producer broad `tar --exclude` list | `DROP_REDUNDANT` after exact inputs | Exact inputs become the construction boundary. Retain only harmless defense-in-depth exclusions if they do not imply recursion is acceptable. |
 | Checker `forbidden_path` policy | `KEEP_MINIMAL_PATCH` | Reuse it for explicit diagnostics; add certificate and credential-directory cases and exact member-set/type validation. |
-| Config archive extraction/content scan | `DROP_SUPERSEDED` | Validate metadata and exact members without extraction. |
+| Config archive extraction/content scan | `KEEP_MINIMAL_PATCH` | Remove extraction and generic content scanning; retain only bounded reads of exact regular config members for the public development-default-with-warning rule. |
 | API root-context Docker ignore | `VERIFY_ONLY` | Existing `api/Dockerfile.dockerignore` is sufficient after fixing the caller context. |
-| Web temporary context and Docker ignore | `VERIFY_ONLY` | Existing source selection, pruning, and `web/Dockerfile.dockerignore` are sufficient. |
+| Web temporary context and Docker ignore | `KEEP_MINIMAL_PATCH` | Retain the production source allowlist; prune nested `.env`/`.env.*` paths in the temporary-context producer and prove absence with a synthetic canary. Do not edit the Dockerfile or Docker-ignore file. |
 | Image `COMMIT_SHA=$VERSION` | `KEEP_MINIMAL_PATCH` | Move `git rev-parse HEAD` before image validation/build and use that SHA for API and Web. |
-| Two partial API `docker run` content probes | `DROP_REPLACED` | Delete after exact SHA/context provenance applies to both first-party images. |
+| First-party release provenance and two partial API `docker run` probes | `KEEP_MINIMAL_PATCH` | Require explicit `-Mode rebuild` of API and Web from the clean exact candidate for a normal release-gate package, then delete the probes. Keep `reuse`/`smart` only as non-release convenience/check-only modes. |
 | Required first-party image counts/names | `VERIFY_ONLY` | Retain exact API/Web and Agent assertions. |
-| Release-manifest field/name validation | `KEEP_MINIMAL_PATCH` | Require unique exact ordering, valid candidate commit, and valid immutable identities. |
+| Release-manifest field/name validation | `KEEP_MINIMAL_PATCH` | Require unique exact ordering, valid candidate commit, valid immutable identities, and repository-matched RepoDigest provenance when recorded. |
 | Docker-save top-level name check | `KEEP_MINIMAL_PATCH` | Replace substring presence with bounded parsing of the single regular top-level `manifest.json` and bind tags/config IDs. |
 | Normal `*/layer.tar` path/content scan and S-8 aggregation | `DROP_SUPERSEDED` | Delete; do not repair raw/gzip/blob traversal. |
-| Normal checker `-SecretsPattern` path | `DROP_FROM_NORMAL_GATE` | Remove from this Development gate. A future Protected release audit needs separate authorization and reviewed tooling. |
+| Normal checker `-SecretsPattern` path | `DROP_FROM_NORMAL_GATE` | Remove protected-pattern input and all layer-content scanning from this Development gate while retaining the bounded public-default warning rule. A future Protected release audit needs separate authorization and reviewed tooling. |
 | Fake gzip layer fixture and broad-scan plan findings | `DROP_SUPERSEDED` | Replace only with metadata/context/identity/path canaries. Do not implement the old layer parser. |
 
 ## Smallest Builder/test allowlists
@@ -193,6 +218,11 @@ scripts/build-enterprise-offline.sh
 scripts/build-enterprise-config-package.sh
 scripts/ci/check-enterprise-offline.sh
 ```
+
+Within that allowlist, the offline producer owns clean exact-candidate rebuild enforcement, Web
+context pruning, and image/manifest generation; the config producer owns the candidate-tracked
+member set; and the checker owns exact archive metadata, the bounded public-default rule, and
+identity/bundle validation.
 
 No Dockerfile, Docker-ignore, Compose, API, Web, Agent, PowerShell, documentation, dependency, or new helper file is needed.
 
@@ -209,66 +239,85 @@ scripts/ci/check-enterprise-offline-fixtures/bin/fake-docker
 
 ### Exact configuration member allowlist
 
-The package's regular files must equal, not merely contain:
+The package's regular files must equal, not merely contain, the accepted set derived from the
+exact candidate: 49 candidate-tracked source paths plus two version-matched generated paths.
+The tracked path set is read from the candidate tree rather than discovered from the working tree:
 
 - the three fixed Docker source files;
 - the two generated version-matched manifest/image-list files;
-- the sorted 37-file repository set under `docker/envs` whose names end exactly in `.env.example`; and
+- the sorted 37-file candidate-tracked set under `docker/envs` whose names end exactly in `.env.example`; and
 - the nine fixed nginx/SSRF files listed in Repository evidence.
 
-At this SHA the expected total is 51 regular files. Directory headers may be omitted. If retained for compatibility, they must be safe parents of an allowed regular member and must not expand membership. Any other regular or non-regular member is a failure.
+At this SHA the expected total is 51 regular files. The producer must fail if candidate-tracked
+membership is missing or changed and must never expand it from working-tree discovery. An
+untracked `*.env.example`, unexpected member, duplicate, unsafe path, or non-regular member is a
+failure. Directory headers may be omitted. If retained for compatibility, they must be safe
+parents of an allowed regular member and must not expand membership.
 
 ## Behavioral acceptance matrix
 
 | ID | Synthetic setup/action | Expected result |
 | --- | --- | --- |
-| C01 | Build the config package from the unchanged fixture repository. | Exactly 51 allowed regular members; no extras; PASS. |
-| C02 | Add untracked `.env`, volume, key, certificate, and credential-path canaries beneath plausible Docker paths before packaging. | Producer does not include them because no recursive operand exists; package remains the exact allowlist. |
+| C01 | Build the config package from the unchanged fixture repository. | Exactly the 49 candidate-tracked source members plus two version-matched generated members; 51 regular files total, no extras; PASS. |
+| C02 | Add an untracked `docker/envs/.../rogue.env.example` plus `.env`, volume, key, certificate, and credential-path canaries beneath plausible Docker paths before packaging. | The rogue `*.env.example` and every other unexpected input are rejected, no such member is packaged, and the producer exits nonzero. |
 | C03 | Present a synthetic config archive with `docker/.env`. | Redacted real-environment diagnostic; FAIL and nonzero. |
 | C04 | Present a synthetic config archive with `docker/volumes/...`. | Redacted runtime-volume diagnostic; FAIL and nonzero. |
 | C05 | Present synthetic `*.key`/private-key and `*.crt`/certificate members. | Redacted key/certificate diagnostics; FAIL and nonzero. |
 | C06 | Present a synthetic member under `.secrets`, `secrets`, or `credentials`. | Redacted credential-path diagnostic; FAIL and nonzero. |
 | C07 | Present duplicate, absolute, `..`, symlink, hardlink, device, or FIFO members, including an allowed name with the wrong type. | Metadata-only rejection; no extraction or dereference; FAIL and nonzero. |
-| C08 | Omit or add one otherwise benign regular member. | Exact-set mismatch identifies only the path; FAIL and nonzero. |
+| C08 | Omit a candidate-tracked member, add an unexpected or duplicate member, or present an allowed name with an unsafe/non-regular type. | Exact-set/type mismatch identifies only the path; FAIL and nonzero. |
 | A01 | Run fake `rebuild` and capture the API build call. | Dockerfile is `api/Dockerfile`; final context argument is repository root; PASS. |
 | A02 | Inspect the existing API Dockerfile-specific ignore contract in the focused test. | Deny-by-default admits only `api/**` and required `dify-agent` source; env/runtime exclusions present; PASS. |
-| W01 | Capture the fake Web build and inspect the existing Web Dockerfile-specific ignore contract. | Temporary context uses the named source roots; env/runtime/generated exclusions present; PASS. |
-| P01 | Reuse both first-party images whose `COMMIT_SHA` equals deterministic `git rev-parse HEAD`. | Reuse PASS without any `docker run` content probe. |
-| P02 | Reuse an image carrying the version string or a different commit in `COMMIT_SHA`. | Reject as stale; FAIL and nonzero. |
+| W01 | Place nested synthetic `.env` and `.env.*` canaries throughout the copied Web-context source roots, capture the fake Web build, and inspect its temporary context plus the existing Dockerfile-specific ignore contract. | The named source roots remain; every nested environment canary is absent before `docker build`; runtime/generated exclusions remain; PASS without Dockerfile/Docker-ignore changes. |
+| P01 | From a clean exact candidate SHA, create a normal release-gate package with explicit `-Mode rebuild`. | Both API and Web build through the audited contexts with that candidate SHA before package validation; their image IDs bind to manifest and bundle metadata; PASS. |
+| P02 | Attempt a normal release-gate package through `reuse`/`smart`, including images carrying caller-controlled matching `COMMIT_SHA` labels, or rebuild from a dirty/mismatched candidate. | Reject candidate provenance; FAIL and nonzero. `reuse`/`smart` remain non-release local convenience/check-only modes only. |
 | M01 | Validate a well-formed image list/release manifest/fake Docker-save metadata graph. | Unique ordered names match; expected first-party images exist; IDs/config digests bind; PASS. |
 | M02 | Duplicate, omit, reorder, or rename an image between the image list and release manifest. | FAIL and nonzero. |
 | M03 | Make the release manifest candidate commit differ from the first-party build commit. | FAIL and nonzero. |
-| M04 | Give a dependency a valid RepoDigest, or no RepoDigest but a valid image ID. | Immutable bundle identity PASS; missing registry-origin digest remains an explicit provenance limitation, not permission to repull by tag. |
-| M05 | Remove or malform both immutable identities for a dependency or either first-party image. | Identity coverage `NOT_RUN`, overall gate nonzero; never PASS. |
+| M04 | Give a dependency multiple RepoDigests including one whose normalized repository matches its image-list name; then give only mismatched RepoDigests with a valid image ID. | Select and validate the matching RepoDigest in the first case. In the second, record no registry-origin digest, retain image-ID bundle identity, PASS with the explicit provenance limitation, and never attribute a mismatched repository digest. |
+| M05 | Remove or malform required immutable identity for a dependency or either first-party image. | Executed identity validation is `FAIL`; overall exit is nonzero. |
 | M06 | Use Docker 29 `blobs/sha256/<config>` and legacy `<config>.json` Config names in synthetic Docker-save metadata. | Both bind to release-manifest `sha256:<config>` IDs; PASS. |
-| M07 | Make top-level `manifest.json` absent, duplicate, non-regular, malformed, oversized, or inconsistent. | Metadata coverage `NOT_RUN`, overall gate nonzero; no layer opened. |
+| M07 | Make required top-level `manifest.json` absent, duplicate, non-regular, malformed, oversized, or inconsistent. | Executed metadata validation is `FAIL`; overall exit is nonzero; no layer opened. |
 | D01 | Search fake-Docker calls during the full suite. | No real daemon; no layer extraction/content scan; no protected value/pattern; PASS. |
-| R01 | Run all retained no-pattern offline regressions. | Existing CLI/output paths, reuse/check-only behavior, config extraction usefulness, and required image assertions remain compatible. |
+| R01 | Run all retained no-pattern offline regressions, including the known public development default once without and once with its required warning. | The missing-warning case fails and the warned case passes using bounded reads of exact regular config members; existing CLI/output paths, non-release reuse/check-only behavior, config extraction usefulness, and required image assertions remain compatible. |
 
 The suite must report its newly observed exact total; it must not copy the historical `21/21` claim.
+
+An executed normal-gate check that observes missing or malformed required identity, metadata, or
+artifact evidence is `FAIL` and exits nonzero. `NOT_RUN` is reserved for a genuinely unexecuted
+environment prerequisite, such as real Docker runtime validation, PowerShell parity, or the
+separately authorized Protected release audit.
 
 ### Compatibility expectations
 
 - Keep `.sh` producer CLI arguments and output filenames unchanged.
-- Keep `reuse` fail-closed and `-CheckOnly` free of build, pull, and save operations.
-- Existing same-tag first-party images carrying `COMMIT_SHA=1.16.0-enterprise` become intentionally non-reusable and require a separately authorized one-time rebuild from the accepted commit.
+- A normal release-gate package always requires explicit `-Mode rebuild` of both first-party images from the clean exact candidate before validation. `reuse` and `smart` may remain fail-closed non-release local convenience/check-only modes and cannot satisfy or emit normal release-gate provenance.
+- Keep `-CheckOnly` free of build, pull, and save operations; it cannot create missing release provenance.
+- Existing same-tag first-party images, even with a caller-controlled matching `COMMIT_SHA`, cannot satisfy normal release provenance and require the explicit rebuild path.
 - Config package extraction yields the same 51 useful regular files; directory-header omission is acceptable because archive extraction creates parents.
 - The normal checker's `-SecretsPattern` compatibility is intentionally removed. It is not a supported substitute for a Protected release audit.
+- The public development-default-with-warning safeguard remains compatible without protected-pattern input or general content scanning.
 - PowerShell parity is not changed or claimed. The `.ps1` paths and runtime remain `NOT_RUN` until a separately owned parity phase is authorized.
 
 ## Development-versus-Protected-release boundary
 
 ### Development / isolated rehearsal
 
-The Builder, Reviewer, and Rereviewer may use only repository source, fake commands, standard-library archive metadata parsing, and generated synthetic canaries. They must not use Docker, network access, built release artifact contents, a browser, protected patterns, real credentials, production/gray/Plan B values, target configuration, runtime volumes, or target connections.
+The Builder, Reviewer, and Rereviewer may use only repository source, fake commands,
+standard-library `tarfile`/`json` metadata parsing, bounded reads of the exact regular config
+members for the public-default warning rule, and generated synthetic canaries. They must not use
+Docker, network access, built release artifact contents, a browser, protected patterns, real
+credentials, production/gray/Plan B values, target configuration, runtime volumes, or target
+connections. Normal `-SecretsPattern` input and every first-/third-party layer-content scan are
+deleted, not repaired or replaced.
 
 The Development gate answers only:
 
 - were the configuration inputs exactly allowlisted;
 - were first-party contexts structurally unable to send local environment/runtime paths;
-- were the first-party images bound to the candidate commit;
+- were both first-party images explicitly rebuilt from the clean exact candidate before normal package validation;
 - did image-list, release-manifest, and Docker-save metadata agree; and
-- did every bundled dependency have immutable identity.
+- did every bundled dependency have immutable bundle identity and repository-matched registry provenance when claimed.
 
 ### Protected release audit
 
@@ -278,11 +327,11 @@ The historical redacted hits remain unclassified. This plan does not call them c
 
 ## Known limitations
 
-- No first-party Docker build, Docker-ignore runtime evaluation, Docker-save, load, or boot is performed in this Architect task. Source construction evidence is complete; runtime evidence is `NOT_RUN`.
-- A Docker image ID pins the bundled content but does not prove its registry origin. When a dependency lacks RepoDigest, registry-origin provenance remains `NOT_RUN`; the accepted bundle must still be identified by image ID and must not be reconstructed by mutable tag.
+- No first-party Docker build, Docker-ignore runtime evaluation, Docker-save, load, or boot is performed in this Architect/Plan Fixer task. Those environment prerequisites are genuinely `NOT_RUN`; the future normal release gate must perform the explicit API/Web rebuild before validation.
+- A Docker image ID pins the bundled content but does not prove its registry origin. When no RepoDigest repository matches the named dependency, the manifest records no registry-origin digest and retains only image-ID bundle identity; registry-origin provenance remains an explicit limitation and the accepted bundle must not be reconstructed by mutable tag.
 - The normal metadata gate does not attest publisher signatures or SBOMs. Formal signing/audit remains separately authorized.
 - True no-network host load/boot, PowerShell runtime/parity, independent deployment rehearsal, and target deployment are `NOT_RUN`.
-- The current checker's protected-pattern and layer-scan defects are not repaired. That machinery is removed from the normal gate; a future Protected release audit needs its own reviewed design.
+- The current checker's protected-pattern and layer-scan defects are not repaired. That machinery is removed from the normal gate; only the bounded public development-default warning safeguard remains. A future Protected release audit needs its own reviewed design.
 - Existing historical protected-audit hits remain redacted and unclassified.
 - This plan relies on the stage contract's exact clean start SHA for source provenance. Builder/Reviewer commands must record exact branch, HEAD, and status; a dirty or mismatched start stops the stage.
 
@@ -314,6 +363,21 @@ Observed command results:
 
 The focused suite used only its fake Docker shim and synthetic temporary archives. Its labels mentioning a “real image bundle” describe the fixture's tar shape, not a Docker-produced or release artifact. No historical count was substituted.
 
+### Plan Fixer verification addendum
+
+The Plan Fixer changed only this document. The existing suite is baseline evidence; it does not
+claim that the revised Builder behaviors or synthetic cases already exist.
+
+| Command | PASS | FAIL | NOT_RUN | Result |
+| --- | ---: | ---: | ---: | --- |
+| Required branch/SHA/clean preflight | 3 | 0 | 0 | Exact branch and SHA; clean initial status. |
+| Required `bash -n` | 4 files | 0 | 0 | Exit 0, no output. |
+| Existing focused fake-Docker fixture suite | 24 cases | 0 | 0 | Authoritative standalone rerun exited 0; `all 24 enterprise offline tests passed`. |
+| Real Docker/image/artifact runtime verification | 0 | 0 | 1 | `NOT_RUN`: forbidden in this Plan Fixer task. |
+| PowerShell runtime/parity | 0 | 0 | 1 | `NOT_RUN`: outside the allowlist and no authorized runtime. |
+| Protected release audit | 0 | 0 | 1 | `NOT_RUN`: separate authorization and secure runner required. |
+| Browser, network, target, database, container, and volume checks | 0 | 0 | 1 | `NOT_RUN`: forbidden and unnecessary for this docs-only repair. |
+
 ### Future Builder/Reviewer commands
 
 ```bash
@@ -339,13 +403,30 @@ Builder and independent Reviewer must run the same focused suite from their exac
 | Runtime/external actions | None | None | None |
 | Focused checks | Required shell syntax, synthetic fake-Docker suite if safe, diff check, status | Syntax PASS for 4/4 files; focused suite PASS 24/24; final diff/status recorded below | None. |
 
+### Plan Fixer addendum
+
+| Item | Planned | Actual | Deviation |
+| --- | --- | --- | --- |
+| Write scope | Architect plan only | Architect plan only | None. |
+| Accepted findings | Repair P1-01, P1-02, P1-03, P1-04, P2-01, and P2-02 without severity changes or omitted conditions | All six are explicit in the plan, dispositions, matrix, compatibility, boundaries, limitations, and verification ownership | None. |
+| Implementation | No code or test changes | No code or test changes | None. |
+| Source evidence | The Architect plan and accepted Plan Review | Both sources remained authoritative; `CURRENT_STATE.md` was additionally read as required replay context and did not override them | Additional read-only context; no write or decision-scope expansion. |
+| Focused checks | Preflight, four-file syntax, focused suite, diff check, status | Preflight 3/3, syntax 4/4, and authoritative suite 24/24 PASS; final diff/status recorded below | An initial parallel suite observation yielded after 23 visible PASS rows; the required standalone rerun completed 24/24 with exit 0. |
+| Runtime/external actions | None | None | None. |
+
 ## git diff --check
 
-PASS (exit 0, no output) after the final report update. Because the only changed file is untracked, `git diff --no-index --check /dev/null <report>` was also run: it emitted no whitespace error (its expected status 1 only denotes that the new file differs from `/dev/null`).
+Architect historical result: PASS (exit 0, no output) after the original report update. Because
+the only changed file was then untracked, `git diff --no-index --check /dev/null <report>` was also
+run: it emitted no whitespace error (its expected status 1 only denotes that the new file differs
+from `/dev/null`).
+
+Plan Fixer addendum: final `git diff --check` for the tracked one-file repair exited 0 with no
+output.
 
 ## git status
 
-Final exact status:
+Architect historical final status:
 
 ```text
 ## ctyun/replay-116-minimum-offline-gate-architect-20260830
@@ -353,6 +434,13 @@ Final exact status:
 ```
 
 Exact modified files: `docs/enterprise/replay-1.16.0/P0_MINIMUM_OFFLINE_GATE_ARCHITECT_2026-08-30.md` only.
+
+Plan Fixer final status:
+
+```text
+## ctyun/replay-116-minimum-offline-gate-plan-fixer-20260830
+ M docs/enterprise/replay-1.16.0/P0_MINIMUM_OFFLINE_GATE_ARCHITECT_2026-08-30.md
+```
 
 ## Commit ID: none
 
