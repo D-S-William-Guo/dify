@@ -1,10 +1,22 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-08-28（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加已 push 的 P2 测试闭环覆盖）
+更新时间：2026-08-30（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加已 push 的 P2 测试闭环覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-08-30 覆盖（优先于下方所有旧 P0 / 实例叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 候选基准 | `codex/enterprise-candidate-1.16.0-20260718` 在本次状态提交前为 `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3`，干净；该 SHA 包含已合入的 P0 Architect 与 Plan Review 文档。恢复时当前 HEAD 必须包含此 SHA。 |
+| 远端跟踪基准 | 本地 `origin/codex/enterprise-candidate-1.16.0-20260718` 为 `198ee103deac60d1d5be008aeb671c90c93eca62`；候选在本次状态提交前领先两个本地 docs 提交。未授权 push。 |
+| P0 旧计划 | `P0_SECRET_SCAN_ARCHITECT_2026-08-28.md` 的全 Docker-save/全第三方镜像层扫描方向已被人类决策取代；Plan Fixer 的未提交 diff **不得提交或合入**。 |
+| 新门禁决策 | 常规开发机采用“按构造保证”的最小门禁：配置包 allowlist/拒绝真实 `.env`、运行卷与密钥；第一方 API/Web 构建上下文可审计；镜像清单/manifest 核验第一方镜像与依赖身份；第三方镜像只核验 immutable identity，不做常规全层 secret 扫描。测试仅用 synthetic canary。 |
+| 受保护审计边界 | 旧受保护审计的 redacted hit 仍未分类；不得在开发机读取、处理或用生产/灰度 pattern 复扫。只有另行授权的 Protected release audit 可处理指定发布 artifact，且不连接目标环境。 |
+| Skill checkpoint | `codex-personal-skills` 已本地提交 `bd2ad25c09b132b74ca93213441572a0e463beb3`，将上述最小门禁和环境边界固化到 `replay-dify-enterprise`；未 push。 |
+| 下一门禁 | 先从本次状态提交后的精确 SHA 创建新的最小门禁 Architect；不得创建 Builder，直到新的 Architect 与独立 Plan Reviewer 都被接受。 |
 
 ## 1. 当前可信快照
 
@@ -624,8 +636,12 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-当前无保留 Claude Squad 实例：远端 checkpoint 核验后，原 Reviewer、Fixer、Rereviewer 均已删除；
-`state.json` 为 0，worktree 与实例分支无残留。
+以下三个 P0 实例必须保留，除非在候选 checkpoint 已 push 后获得明确删除授权：
 
-恢复时仅只读核验 `git worktree list`、`git branch --list 'ctyun/replay-116-*'` 和 Git 状态；预期只保留候选工作树。
-任何额外 worktree、实例分支或 Git 状态不一致都应停止并报告。本轮重放不再以“latest HEAD”启动新 Builder。
+| 实例 | 分支 / 基准 | 当前状态 |
+| --- | --- | --- |
+| `replay-116-p0-secret-architect-20260828` | `ctyun/replay-116-p0-secret-architect-20260828` / `eff38e1078a8d9f5e5e06b0d842534086a076b66` | 已完成，报告已合入候选。 |
+| `replay-116-p0-secret-plan-reviewer-20260828` | `ctyun/replay-116-p0-secret-plan-reviewer-20260828` / `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 已完成，报告已合入候选。 |
+| `replay-116-p0-secret-plan-fixer-20260830` | `ctyun/replay-116-p0-secret-plan-fixer-20260830` / `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 只含未提交的旧全层扫描计划 diff；因 2026-08-30 最小门禁决策而保留但不得提交、合入、删除或继续修改。 |
+
+恢复时只读核验 `git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态和 controller 数量。不得以“latest HEAD”启动新实例；新 Architect 必须从本次状态提交后的精确 SHA 创建。
