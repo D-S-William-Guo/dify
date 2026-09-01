@@ -44,12 +44,35 @@ case "$MODE" in
     ;;
 esac
 
+if [[ "$CHECK_ONLY" != true && "$MODE" != "rebuild" ]]; then
+  echo "A release-gate package requires explicit -Mode rebuild; $MODE is check-only convenience mode." >&2
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "${OFFLINE_GATE_REPO_ROOT:-$SCRIPT_DIR/..}" && pwd)"
 DOCKER_DIR="$REPO_ROOT/docker"
 ENV_FILE="$DOCKER_DIR/.env"
 OUTPUT_PATH="$REPO_ROOT/$OUTPUT_DIR"
 WEB_BUILD_CONTEXT=""
+
+if [[ ! "$VERSION" =~ ^[A-Za-z0-9._-]+$ || "$OUTPUT_DIR" == /* || "/$OUTPUT_DIR/" == */../* ]]; then
+  echo "Unsafe version or output directory." >&2
+  exit 1
+fi
+
+ENTERPRISE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+if [[ ! "$ENTERPRISE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "Unable to resolve an exact candidate commit." >&2
+  exit 1
+fi
+
+if [[ "$CHECK_ONLY" != true ]]; then
+  if [[ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=all)" ]]; then
+    echo "Release-gate construction inputs must match the exact candidate commit $ENTERPRISE_COMMIT." >&2
+    exit 1
+  fi
+fi
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing docker/.env. Copy docker/.env.example to docker/.env and fill in deployment settings first." >&2
@@ -116,51 +139,15 @@ is_reusable_image() {
   [[ -n "$actual" && "$actual" == "$expected" ]]
 }
 
-# Read-only content gate: verifies a same-tag enterprise API image actually
-# matches the current candidate HEAD before it is accepted as reusable.
-# All docker operations below (run) never modify the image.
-verify_enterprise_image_content() {
-  local image="$1"
-  local repo_migrations image_migrations
-
-  repo_migrations="$(find "$REPO_ROOT/api/migrations/versions" -maxdepth 1 -type f -name '*.py' -printf '%f\n' | sort)"
-  image_migrations="$(docker run --rm --entrypoint sh "$image" -c 'ls -1 /app/api/migrations/versions/*.py 2>/dev/null | sed "s#.*/##"' 2>/dev/null | sort || true)"
-
-  if [[ "$image_migrations" != "$repo_migrations" ]]; then
-    echo "Image $image is not reusable: image migration file set differs from the repository api/migrations/versions at current HEAD." >&2
-    diff <(printf '%s\n' "$repo_migrations") <(printf '%s\n' "$image_migrations") >&2 || true
-    return 1
-  fi
-
-  if ! docker run --rm --entrypoint sh "$image" -c 'grep -Fq _align_snapshot_to_composition /app/api/clients/agent_backend/request_builder.py' >/dev/null 2>&1; then
-    echo "Image $image is not reusable: /app/api/clients/agent_backend/request_builder.py does not contain _align_snapshot_to_composition." >&2
-    return 1
-  fi
-
-  return 0
-}
-
 ensure_enterprise_image() {
   local image="$1"
   local dockerfile="$2"
   local context_path="$3"
   local expected="$4"
-  local verify_content="${5:-false}"
 
-  if [[ "$CHECK_ONLY" == true || "$MODE" == "reuse" ]]; then
+  if [[ "$CHECK_ONLY" == true ]]; then
     if ! is_reusable_image "$image" "$expected"; then
       echo "Image $image is not reusable. Expected COMMIT_SHA=$expected." >&2
-      exit 1
-    fi
-    if [[ "$verify_content" == true ]] && ! verify_enterprise_image_content "$image"; then
-      exit 1
-    fi
-    echo "Reusing enterprise image: $image"
-    return
-  fi
-
-  if [[ "$MODE" == "smart" ]] && is_reusable_image "$image" "$expected"; then
-    if [[ "$verify_content" == true ]] && ! verify_enterprise_image_content "$image"; then
       exit 1
     fi
     echo "Reusing enterprise image: $image"
@@ -179,16 +166,11 @@ build_enterprise_web_image() {
   local image="$1"
   local expected="$2"
 
-  if [[ "$CHECK_ONLY" == true || "$MODE" == "reuse" ]]; then
+  if [[ "$CHECK_ONLY" == true ]]; then
     if ! is_reusable_image "$image" "$expected"; then
       echo "Image $image is not reusable. Expected COMMIT_SHA=$expected." >&2
       exit 1
     fi
-    echo "Reusing enterprise image: $image"
-    return
-  fi
-
-  if [[ "$MODE" == "smart" ]] && is_reusable_image "$image" "$expected"; then
     echo "Reusing enterprise image: $image"
     return
   fi
@@ -204,6 +186,7 @@ build_enterprise_web_image() {
   find "$temp_context" \
     \( -path '*/node_modules' -o -path '*/.next' -o -path '*/dist' -o -path '*/build' -o -path '*/coverage' -o -path '*/.pnpm-store' \) \
     -prune -exec rm -rf {} +
+  find "$temp_context" -depth \( -name '.env' -o -name '.env.*' \) -exec rm -rf -- {} +
 
   docker build \
     --build-arg "COMMIT_SHA=$expected" \
@@ -212,8 +195,15 @@ build_enterprise_web_image() {
     "$temp_context"
 }
 
-ensure_enterprise_image "$API_IMAGE" "$REPO_ROOT/api/Dockerfile" "$REPO_ROOT/api" "$VERSION" true
-build_enterprise_web_image "$WEB_IMAGE" "$VERSION"
+ensure_enterprise_image "$API_IMAGE" "$REPO_ROOT/api/Dockerfile" "$REPO_ROOT" "$ENTERPRISE_COMMIT"
+build_enterprise_web_image "$WEB_IMAGE" "$ENTERPRISE_COMMIT"
+
+for image in "$API_IMAGE" "$WEB_IMAGE"; do
+  if ! is_reusable_image "$image" "$ENTERPRISE_COMMIT"; then
+    echo "First-party image $image is not bound to candidate $ENTERPRISE_COMMIT after validation/build." >&2
+    exit 1
+  fi
+done
 
 echo "Resolving compose image list"
 mapfile -t RAW_IMAGES < <(
@@ -277,17 +267,17 @@ ARCHIVE_PATH="$OUTPUT_PATH/dify-enterprise-offline-$VERSION.tar"
 
 printf '%s\n' "${IMAGES[@]}" > "$IMAGES_PATH"
 
-ENTERPRISE_COMMIT="$(git rev-parse HEAD)"
-
-python3 - "$MANIFEST_PATH" "$IMAGES_PATH" "$VERSION" "$ENTERPRISE_COMMIT" "$BASELINE_TAG" "$BASELINE_COMMIT" <<'PY'
+python3 - "$MANIFEST_PATH" "$IMAGES_PATH" "$VERSION" "$ENTERPRISE_COMMIT" "$BASELINE_TAG" "$BASELINE_COMMIT" "$MODE" "$CHECK_ONLY" <<'PY'
 import json
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-manifest_path, images_path, version, enterprise_commit, baseline_tag, baseline_commit = sys.argv[1:]
+manifest_path, images_path, version, enterprise_commit, baseline_tag, baseline_commit, mode, check_only = sys.argv[1:]
 image_names = [line for line in Path(images_path).read_text(encoding="utf-8").splitlines() if line.strip()]
+sha256_re = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 def docker_image_field(image: str, template: str) -> str:
@@ -304,20 +294,48 @@ def docker_image_field(image: str, template: str) -> str:
     return "" if value == "<no value>" else value
 
 
+def repository(name: str) -> str:
+    name = name.split("@", 1)[0]
+    slash = name.rfind("/")
+    colon = name.rfind(":")
+    return name[:colon] if colon > slash else name
+
+
+def image_entry(name: str) -> dict[str, str]:
+    image_id = docker_image_field(name, "{{.Id}}")
+    if not sha256_re.fullmatch(image_id):
+        raise SystemExit(f"missing or malformed immutable image ID: {name}")
+    raw_digests = docker_image_field(name, "{{json .RepoDigests}}")
+    try:
+        digests = json.loads(raw_digests) if raw_digests else []
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"malformed RepoDigests metadata: {name}") from exc
+    if digests is None:
+        digests = []
+    if not isinstance(digests, list) or any(not isinstance(candidate, str) for candidate in digests):
+        raise SystemExit(f"malformed RepoDigests metadata: {name}")
+    digest = ""
+    for candidate in digests:
+        if "@" not in candidate:
+            continue
+        digest_repo, digest_value = candidate.rsplit("@", 1)
+        if repository(digest_repo) == repository(name) and sha256_re.fullmatch(digest_value):
+            digest = f"{digest_repo}@{digest_value}"
+            break
+    if not digest and name not in {f"dify-api-enterprise:{version}", f"dify-web-enterprise:{version}"}:
+        print(f"WARNING: no repository-matched RepoDigest; bundle identity relies on image ID: {name}", file=sys.stderr)
+    return {"name": name, "id": image_id, "digest": digest}
+
+
 manifest = {
     "version": version,
     "baseline": {"tag": baseline_tag, "commit": baseline_commit},
     "enterprise_commit": enterprise_commit,
     "image_tag": version,
+    "mode": mode,
+    "release_gate": mode == "rebuild" and check_only == "false",
     "generated_at": datetime.now(timezone.utc).isoformat(),
-    "images": [
-        {
-            "name": name,
-            "id": docker_image_field(name, "{{.Id}}"),
-            "digest": docker_image_field(name, "{{index .RepoDigests 0}}"),
-        }
-        for name in image_names
-    ],
+    "images": [image_entry(name) for name in image_names],
 }
 Path(manifest_path).write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 PY

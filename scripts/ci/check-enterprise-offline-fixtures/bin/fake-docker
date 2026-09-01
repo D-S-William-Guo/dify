@@ -2,15 +2,13 @@
 # Fake docker shim for B7 offline fixture tests.
 # Configuration is read from the environment:
 #   FAKE_DOCKER_IMAGES         space-separated list of images that "exist" locally
-#   FAKE_DOCKER_COMMIT_SHA     COMMIT_SHA value reported for enterprise images (default 1.16.0-enterprise)
+#   FAKE_DOCKER_COMMIT_SHA     COMMIT_SHA value reported for enterprise images
 #   FAKE_DOCKER_COMPOSE_IMAGES newline-separated image list returned by `config --images`
 #   FAKE_DOCKER_LOG            file each invocation is appended to (assert no build/pull/save in dry-run)
 #   FAKE_DOCKER_NO_DIGEST      space-separated images that must report an empty RepoDigest
-#   FAKE_DOCKER_OUT            directory for `save` output (defaults to mktemp -d)
-#   FAKE_DOCKER_MIGRATIONS     newline-separated /app/api/migrations/versions file list
-#                              returned by `run`; defaults to the repo file list under $PWD
-#   FAKE_DOCKER_MISSING_FUNCTION if "true", the image's request_builder.py lacks
-#                              _align_snapshot_to_composition (reuse content gate must reject)
+#   FAKE_DOCKER_WEB_CONTEXT_LISTING captures regular files visible to the Web build
+#   FAKE_DOCKER_SAVE_STYLE     legacy (default) or docker29 Config paths
+#   FAKE_DOCKER_SAVE_CASE      missing, duplicate, nonregular, malformed, oversized, inconsistent
 
 set -euo pipefail
 
@@ -21,7 +19,7 @@ log() {
 }
 
 images_file="${FAKE_DOCKER_IMAGES:-}"
-commit_sha="${FAKE_DOCKER_COMMIT_SHA:-1.16.0-enterprise}"
+commit_sha="${FAKE_DOCKER_COMMIT_SHA:-1111111111111111111111111111111111111111}"
 
 has_image() {
   local img="$1"
@@ -31,9 +29,18 @@ has_image() {
   return 1
 }
 
-fake_default_migrations() {
-  local root="${FAKE_DOCKER_REPO_ROOT:-$PWD}"
-  find "$root/api/migrations/versions" -maxdepth 1 -type f -name '*.py' -printf '%f\n' | sort
+image_hash() {
+  printf '%s' "$1" | sha256sum | cut -c1-64
+}
+
+repository_name() {
+  local image="$1"
+  local last="${image##*/}"
+  if [[ "$last" == *:* ]]; then
+    printf '%s\n' "${image%:*}"
+  else
+    printf '%s\n' "$image"
+  fi
 }
 
 cmd="$1"
@@ -44,7 +51,6 @@ log "$cmd $*"
 case "$cmd" in
   compose)
     # docker compose --env-file X -f Y -f Z config --images
-    local_images=""
     while [[ $# -gt 0 ]]; do
       case "$1" in
         config)
@@ -80,13 +86,22 @@ case "$cmd" in
           printf 'COMMIT_SHA=%s\n' "$commit_sha"
           ;;
         *".Id"*)
-          printf 'sha256:fake-id-%s\n' "$(printf '%s' "$img" | sha256sum | cut -c1-24)"
+          if [[ " ${FAKE_DOCKER_BAD_ID:-} " == *" $img "* ]]; then
+            printf 'not-an-id\n'
+          else
+            printf 'sha256:%s\n' "$(image_hash "$img")"
+          fi
           ;;
         *"RepoDigests"*)
           if [[ " ${FAKE_DOCKER_NO_DIGEST:-} " == *" $img "* ]]; then
-            printf '<no value>\n'
+            printf '[]\n'
+          elif [[ " ${FAKE_DOCKER_MISMATCH_DIGEST:-} " == *" $img "* ]]; then
+            printf '["other.example/mismatch@sha256:%s"]\n' "$(image_hash "mismatch:$img")"
+          elif [[ " ${FAKE_DOCKER_MULTIPLE_DIGEST:-} " == *" $img "* ]]; then
+            printf '["other.example/mismatch@sha256:%s","%s@sha256:%s"]\n' \
+              "$(image_hash "mismatch:$img")" "$(repository_name "$img")" "$(image_hash "digest:$img")"
           else
-            printf '%s@sha256:fake-digest-%s\n' "$img" "$(printf '%s' "$img" | sha256sum | cut -c1-24)"
+            printf '["%s@sha256:%s"]\n' "$(repository_name "$img")" "$(image_hash "digest:$img")"
           fi
           ;;
         *)
@@ -104,52 +119,62 @@ case "$cmd" in
       shift || true
     fi
     if [[ -n "$out" ]]; then
-      save_dir="${FAKE_DOCKER_OUT:-$(mktemp -d)}"
-      mkdir -p "$save_dir/ab12cd34"
-      printf 'placeholder-layer-content\n' > "$save_dir/ab12cd34/layer.txt"
-      (
-        cd "$save_dir"
-        printf '{"Config":"config.json","RepoTags":["stub:1.16.0-enterprise"],"Layers":["ab12cd34/layer.tar"]}\n' > manifest.json
-        printf '{}\n' > repositories
-        tar czf ab12cd34/layer.tar -C "$save_dir/ab12cd34" layer.txt
-        tar cf "$out" manifest.json repositories ab12cd34/layer.tar
-      )
+      python3 - "$out" "${FAKE_DOCKER_SAVE_STYLE:-legacy}" "${FAKE_DOCKER_SAVE_CASE:-}" "$@" <<'PY'
+import hashlib
+import io
+import json
+import sys
+import tarfile
+
+output, style, case, *images = sys.argv[1:]
+records = []
+configs = []
+for image in images:
+    digest = hashlib.sha256(image.encode()).hexdigest()
+    config = f"blobs/sha256/{digest}" if style == "docker29" else f"{digest}.json"
+    records.append({"Config": config, "RepoTags": [image], "Layers": []})
+    configs.append(config)
+if case == "inconsistent" and records:
+    records[0]["Config"] = f"{'0' * 64}.json"
+payload = json.dumps(records).encode() + b"\n"
+if case == "malformed":
+    payload = b"{not-json\n"
+elif case == "oversized":
+    payload = b"[" + b" " * (1024 * 1024) + b"]"
+
+with tarfile.open(output, "w") as archive:
+    if case != "missing":
+        info = tarfile.TarInfo("manifest.json")
+        if case == "nonregular":
+            info.type = tarfile.SYMTYPE
+            info.linkname = "elsewhere"
+            archive.addfile(info)
+        else:
+            info.size = len(payload)
+            archive.addfile(info, io.BytesIO(payload))
+            if case == "duplicate":
+                archive.addfile(info, io.BytesIO(payload))
+    for config in configs:
+        data = b"{}\n"
+        info = tarfile.TarInfo(config)
+        info.size = len(data)
+        archive.addfile(info, io.BytesIO(data))
+PY
     fi
-    exit 0
-    ;;
-  run)
-    # Gate form: docker run --rm --entrypoint sh IMAGE -c SCRIPT
-    image=""
-    script=""
-    prev=""
-    for arg in "$@"; do
-      if [[ "$prev" == "-c" ]]; then
-        script="$arg"
-      elif [[ "$arg" == *:* && -z "$image" ]]; then
-        image="$arg"
-      fi
-      prev="$arg"
-    done
-    case "$script" in
-      *"migrations/versions"*)
-        if [[ -n "${FAKE_DOCKER_MIGRATIONS+x}" ]]; then
-          printf '%s\n' "$FAKE_DOCKER_MIGRATIONS"
-        else
-          fake_default_migrations
-        fi
-        ;;
-      *"request_builder.py"*)
-        if [[ "${FAKE_DOCKER_MISSING_FUNCTION:-false}" == "true" ]]; then
-          exit 1
-        fi
-        ;;
-    esac
     exit 0
     ;;
   pull)
     exit 0
     ;;
   build)
+    context="${@: -1}"
+    if [[ -n "${FAKE_DOCKER_WEB_CONTEXT_LISTING:-}" && "$*" == *"/web/Dockerfile"* ]]; then
+      if find "$context" \( -name '.env' -o -name '.env.*' \) -print -quit | grep -q .; then
+        echo "synthetic Web context still contains an environment path" >&2
+        exit 1
+      fi
+      find "$context" -type f -printf '%P\n' | sort > "$FAKE_DOCKER_WEB_CONTEXT_LISTING"
+    fi
     exit 0
     ;;
   *)
