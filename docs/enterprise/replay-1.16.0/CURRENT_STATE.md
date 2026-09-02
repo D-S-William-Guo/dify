@@ -1,10 +1,22 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-08-30（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加已 push 的 P2 测试闭环覆盖）
+更新时间：2026-09-02（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-02 覆盖（优先于下方所有历史叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 本地候选 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 在本次状态提交前为 `a18208f7b99da2e141b4a24caf5c3365940670a1`，工作区干净；恢复时当前 HEAD 必须包含该 SHA。本状态文档不自引用其后产生的 docs commit。 |
+| 最小离线门禁 | Architect、Plan Reviewer、Plan Fixer、Plan Rereviewer、Builder 与独立 Code Reviewer 已闭环；Builder `60bd4df96c46c6a218eb7f5758fd53469dd812ed` 及 Code Review `a18208f7b99da2e141b4a24caf5c3365940670a1` 已以 `git merge --ff-only` 集成。Code Review 为 **PASS**，无 P0/P1/P2 finding，因此未创建 Fixer/Rereviewer。 |
+| 验证证据 | 五个变更脚本 `bash -n` 通过；`bash scripts/ci/check-enterprise-offline-tests.sh` 在候选分支通过 **51/51**，退出码 0。测试仅使用 synthetic canary 与 fake Docker；真实 Docker、真实离线 artifact、PowerShell、Protected release audit、离线主机及目标运行验证保持 `NOT_RUN`。 |
+| 门禁边界 | 常规开发机门禁按构造保证：配置包精确 allowlist、第一方构建上下文约束、manifest/image identity 与 synthetic canary；不恢复旧全层/全第三方镜像 secret 扫描。不得在开发机读取或处理生产/灰度 secret/pattern。 |
+| 远端状态 | `origin/codex/enterprise-candidate-1.16.0-20260718` 仍为 `198ee103deac60d1d5be008aeb671c90c93eca62`；在本状态提交前本地领先 9 个提交，尚未 push。安全结论为 `CHECKPOINT_PUSH_REQUIRED`。 |
+| 实例状态 | 共保留 9 个 `replay-116-*` Claude Squad 实例：8 个 worktree 干净；旧 `replay-116-p0-secret-plan-fixer-20260830` 仍含被最小门禁决策取代的未提交全层扫描计划 diff。checkpoint 未在 origin 前不得删除任何实例；完整列表见第 11 节。 |
+| 下一授权门禁 | 先单独授权 push 当前候选分支并核验远端精确 SHA。push 前不得删除实例；push 不授权 Docker、真实 artifact 构建、Protected audit、部署、生产/灰度连接或 secret 处理。后续本机真实 Docker 重建与离线包验证必须另立 Development / isolated-rehearsal 阶段授权。 |
 
 ### 2026-08-30 覆盖（优先于下方所有旧 P0 / 实例叙述）
 
@@ -636,12 +648,18 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-以下三个 P0 实例必须保留，除非在候选 checkpoint 已 push 后获得明确删除授权：
+以下 9 个实例必须保留，直到候选 checkpoint 已精确 push 到 origin 且另行获得明确删除授权：
 
-| 实例 | 分支 / 基准 | 当前状态 |
+| 实例 | 分支 checkpoint | 当前状态 |
 | --- | --- | --- |
-| `replay-116-p0-secret-architect-20260828` | `ctyun/replay-116-p0-secret-architect-20260828` / `eff38e1078a8d9f5e5e06b0d842534086a076b66` | 已完成，报告已合入候选。 |
-| `replay-116-p0-secret-plan-reviewer-20260828` | `ctyun/replay-116-p0-secret-plan-reviewer-20260828` / `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 已完成，报告已合入候选。 |
-| `replay-116-p0-secret-plan-fixer-20260830` | `ctyun/replay-116-p0-secret-plan-fixer-20260830` / `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 只含未提交的旧全层扫描计划 diff；因 2026-08-30 最小门禁决策而保留但不得提交、合入、删除或继续修改。 |
+| `replay-116-p0-secret-architect-20260828` | `eff38e1078a8d9f5e5e06b0d842534086a076b66` | 已完成、已合入候选，worktree 干净。 |
+| `replay-116-p0-secret-plan-reviewer-20260828` | `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 已完成、已合入候选，worktree 干净。 |
+| `replay-116-p0-secret-plan-fixer-20260830` | `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 仍含未提交的旧全层扫描计划 diff；不得提交、合入、删除或继续修改。 |
+| `replay-116-minimum-offline-gate-architect-20260830` | `8f5a5d6c973006e5127f8912849968d02f4a1457` | 已完成、已合入候选，worktree 干净。 |
+| `replay-116-minimum-offline-gate-plan-reviewer-20260830` | `9f12d168a4ba5f43ecc48ad909765fa6254f24bb` | 已完成、已合入候选，worktree 干净。 |
+| `replay-116-minimum-offline-gate-plan-fixer-20260830` | `120092cdaafd80cd185060d51c93ca7516bfe2eb` | 已完成、已合入候选，worktree 干净。 |
+| `replay-116-minimum-offline-gate-plan-rereviewer-20260830` | `9a55680ec449d75e17e7cd9f10e8761e5393be2f` | 已完成、已合入候选，worktree 干净。 |
+| `replay-116-minimum-offline-gate-builder-20260901` | `60bd4df96c46c6a218eb7f5758fd53469dd812ed` | 已完成、已合入候选，worktree 干净。 |
+| `replay-116-minimum-offline-gate-code-reviewer-20260902` | `a18208f7b99da2e141b4a24caf5c3365940670a1` | PASS、已合入候选，worktree 干净；无 P0/P1/P2 finding。 |
 
-恢复时只读核验 `git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态和 controller 数量。不得以“latest HEAD”启动新实例；新 Architect 必须从本次状态提交后的精确 SHA 创建。
+恢复时只读核验 `git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态、origin 精确 SHA 和 controller 数量。当前治理结论为 `CHECKPOINT_PUSH_REQUIRED`；不得以“latest HEAD”创建实例，也不得在 checkpoint 尚未 push 时删除任何实例。
