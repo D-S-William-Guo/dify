@@ -57,6 +57,7 @@ fake_defaults() {
   unset FAKE_DOCKER_NO_DIGEST FAKE_DOCKER_BAD_ID FAKE_DOCKER_MISMATCH_DIGEST
   unset FAKE_DOCKER_MULTIPLE_DIGEST FAKE_DOCKER_WEB_CONTEXT_LISTING
   unset FAKE_DOCKER_SAVE_STYLE FAKE_DOCKER_SAVE_CASE
+  unset HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY http_proxy https_proxy all_proxy no_proxy
 }
 
 expect_pass() {
@@ -230,6 +231,67 @@ if ! grep -Fq -- "--build-arg COMMIT_SHA=$candidate -f $fixture/api/Dockerfile -
   exit 1
 fi
 printf 'ok - A01 API build uses repository-root context and candidate SHA\n'
+pass_count=$((pass_count + 1))
+
+# H01-H04: host proxy is explicit, passes names only, and never reaches outputs.
+fixture_proxy=$(new_fixture host-proxy)
+fake_defaults "$fixture_proxy"
+proxy_canary=$(mktemp "$tmp_root/proxy-canary.XXXXXX")
+expect_pass "H01 default build omits host proxy options" "$fixture_proxy" \
+  "$offline_script" -Version 1.16.0-enterprise -Mode rebuild
+if grep -Eq -- '--network=host|--build-arg (HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|http_proxy|https_proxy|all_proxy|no_proxy)' "$fixture_proxy/fake-docker.log"; then
+  printf 'not ok - H01 default build must not enable host proxy options\n' >&2
+  exit 1
+fi
+printf 'ok - H01 default build omits host proxy options\n'
+pass_count=$((pass_count + 1))
+
+fixture_proxy=$(new_fixture host-proxy-opt-in)
+fake_defaults "$fixture_proxy"
+expect_pass "H02 opt-in forwards all proxy variable names to API and Web" "$fixture_proxy" \
+  env HTTP_PROXY="$proxy_canary" HTTPS_PROXY="$proxy_canary" ALL_PROXY="$proxy_canary" NO_PROXY="$proxy_canary" \
+  http_proxy="$proxy_canary" https_proxy="$proxy_canary" all_proxy="$proxy_canary" no_proxy="$proxy_canary" \
+  "$offline_script" -Version 1.16.0-enterprise -Mode rebuild -UseHostProxy
+if [[ "$(grep -Ec '^docker build ' "$fixture_proxy/fake-docker.log")" -ne 2 ]] ||
+  [[ "$(grep -Fc -- '--network=host' "$fixture_proxy/fake-docker.log")" -ne 2 ]]; then
+  printf 'not ok - H02 API and Web builds must both use host networking\n' >&2
+  exit 1
+fi
+for proxy_variable in HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY http_proxy https_proxy all_proxy no_proxy; do
+  if [[ "$(grep -Fc -- "--build-arg $proxy_variable" "$fixture_proxy/fake-docker.log")" -ne 2 ]]; then
+    printf 'not ok - H02 missing name-only build argument for %s\n' "$proxy_variable" >&2
+    exit 1
+  fi
+done
+if grep -Fq -- "$proxy_canary" "$fixture_proxy/fake-docker.log" ||
+  grep -R -Fq -- "$proxy_canary" "$fixture_proxy/dist"; then
+  printf 'not ok - H02 synthetic proxy value reached an argv capture or generated artifact\n' >&2
+  exit 1
+fi
+printf 'ok - H02 opt-in uses host networking and name-only proxy arguments without values\n'
+pass_count=$((pass_count + 1))
+
+fixture_proxy=$(new_fixture host-proxy-unset)
+fake_defaults "$fixture_proxy"
+expect_pass "H03 unset proxy variables are omitted" "$fixture_proxy" \
+  env HTTP_PROXY="$proxy_canary" "$offline_script" -Version 1.16.0-enterprise -Mode rebuild -UseHostProxy
+if grep -Eq -- '--build-arg (HTTPS_PROXY|ALL_PROXY|NO_PROXY|http_proxy|https_proxy|all_proxy|no_proxy)' "$fixture_proxy/fake-docker.log"; then
+  printf 'not ok - H03 unset proxy variables must not be forwarded\n' >&2
+  exit 1
+fi
+printf 'ok - H03 unset proxy variables are omitted\n'
+pass_count=$((pass_count + 1))
+
+fixture_proxy=$(new_fixture host-proxy-missing)
+fake_defaults "$fixture_proxy"
+expect_fail "H04 host proxy without a usable proxy fails before build" "requires a configured" "$fixture_proxy" \
+  env NO_PROXY="$proxy_canary" no_proxy="$proxy_canary" \
+  "$offline_script" -Version 1.16.0-enterprise -Mode rebuild -UseHostProxy
+if [[ -f "$fixture_proxy/fake-docker.log" ]] && grep -Eq '^docker build ' "$fixture_proxy/fake-docker.log"; then
+  printf 'not ok - H04 host proxy failure must occur before fake Docker build\n' >&2
+  exit 1
+fi
+printf 'ok - H04 host proxy without a usable proxy fails before fake Docker build\n'
 pass_count=$((pass_count + 1))
 
 if grep -Eq '(^|/)\.env($|\.)' "$fixture/web-context.txt" ||

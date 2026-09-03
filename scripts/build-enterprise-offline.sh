@@ -6,6 +6,7 @@ VERSION="1.16.0-enterprise"
 OUTPUT_DIR="dist/offline"
 MODE="reuse"
 CHECK_ONLY=false
+USE_HOST_PROXY=false
 BASELINE_TAG="1.16.0"
 BASELINE_COMMIT="5c6372d2f76d240265b92fd27c16bc772ffcb107"
 
@@ -27,9 +28,13 @@ while [[ $# -gt 0 ]]; do
       CHECK_ONLY=true
       shift
       ;;
+    -UseHostProxy|--UseHostProxy)
+      USE_HOST_PROXY=true
+      shift
+      ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "Usage: ./scripts/build-enterprise-offline.sh [-Version <version>] [-OutputDir <dir>] [-Mode <smart|rebuild|reuse>] [-CheckOnly]" >&2
+      echo "Usage: ./scripts/build-enterprise-offline.sh [-Version <version>] [-OutputDir <dir>] [-Mode <smart|rebuild|reuse>] [-CheckOnly] [-UseHostProxy]" >&2
       exit 1
       ;;
   esac
@@ -47,6 +52,21 @@ esac
 if [[ "$CHECK_ONLY" != true && "$MODE" != "rebuild" ]]; then
   echo "A release-gate package requires explicit -Mode rebuild; $MODE is check-only convenience mode." >&2
   exit 1
+fi
+
+HOST_PROXY_BUILD_ARGS=()
+if [[ "$USE_HOST_PROXY" == true ]]; then
+  if ! [[ -v HTTP_PROXY || -v HTTPS_PROXY || -v ALL_PROXY || -v http_proxy || -v https_proxy || -v all_proxy ]]; then
+    echo "-UseHostProxy requires a configured HTTP_PROXY, HTTPS_PROXY, or ALL_PROXY variable." >&2
+    exit 1
+  fi
+
+  HOST_PROXY_BUILD_ARGS=(--network=host)
+  for proxy_variable in HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY http_proxy https_proxy all_proxy no_proxy; do
+    if [[ -v "$proxy_variable" ]]; then
+      HOST_PROXY_BUILD_ARGS+=(--build-arg "$proxy_variable")
+    fi
+  done
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -159,6 +179,7 @@ ensure_enterprise_image() {
     --build-arg "COMMIT_SHA=$expected" \
     -f "$dockerfile" \
     -t "$image" \
+    "${HOST_PROXY_BUILD_ARGS[@]}" \
     "$context_path"
 }
 
@@ -192,6 +213,7 @@ build_enterprise_web_image() {
     --build-arg "COMMIT_SHA=$expected" \
     -f "$temp_context/web/Dockerfile" \
     -t "$image" \
+    "${HOST_PROXY_BUILD_ARGS[@]}" \
     "$temp_context"
 }
 
