@@ -56,7 +56,7 @@ fi
 
 HOST_PROXY_BUILD_ARGS=()
 if [[ "$USE_HOST_PROXY" == true ]]; then
-  if ! [[ -v HTTP_PROXY || -v HTTPS_PROXY || -v ALL_PROXY || -v http_proxy || -v https_proxy || -v all_proxy ]]; then
+  if ! [[ -n ${HTTP_PROXY:-} || -n ${HTTPS_PROXY:-} || -n ${ALL_PROXY:-} || -n ${http_proxy:-} || -n ${https_proxy:-} || -n ${all_proxy:-} ]]; then
     echo "-UseHostProxy requires a configured HTTP_PROXY, HTTPS_PROXY, or ALL_PROXY variable." >&2
     exit 1
   fi

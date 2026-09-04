@@ -233,7 +233,7 @@ fi
 printf 'ok - A01 API build uses repository-root context and candidate SHA\n'
 pass_count=$((pass_count + 1))
 
-# H01-H04: host proxy is explicit, passes names only, and never reaches outputs.
+# H01-H05: host proxy is explicit, passes names only, and never reaches outputs.
 fixture_proxy=$(new_fixture host-proxy)
 fake_defaults "$fixture_proxy"
 proxy_canary=$(mktemp "$tmp_root/proxy-canary.XXXXXX")
@@ -292,6 +292,17 @@ if [[ -f "$fixture_proxy/fake-docker.log" ]] && grep -Eq '^docker build ' "$fixt
   exit 1
 fi
 printf 'ok - H04 host proxy without a usable proxy fails before fake Docker build\n'
+pass_count=$((pass_count + 1))
+
+fixture_proxy=$(new_fixture host-proxy-empty)
+fake_defaults "$fixture_proxy"
+expect_fail "H05 host proxy with empty primary proxy fails before build" "requires a configured" "$fixture_proxy" \
+  env HTTP_PROXY= "$offline_script" -Version 1.16.0-enterprise -Mode rebuild -UseHostProxy
+if [[ -f "$fixture_proxy/fake-docker.log" ]] && grep -Eq '^docker build ' "$fixture_proxy/fake-docker.log"; then
+  printf 'not ok - H05 empty primary proxy failure must occur before fake Docker build\n' >&2
+  exit 1
+fi
+printf 'ok - H05 host proxy with empty primary proxy fails before fake Docker build\n'
 pass_count=$((pass_count + 1))
 
 if grep -Eq '(^|/)\.env($|\.)' "$fixture/web-context.txt" ||
