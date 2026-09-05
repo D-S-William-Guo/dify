@@ -1,10 +1,23 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-02（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁覆盖）
+更新时间：2026-09-05（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁与显式 host-proxy 覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-05 覆盖（优先于下方所有历史叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 本地候选 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 在本次状态提交前为 `19ca6b88a64c931cb18a8053498549426a8b7c7c`，工作区干净；恢复时当前 HEAD 必须包含该 SHA。本状态文档不自引用其后产生的 docs commit。 |
+| 显式 host-proxy 闭环 | Builder `8909ad41ce3f7d58f9469573ff14a93a9d0b24b3`、Code Review `72ae1451880e3ca86e3dc1a485a2e36458db72ed`、Fixer `393a229f62bb1cd1505c2d590d2f242a59d7ba7f` 与最终 Rereview `19ca6b88a64c931cb18a8053498549426a8b7c7c` 均已以 `git merge --ff-only` 集成。最终门禁为 **PASS**，P1-1 已关闭，剩余 P0/P1/P2 为 `0/0/0`。 |
+| 行为与证据 | `-UseHostProxy` 默认关闭；显式启用时 API/Web 构建使用 host network，并只按名称传递当前设置的标准代理 build args。主代理变量全部未设置或为空时在构建前失败。独立 fake-Docker 合成回归 **61/61 PASS**，六个主代理名称逐一为空的矩阵 **6/6 PASS**。 |
+| 真实运行边界 | 本阶段未调用真实 Docker daemon；真实 API/Web rebuild、依赖镜像补齐、离线镜像包/配置包生成、checker 与 SHA-256 仍为 `NOT_RUN`。后续只能在 Development / isolated rehearsal 范围内另行授权，并显式使用 `-UseHostProxy`；不得由此连接生产/灰度或处理其 secret/pattern。 |
+| 远端状态 | `origin/codex/enterprise-candidate-1.16.0-20260718` 仍精确为 `b10c34fd6afe1821857715a6830e5218855d9570`；本地候选在本次状态提交前领先四个 host-proxy 闭环提交。本状态 docs commit 尚未获准 push。 |
+| Skill checkpoint | `codex-personal-skills` 本地提交 `0c41cfdc469b1e7464a6e67a3dae8720dbcc38df` 已将宿主机 loopback proxy、Docker daemon proxy 与 BuildKit `RUN` proxy 的边界、redacted 诊断和禁止静默启用 host network 的规则固化到 `replay-dify-enterprise`；未 push。 |
+| 实例状态 | 当前保留五个 Claude Squad 实例：host-proxy Builder、Code Reviewer、Fixer、Rereviewer 均已完成、干净且提交已包含于本地候选；旧 `replay-116-p0-secret-plan-fixer-20260830` 仍为 dirty，必须保留。完整状态见第 11 节。 |
+| 下一授权门禁 | 先 push 本次状态 docs commit 并核验远端精确 SHA；随后对四个完成且干净的 host-proxy 实例进行 checkpoint cleanup 审计并单独授权删除。真实 Docker 离线构建必须在此后另立授权，且不得自动部署、连接生产/灰度或处理真实 secret/代理值。 |
 
 ### 2026-09-02 覆盖（优先于下方所有历史叙述）
 
@@ -648,10 +661,14 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-已按授权清理 8 个完成、干净且已合并的实例。以下唯一 dirty 实例必须继续保留：
+已按授权清理此前 8 个完成、干净且已合并的实例。2026-09-05 当前保留以下 5 个实例：
 
 | 实例 | 分支 checkpoint | 当前状态 |
 | --- | --- | --- |
 | `replay-116-p0-secret-plan-fixer-20260830` | `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 仍含未提交的旧全层扫描计划 diff；不得提交、合入、删除或继续修改。 |
+| `replay-116-host-proxy-builder-20260903` | `8909ad41ce3f7d58f9469573ff14a93a9d0b24b3` | 已完成、干净、提交已合入本地候选；远端 checkpoint 更新前保留。 |
+| `replay-116-host-proxy-code-reviewer-20260903` | `72ae1451880e3ca86e3dc1a485a2e36458db72ed` | 已完成、干净、Review 报告及其父提交已合入本地候选；远端 checkpoint 更新前保留。 |
+| `replay-116-host-proxy-fixer-20260904` | `393a229f62bb1cd1505c2d590d2f242a59d7ba7f` | 已完成、干净、P1-1 修复已合入本地候选；远端 checkpoint 更新前保留。 |
+| `replay-116-host-proxy-rereviewer-20260904` | `19ca6b88a64c931cb18a8053498549426a8b7c7c` | 已完成、干净、最终 Rereview 为 PASS 且已合入本地候选；远端 checkpoint 更新前保留。 |
 
-恢复时只读核验 `git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期仅存在上述 dirty Plan Fixer 实例、worktree、分支和 Agent 会话；不得以“latest HEAD”创建实例，也不得提交、合入、删除或继续修改该遗留 diff。
+恢复时只读核验 `git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期存在上述五个实例、worktree、分支和 Agent 会话；四个干净实例只能在本次候选 checkpoint 已 push 并精确核验后按单独授权清理，dirty Plan Fixer 不得提交、合入、删除或继续修改。不得以“latest HEAD”创建实例。
