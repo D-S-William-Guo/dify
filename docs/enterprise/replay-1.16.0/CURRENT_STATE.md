@@ -1,10 +1,20 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-05（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁与显式 host-proxy 覆盖）
+更新时间：2026-09-08（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁、显式 host-proxy 与实例清理覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-08 覆盖（优先于下方所有历史叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 候选与远端 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 与 `origin/codex/enterprise-candidate-1.16.0-20260718` 已精确核验为 `204267c59db4cd7e98cc30ae71f78253559aff7f`；本状态文档不自引用其后产生的 docs commit。 |
+| host-proxy 实例清理 | `replay-116-host-proxy-builder-20260903`、`replay-116-host-proxy-code-reviewer-20260903`、`replay-116-host-proxy-fixer-20260904`、`replay-116-host-proxy-rereviewer-20260904` 及各自 worktree、实例分支和 Agent 会话均已按授权清理。 |
+| 唯一保留实例 | 仅保留 dirty 的 `replay-116-p0-secret-plan-fixer-20260830`；其未提交旧全层扫描计划 diff、worktree、分支和 Agent 会话均未触碰，不得提交、合入、删除或继续修改。 |
+| 当前边界 | 未运行 Docker，未部署，未连接生产/灰度，未处理真实 secret、pattern 或代理值。显式 host-proxy 的真实 Development / isolated-rehearsal Docker 验证仍为 `NOT_RUN`。 |
+| 下一授权门禁 | 先单独授权 push 本次状态 docs commit 并核验新的远端精确 SHA；该 push 不授权删除剩余 dirty 实例、运行 Docker、部署、连接生产/灰度或处理任何真实 secret/代理值。 |
 
 ### 2026-09-05 覆盖（优先于下方所有历史叙述）
 
@@ -115,7 +125,7 @@ B0–B8 全链与 Phase D/F/G/H 运行验证均已闭环（最终总结见 `FINA
 3. 两个 Skill 已通过结构校验；Git 起点核验脚本已通过正向/负向测试；
 4. Claude Squad 源 checkpoint 为 `a1e35dc7436454cb53a584b8730166e23055ad4b`，并启用 `"governed_mode": true`；
 5. dirty worktree 下 `c`/`p`/`D` 会拒绝危险操作；`D` 会明确提示是否删除本地分支；
-6. B5 Plan/Contract 及 B5-A 起至 Final Reviewer 的已完成实例已按审计清理；B6–B8 各阶段实例（Phase D/F/G/H、reuse gate 等 11 个）也已完成历史批量清理；这不覆盖第 11 节列出的三个当前保留实例；
+6. B5 Plan/Contract 及 B5-A 起至 Final Reviewer 的已完成实例已按审计清理；B6–B8 各阶段实例（Phase D/F/G/H、reuse gate 等 11 个）也已完成历史批量清理；当前唯一保留实例见第 11 节；
 7. B0–B8 全链已关闭；重放 Builder 不再启动。
 
 Skill 路径：
@@ -661,14 +671,10 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-已按授权清理此前 8 个完成、干净且已合并的实例。2026-09-05 当前保留以下 5 个实例：
+已按授权清理此前 8 个最小离线门禁实例及 4 个 host-proxy 实例。2026-09-08 当前仅保留以下 1 个实例：
 
 | 实例 | 分支 checkpoint | 当前状态 |
 | --- | --- | --- |
 | `replay-116-p0-secret-plan-fixer-20260830` | `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 仍含未提交的旧全层扫描计划 diff；不得提交、合入、删除或继续修改。 |
-| `replay-116-host-proxy-builder-20260903` | `8909ad41ce3f7d58f9469573ff14a93a9d0b24b3` | 已完成、干净、提交已合入本地候选；远端 checkpoint 更新前保留。 |
-| `replay-116-host-proxy-code-reviewer-20260903` | `72ae1451880e3ca86e3dc1a485a2e36458db72ed` | 已完成、干净、Review 报告及其父提交已合入本地候选；远端 checkpoint 更新前保留。 |
-| `replay-116-host-proxy-fixer-20260904` | `393a229f62bb1cd1505c2d590d2f242a59d7ba7f` | 已完成、干净、P1-1 修复已合入本地候选；远端 checkpoint 更新前保留。 |
-| `replay-116-host-proxy-rereviewer-20260904` | `19ca6b88a64c931cb18a8053498549426a8b7c7c` | 已完成、干净、最终 Rereview 为 PASS 且已合入本地候选；远端 checkpoint 更新前保留。 |
 
-恢复时只读核验 `git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期存在上述五个实例、worktree、分支和 Agent 会话；四个干净实例只能在本次候选 checkpoint 已 push 并精确核验后按单独授权清理，dirty Plan Fixer 不得提交、合入、删除或继续修改。不得以“latest HEAD”创建实例。
+恢复时只读核验 Claude Squad 持久状态、`git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期仅存在上述 dirty Plan Fixer 的实例、worktree、分支和 Agent 会话；不得提交、合入、删除或继续修改。不得以“latest HEAD”创建实例。
