@@ -313,9 +313,9 @@ try:
                 if tag not in manifest_images or manifest_images[tag]["id"] != f"sha256:{config_digest}":
                     raise ValueError(f"Docker-save Config digest does not bind release manifest ID: {tag}")
                 saved_tags.append(tag)
-        if saved_tags != image_names:
-            raise ValueError("Docker-save RepoTags must uniquely match image-list order")
-        passed("Docker-save top-level metadata binds ordered tags to release-manifest image IDs")
+        if len(saved_tags) != len(set(saved_tags)) or set(saved_tags) != set(image_names):
+            raise ValueError("Docker-save RepoTags must uniquely match the image-list tag set")
+        passed("Docker-save top-level metadata binds unique tags to release-manifest image IDs")
 except (OSError, UnicodeError, json.JSONDecodeError, tarfile.TarError, ValueError) as exc:
     failed(f"image bundle metadata validation failed: {exc}")
 

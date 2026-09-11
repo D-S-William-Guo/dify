@@ -180,6 +180,41 @@ json.dump(data, open(output, "w", encoding="utf-8"), indent=2)
 PY
 }
 
+mutate_save_manifest() {
+  local source=$1 output=$2 mutation=$3
+  python3 - "$source" "$output" "$mutation" <<'PY'
+import io
+import json
+import sys
+import tarfile
+
+source, output, mutation = sys.argv[1:]
+with tarfile.open(source, "r") as archive:
+    entries = []
+    for member in archive.getmembers():
+        data = archive.extractfile(member).read() if member.isreg() else b""
+        entries.append((member, data))
+
+for index, (member, data) in enumerate(entries):
+    if member.name != "manifest.json":
+        continue
+    records = json.loads(data)
+    if mutation == "reorder": records.reverse()
+    elif mutation == "missing": records.pop()
+    elif mutation == "duplicate": records[0]["RepoTags"].append(records[0]["RepoTags"][0])
+    elif mutation == "extra": records[0]["RepoTags"].append("extra.invalid:1")
+    else: raise SystemExit(f"unknown mutation: {mutation}")
+    data = json.dumps(records).encode() + b"\n"
+    member.size = len(data)
+    entries[index] = (member, data)
+    break
+
+with tarfile.open(output, "w") as archive:
+    for member, data in entries:
+        archive.addfile(member, io.BytesIO(data) if member.isreg() else None)
+PY
+}
+
 # P02: convenience modes cannot emit a normal release package.
 fixture=$(new_fixture p02-modes)
 fake_defaults "$fixture"
@@ -438,6 +473,25 @@ build_release "M06 Docker 29 synthetic bundle builds" "$fixture_m06"
 build_config "M06 Docker 29 config package builds" "$fixture_m06"
 mapfile -t m06_args < <(check_args)
 expect_pass "M06 Docker 29 Config metadata binds" "$fixture_m06" "$check_script" "${m06_args[@]}"
+
+# P1-OFFLINE-01: Docker-save record order is not contractual, but tags are exact and unique.
+for mutation in reorder missing duplicate extra; do
+  bundle="$fixture_m06/dist/offline/bundle-$mutation.tar"
+  mutate_save_manifest "$fixture_m06/dist/offline/dify-enterprise-offline-1.16.0-enterprise.tar" "$bundle" "$mutation"
+  if [[ "$mutation" == reorder ]]; then
+    expect_pass "P1-OFFLINE-01 reordered Docker-save records pass" "$fixture_m06" "$check_script" \
+      -Archive "dist/offline/bundle-$mutation.tar" \
+      -ConfigArchive dist/offline/dify-enterprise-config-1.16.0-enterprise.tar.gz \
+      -Manifest dist/offline/manifest-1.16.0-enterprise.json \
+      -Images dist/offline/images-1.16.0-enterprise.txt
+  else
+    expect_fail "P1-OFFLINE-01 $mutation Docker-save tags fail" "image bundle metadata validation failed" "$fixture_m06" "$check_script" \
+      -Archive "dist/offline/bundle-$mutation.tar" \
+      -ConfigArchive dist/offline/dify-enterprise-config-1.16.0-enterprise.tar.gz \
+      -Manifest dist/offline/manifest-1.16.0-enterprise.json \
+      -Images dist/offline/images-1.16.0-enterprise.txt
+  fi
+done
 
 # M07: every observed required-metadata defect is FAIL, never NOT_RUN.
 for mutation in missing duplicate nonregular malformed oversized inconsistent; do
