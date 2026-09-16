@@ -1,10 +1,24 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-08（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁、显式 host-proxy 与实例清理覆盖）
+更新时间：2026-09-16（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁、显式 host-proxy、Docker-save order 修复与真实离线产物 checker 覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-16 覆盖（优先于下方所有历史叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 本地候选 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 在本状态文档提交前精确为 `1699b04a3c3873f287dcaaa5ee49f362dab83c16`，工作区干净；恢复时当前 HEAD 必须包含该 SHA。本文档不自引用其后产生的 docs commit。 |
+| 远端状态 | `origin/codex/enterprise-candidate-1.16.0-20260718` 仍精确为 `acee5da413d573f09074ed238158021e90114058`；本地候选在本状态文档提交前领先两个已验证提交。未授权 push。 |
+| Docker-save order 修复 | Fixer `8a042ce262ad849feb13b04f77ba3b7812907dd4` 与最终 Rereview `1699b04a3c3873f287dcaaa5ee49f362dab83c16` 已以 `git merge --ff-only` 集成。Rereview 结论为 **PASS**，合成回归 **65/65 PASS**，无 P0/P1/P2 finding；合法 Docker-save `manifest.json` 记录重排不再被误拒，缺失、重复或额外标签仍 fail-closed。最终报告为 `P0_DOCKER_SAVE_ORDER_REREVIEW_2026-09-11.md`。 |
+| 真实最小 checker | Development / isolated rehearsal 产物来源 checkpoint 为 `acee5da413d573f09074ed238158021e90114058`。使用当前修复后 checker，并将 `OFFLINE_GATE_REPO_ROOT` 显式指向该 checkpoint 的只读 clean clone `/tmp/replay-116-config-acee5da4`，对 `dist/offline/rehearsal-acee5da4` 真实镜像 tar/配置包/manifest/images 执行门禁：**5 PASS / 0 FAIL / 0 NOT_RUN**。本步未调用 Docker daemon。 |
+| 身份警告 | 本地构建的 `dify-api-enterprise:1.16.0-enterprise` 与 `dify-web-enterprise:1.16.0-enterprise` 无 registry RepoDigest；checker 明确警告后使用 manifest 中不可变 image ID 与 Docker-save Config digest 绑定 bundle 身份。这是已接受的本地第一方镜像 provenance 边界，不是 checker 失败。 |
+| 产物 SHA-256 | 镜像 tar `7d630ad5d2a771e2b90ddfcda0860d65d27fce0097e26f96cb49a00a6519cbf7`；配置包 `4099fe19938278843fb7669d1a1dd779dd7f5ce66ce415cf039aa432f95e04d5`；manifest `25f4498da5c7345faf171b477151c53bfeaa8b60066865f2b59b39611859a51e`；images `5fe37b7903925458880230bef8e677e72dc942f78dcac9beaf283d15151256b8`。哈希计算前后四个 rehearsal 文件的大小与 mtime 不变。 |
+| 实例状态 | 当前保留三个 Claude Squad 实例：`replay-116-p0-secret-plan-fixer-20260830` 仍为 dirty，其被取代的旧全层扫描计划不得提交或合入；`replay-116-docker-save-order-fixer-20260910` 与 `replay-116-docker-save-order-rereviewer-20260911` 已完成且 worktree 干净。本阶段未授权删除任何实例。 |
+| 剩余发布边界 | 真离线 Docker host 的 load + boot、Protected release audit、镜像签名/审计、独立环境部署演练与生产/灰度操作仍为 `NOT_RUN` 或未授权。本次验证未读取或处理任何生产/灰度 secret/pattern。 |
+| 下一授权门禁 | 先单独授权 push 本次状态 docs commit 并核验新的远端精确 SHA；远端 checkpoint 核验后，再对两个已完成干净实例执行 cleanup 审计并单独授权删除。不得删除 dirty 的 P0 Plan Fixer。 |
 
 ### 2026-09-08 覆盖（优先于下方所有历史叙述）
 
