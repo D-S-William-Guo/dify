@@ -21,12 +21,15 @@ The fix:
    too -- backwards-compatible with the rows already in production.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from dify_vdb_weaviate import weaviate_vector as weaviate_vector_module
 from dify_vdb_weaviate.weaviate_vector import WeaviateVector
 
 from core.rag.models.document import Document
+
+FRESH_DOC_ID = "9b4cfd4e-4d4b-4b4f-92d6-a6c51f0b8bc1"
+LEGACY_DOC_ID = "3a7d19f8-1cc4-4d50-b46b-597e4e1da3f2"
 
 
 class _FakeUnexpectedStatusCodeError(Exception):
@@ -88,6 +91,18 @@ def _collection(client: MagicMock) -> MagicMock:
 class TestGetUuidsUsesDocId:
     """_get_uuids must return one id per input document, positionally aligned."""
 
+    def test_add_texts_uses_valid_doc_id_as_object_uuid(self) -> None:
+        v, client = _make_vector()
+        col = client.collections.use.return_value
+        batch = col.batch.dynamic.return_value.__enter__.return_value
+        document = Document(page_content="x", metadata={"doc_id": FRESH_DOC_ID})
+
+        ids = v.add_texts([document], [[0.1]])
+
+        assert ids == [FRESH_DOC_ID]
+        batch.add_object.assert_called_once()
+        assert batch.add_object.call_args.kwargs["uuid"] == FRESH_DOC_ID
+
     def test_doc_id_passes_through(self) -> None:
         v, _client = _make_vector()
         docs = [Document(page_content="x", metadata={"doc_id": "doc-aaa-1"})]
@@ -147,7 +162,7 @@ class TestDeleteByIdsBackwardCompatible:
         col.delete_by_id.side_effect = _FakeUnexpectedStatusCodeError(404)
 
         with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError):
-            v.delete_by_ids(["doc-aaa-1"])
+            v.delete_by_ids([LEGACY_DOC_ID])
 
         # Best-effort direct delete ran for each id.
         assert col.delete_by_id.call_count == 1
@@ -155,9 +170,9 @@ class TestDeleteByIdsBackwardCompatible:
         col.delete_many.assert_called_once()
         kwargs = col.delete_many.call_args.kwargs
         where = kwargs["where"]
-        # Filter.by_property("doc_id").contains_any(["doc-aaa-1"])
+        # Filter.by_property("doc_id").contains_any([LEGACY_DOC_ID])
         assert "doc_id" in str(where)
-        assert "doc-aaa-1" in str(where)
+        assert LEGACY_DOC_ID in str(where)
 
     def test_fresh_object_is_reaped_by_direct_delete(self) -> None:
         """A fresh object whose Weaviate UUID equals the supplied
@@ -167,16 +182,44 @@ class TestDeleteByIdsBackwardCompatible:
         v, client = _make_vector()
         col = _collection(client)
 
-        v.delete_by_ids(["doc-aaa-1"])
+        v.delete_by_ids([FRESH_DOC_ID])
 
-        col.delete_by_id.assert_called_once_with("doc-aaa-1")
+        col.delete_by_id.assert_called_once_with(FRESH_DOC_ID)
         # The metadata filter always runs, but it's a no-op when the row
         # is already gone (Weaviate's ``delete_many`` returns an empty
         # result set against the cleared UUID).
         col.delete_many.assert_called_once()
         where = col.delete_many.call_args.kwargs["where"]
         assert "doc_id" in str(where)
-        assert "doc-aaa-1" in str(where)
+        assert FRESH_DOC_ID in str(where)
+
+    def test_mixed_duplicate_ids_keep_direct_and_compatibility_cleanup_bounded(self) -> None:
+        v, client = _make_vector()
+        col = _collection(client)
+        ids = [FRESH_DOC_ID, LEGACY_DOC_ID, FRESH_DOC_ID]
+        col.delete_by_id.side_effect = [None, _FakeUnexpectedStatusCodeError(404), None]
+        filter_builder = MagicMock()
+        property_filter = filter_builder.by_property.return_value
+
+        with (
+            patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError),
+            patch.object(weaviate_vector_module, "Filter", filter_builder),
+        ):
+            v.delete_by_ids(ids)
+
+        assert col.delete_by_id.call_args_list == [call(FRESH_DOC_ID), call(LEGACY_DOC_ID), call(FRESH_DOC_ID)]
+        filter_builder.by_property.assert_called_once_with("doc_id")
+        property_filter.contains_any.assert_called_once_with(ids)
+        col.delete_many.assert_called_once_with(where=property_filter.contains_any.return_value)
+
+    def test_empty_ids_do_not_issue_deletes(self) -> None:
+        v, client = _make_vector()
+        col = _collection(client)
+
+        v.delete_by_ids([])
+
+        col.delete_by_id.assert_not_called()
+        col.delete_many.assert_not_called()
 
     def test_non_404_error_propagates(self) -> None:
         """A non-404 (e.g. 500) error on direct delete must propagate,
@@ -192,7 +235,7 @@ class TestDeleteByIdsBackwardCompatible:
             patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError),
             pytest.raises(_FakeUnexpectedStatusCodeError),
         ):
-            v.delete_by_ids(["doc-aaa-1"])
+            v.delete_by_ids([FRESH_DOC_ID])
 
     def test_delete_many_404_is_swallowed(self) -> None:
         """The metadata-filter 404 (column doesn't exist) is also
@@ -205,4 +248,19 @@ class TestDeleteByIdsBackwardCompatible:
 
         # Neither path raises.
         with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError):
-            v.delete_by_ids(["doc-aaa-1"])
+            v.delete_by_ids([LEGACY_DOC_ID])
+
+    def test_delete_many_non_404_error_propagates(self) -> None:
+        import pytest
+
+        v, client = _make_vector()
+        col = _collection(client)
+        col.delete_many.side_effect = _FakeUnexpectedStatusCodeError(500)
+
+        with (
+            patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", _FakeUnexpectedStatusCodeError),
+            pytest.raises(_FakeUnexpectedStatusCodeError),
+        ):
+            v.delete_by_ids([FRESH_DOC_ID])
+
+        col.delete_by_id.assert_called_once_with(FRESH_DOC_ID)
