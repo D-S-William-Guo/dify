@@ -1,10 +1,24 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-16（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁、显式 host-proxy、Docker-save order 修复与真实离线产物 checker 覆盖）
+更新时间：2026-09-22（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁、显式 host-proxy、Docker-save order 修复、真实离线产物 checker 与 Weaviate document-ID 修复覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-22 覆盖（优先于下方所有历史叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 本地候选 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 在本次状态文档提交前精确为 `fc99e9a591bb25c2ed738c5c21f2399653d225ed`，工作区干净；恢复时当前 HEAD 必须包含该 SHA。本文档不自引用其后产生的 docs commit。 |
+| 远端状态 | `origin/codex/enterprise-candidate-1.16.0-20260718` 仍为 `a3e581167af99a8747da4febf248f010629609ac`；本地候选领先 4 个 Weaviate document-ID 闭环提交。本次状态 docs commit 仅获准本地创建，尚未授权 push。 |
+| Weaviate document-ID 修复 | 回放官方修复提交 `216180c7fd373c73109614e12149efc6debfc557` 后，Builder `69191b80cebb20336b764d3ca22ae19e29c1c79e`、Code Review `6caf525f9b3d35c3f00b929a4e4a100c904c6b15`、Fixer `595b5912577139d8735226bdfdb3180c8474c2b9` 与最终 Rereview `fc99e9a591bb25c2ed738c5c21f2399653d225ed` 已以 `git merge --ff-only` 集成。最终报告 `P0_WEAVIATE_DOC_ID_REREVIEW_2026-09-22.md` 为 **PASS**，已接受 P1 全部关闭，无新 P0/P1/P2 finding。 |
+| 回归证据 | 聚焦 `test_doc_id_cleanup_41714.py` 回归 **11/11 PASS**；Weaviate provider 全套单元回归 **51/51 PASS**；Ruff check 与 format-check 均通过。覆盖 `add_texts` 实际 UUID 传递、混合/重复/空 ID，以及 `delete_many` 非 404 异常传播。 |
+| 运行验证边界 | 本轮仅完成代码与单元回归。Development / isolated rehearsal 的真实 Weaviate 验证、现有历史文档重索引及有窗体 Playwright 召回均为 **NOT_RUN**；不得以单元测试替代这些运行门禁。 |
+| 实例状态 | 当前保留 5 个 Claude Squad 实例：4 个 Weaviate Builder/Code Reviewer/Fixer/Rereviewer 已完成、干净且提交已合入本地候选；旧 `replay-116-p0-secret-plan-fixer-20260830` 仍为 dirty，必须保留。精确清单见第 11 节。 |
+| 清理门禁 | 当前为 `CHECKPOINT_PUSH_REQUIRED`：远端尚未包含 `fc99e9a591bb25c2ed738c5c21f2399653d225ed`，不得删除 4 个已完成 Weaviate 实例；dirty 的 P0 Plan Fixer 无论如何不得删除或修改。 |
+| 本轮操作边界 | 未运行 Docker、未修改 PostgreSQL/Weaviate、未重索引、未部署、未连接生产/灰度，也未删除或修改任何实例。 |
+| 下一授权门禁 | 单独授权 push 本次状态 docs commit，并核验新的远端精确 SHA。远端 checkpoint 核验后再审计并单独授权清理 4 个已完成 Weaviate 实例；Development API 镜像重建、有限重索引与有窗体召回验证须另立授权。 |
 
 ### 2026-09-16 覆盖（优先于下方所有历史叙述）
 
@@ -688,10 +702,14 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-已按授权清理此前 8 个最小离线门禁实例及 4 个 host-proxy 实例。2026-09-08 当前仅保留以下 1 个实例：
+已按授权清理此前 8 个最小离线门禁实例、4 个 host-proxy 实例及 2 个 Docker-save order 实例。2026-09-22 当前保留以下 5 个实例：
 
 | 实例 | 分支 checkpoint | 当前状态 |
 | --- | --- | --- |
 | `replay-116-p0-secret-plan-fixer-20260830` | `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 仍含未提交的旧全层扫描计划 diff；不得提交、合入、删除或继续修改。 |
+| `replay-116-weaviate-doc-id-builder-20260918` | `69191b80cebb20336b764d3ca22ae19e29c1c79e` | 已完成、干净并合入本地候选；远端 checkpoint 核验前不得删除。 |
+| `replay-116-weaviate-doc-id-code-reviewer-20260920` | `6caf525f9b3d35c3f00b929a4e4a100c904c6b15` | 已完成、干净并合入本地候选；远端 checkpoint 核验前不得删除。 |
+| `replay-116-weaviate-doc-id-fixer-20260921` | `595b5912577139d8735226bdfdb3180c8474c2b9` | 已完成、干净并合入本地候选；远端 checkpoint 核验前不得删除。 |
+| `replay-116-weaviate-doc-id-rereviewer-20260922` | `fc99e9a591bb25c2ed738c5c21f2399653d225ed` | 最终 Rereview PASS；已完成、干净并合入本地候选；远端 checkpoint 核验前不得删除。 |
 
-恢复时只读核验 Claude Squad 持久状态、`git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期仅存在上述 dirty Plan Fixer 的实例、worktree、分支和 Agent 会话；不得提交、合入、删除或继续修改。不得以“latest HEAD”创建实例。
+恢复时只读核验 Claude Squad 持久状态、`git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期存在上述 5 个实例及对应 worktree、分支和 Agent 会话；controller 应为 0。远端核验包含当前 checkpoint 前，不得删除 4 个已完成 Weaviate 实例；旧 dirty Plan Fixer 不得提交、合入、删除或继续修改。不得以“latest HEAD”创建实例。
