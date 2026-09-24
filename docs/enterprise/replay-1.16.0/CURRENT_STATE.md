@@ -1,10 +1,22 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-22（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁、显式 host-proxy、Docker-save order 修复、真实离线产物 checker 与 Weaviate document-ID 修复覆盖）
+更新时间：2026-09-24（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁、显式 host-proxy、Docker-save order 修复、真实离线产物 checker、Weaviate document-ID 修复与实例清理覆盖）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-24 覆盖（优先于下方所有历史叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 候选与远端 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 与 `origin/codex/enterprise-candidate-1.16.0-20260718` 已精确核验为 `0cc33fb5e787a9c0d158558d3a0e8df8dfc39112`，工作区干净。本文档不自引用其后产生的 docs commit。 |
+| Weaviate 实例清理 | `replay-116-weaviate-doc-id-builder-20260918`、`replay-116-weaviate-doc-id-code-reviewer-20260920`、`replay-116-weaviate-doc-id-fixer-20260921`、`replay-116-weaviate-doc-id-rereviewer-20260922` 及各自 Agent 会话、隔离 worktree 和实例分支均已按授权清理。 |
+| 孤立 Reviewer 恢复 | Code Reviewer 的历史 `repo_path` 指向已删除的 Builder worktree，首次删除被安全停止。按单独授权临时创建仅指向主仓库的符号链接，通过唯一 controller 完成 Claude Squad 治理删除；controller 正常退出后该链接已删除，路径核验无残留，未编辑 `state.json`。 |
+| 旧 P0 Plan Fixer | 人工确认旧全层 secret 扫描计划已被最小离线门禁取代。删除前核验其唯一未提交修改为 `P0_SECRET_SCAN_ARCHITECT_2026-08-28.md`、无候选分支之外的提交；该 diff 已按授权永久丢弃，实例、Agent 会话、dirty worktree 和实例分支均已清理。 |
+| Claude Squad 最终状态 | 持久实例数 0；额外 worktree 0；`ctyun/replay-116-*` 实例分支 0；`claudesquad_replay-116-*` Agent 会话 0；`controller_count=0`，门禁 PASS。 |
+| 运行验证边界 | Development / isolated rehearsal 的真实 Weaviate 验证、现有历史文档重索引及有窗体 Playwright 召回仍为 **NOT_RUN**。本轮未运行 Docker、未修改 PostgreSQL/Weaviate、未重索引、未部署、未连接生产/灰度。 |
+| 下一授权门禁 | 单独授权 push 本次状态 docs commit，并核验新的远端精确 SHA。随后再单独授权 Development API 镜像重建、有限重索引与有窗体 Playwright 召回验证；不得由本次 docs 提交推定任何运行或部署权限。 |
 
 ### 2026-09-22 覆盖（优先于下方所有历史叙述）
 
@@ -702,14 +714,6 @@ git merge --ff-only ctyun/<instance-branch>
 
 ## 11. 当前实例状态
 
-已按授权清理此前 8 个最小离线门禁实例、4 个 host-proxy 实例及 2 个 Docker-save order 实例。2026-09-22 当前保留以下 5 个实例：
+已按授权清理此前全部 replay 实例，包括最小离线门禁、host-proxy、Docker-save order、Weaviate document-ID 角色链以及被最小离线门禁取代的旧 P0 Plan Fixer。2026-09-24 当前不存在任何 Claude Squad 实例、额外 worktree、实例分支或 Agent 会话。
 
-| 实例 | 分支 checkpoint | 当前状态 |
-| --- | --- | --- |
-| `replay-116-p0-secret-plan-fixer-20260830` | `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3` | 仍含未提交的旧全层扫描计划 diff；不得提交、合入、删除或继续修改。 |
-| `replay-116-weaviate-doc-id-builder-20260918` | `69191b80cebb20336b764d3ca22ae19e29c1c79e` | 已完成、干净并合入本地候选；远端 checkpoint 核验前不得删除。 |
-| `replay-116-weaviate-doc-id-code-reviewer-20260920` | `6caf525f9b3d35c3f00b929a4e4a100c904c6b15` | 已完成、干净并合入本地候选；远端 checkpoint 核验前不得删除。 |
-| `replay-116-weaviate-doc-id-fixer-20260921` | `595b5912577139d8735226bdfdb3180c8474c2b9` | 已完成、干净并合入本地候选；远端 checkpoint 核验前不得删除。 |
-| `replay-116-weaviate-doc-id-rereviewer-20260922` | `fc99e9a591bb25c2ed738c5c21f2399653d225ed` | 最终 Rereview PASS；已完成、干净并合入本地候选；远端 checkpoint 核验前不得删除。 |
-
-恢复时只读核验 Claude Squad 持久状态、`git worktree list`、`git branch --list 'ctyun/replay-116-*'`、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期存在上述 5 个实例及对应 worktree、分支和 Agent 会话；controller 应为 0。远端核验包含当前 checkpoint 前，不得删除 4 个已完成 Weaviate 实例；旧 dirty Plan Fixer 不得提交、合入、删除或继续修改。不得以“latest HEAD”创建实例。
+恢复时只读核验 Claude Squad 持久状态、`git worktree list`、`git branch --list 'ctyun/replay-116-*'`、`tmux` Agent 会话、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期实例数、额外 worktree、实例分支、Agent 会话与 controller 均为 0；不得以“latest HEAD”创建实例。
