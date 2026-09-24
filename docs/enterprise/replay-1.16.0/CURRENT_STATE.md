@@ -1,10 +1,23 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-24（Asia/Shanghai；2026-08-14 的 B0–B8 历史快照加最小离线门禁、显式 host-proxy、Docker-save order 修复、真实离线产物 checker、Weaviate document-ID 修复与实例清理覆盖）
+更新时间：2026-09-24（Asia/Shanghai；以下最新覆盖还包含本机 API 镜像切换、两文档重索引及有窗体召回验证）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-24 本机运行验证覆盖（优先于下方同日及更早叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| Git 基准 | `codex/enterprise-candidate-1.16.0-20260718` 与本地 `origin/codex/enterprise-candidate-1.16.0-20260718` 在本次 docs 提交前均为 `92b07e5de2020a6fa0859c13e6891f0bc79001b6`，工作区干净；恢复时当前 HEAD 须包含该 checkpoint。本文不自引用即将产生的 docs commit。 |
+| 本机 API 切换 | Development / isolated rehearsal 的 API、worker、worker_beat、api_websocket 四个运行容器已切换到从该 checkpoint 重建的 API 镜像 `sha256:7bd8bf778739f5b7902c6632066a77523927d4ca8e92abf7b4ecb33ed931848d`，其中已核对 Weaviate document-ID 修复。切换沿用现有配置与挂载，以临时 Compose 覆盖设 `MIGRATION_ENABLED=false`；未执行数据库迁移。API 健康检查通过，`/console/api/setup` 经容器及本机 nginx 均返回 200。Web、PostgreSQL、Weaviate 容器未切换。 |
+| 本机回退依据 | 切换前 API 镜像保留为 `dify-api-enterprise:rollback-pre-weaviate-20260924`，ID `sha256:0d7ff7335b7b855a2361c8676975efb791bf41e33062b2714ce03a2740951195`；既有本机冷备未改动。该冷备早于后续知识库索引变更，整库恢复会丢失这些本机变更，不可当作无损回退。 |
+| 历史知识库重索引 | 仅针对知识库 `947ef84b-81e2-44db-a45a-92ae9458417d` 的两份历史文档（2 + 61 个 segment），在独占 collection 归属复核后删除该单一 collection，并通过 Dify 一次任务重新索引成功；未手写向量或重试。PostgreSQL 当前 segment ID **63/63** 与 Weaviate `doc_id`/对象 UUID 严格对应：缺失 0、多余 0、`doc_id` 与对象 UUID 不符 0、越界对象 0。两份文档均保持 completed、enabled、未归档。 |
+| 有窗体召回 | 有窗体 Playwright 在本机页面进入“知识库 → 召回测试”，两份文档显示可用。`智能体平台` 返回 7 条（0.81–0.53）；`AI` 返回 3 条（0.55–0.50）；`河北电信AI算力` 返回 1 条（0.72）。三次浏览器 `hit-testing` 请求均为 HTTP 200，页面均显示对应结果；此前同三条查询为 0 条。详见本机忽略目录 `output/playwright/replay-116-weaviate-20260924/RESULTS.md`，浏览器快照不提交。 |
+| 已知未关闭项 | 本次 Playwright 会话存在**未分类浏览器控制台错误**；目前仅能确认三条召回请求与可见结果通过，不能据此宣称控制台无错误或完整应用回归通过。 |
+| 离线包与发布边界 | `dist/offline/rehearsal-acee5da4` 仍是早于此 Weaviate 修复的旧产物，**尚未按 `92b07e5…` 重建**；其既有 checker 结果不能代表当前 API 镜像的最终发布包。最终离线重建/checker、干净离线主机 load + boot、受保护发布审计及生产/灰度部署均未完成或未授权。 |
+| 下一门禁 | 本次只在本地提交此状态文档，不 push、不运行 Docker、不再重索引或改动数据。建议先单独授权 push 精确 docs checkpoint；之后再单独授权当前代码的最终离线包重建与验证，不能把本机召回通过等同于可发布。 |
 
 ### 2026-09-24 覆盖（优先于下方所有历史叙述）
 
