@@ -1,10 +1,22 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-28（Asia/Shanghai；以下最新覆盖包含本机真实离线重建及最小 checker）
+更新时间：2026-09-28（Asia/Shanghai；以下最新覆盖包含本机隔离 load + boot 与合成 JavaScript 验证）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-28 本机隔离 load + boot 覆盖（优先于下方历史叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| 基准与环境 | Development / isolated rehearsal；本次 docs 提交前，候选分支与本地 `origin/codex/enterprise-candidate-1.16.0-20260718` 均为 `9b59e333a9288d79170feac971e6b23e5611a709`，工作区干净。离线包产物来源提交为 `1cc8e60ab3c780a6808482e528a14f2083602058`；本文不自引用后续 docs commit。 |
+| 隔离范围 | 新 Compose 项目 `replay116lb9b59`，独立空挂载目录位于 `/home/ctyun/BigData/.system-data/tmp/replay116-loadboot-9b59e333`，仅 `127.0.0.1:39301` 发布 nginx。预检无既有项目容器、卷、网络或端口冲突；未复制历史数据、现有开发 `.env` 或运行配置，未修改原有开发服务与数据。隔离项目当前保留运行，未获清理授权。 |
+| load 与首次 boot | `dist/offline/rehearsal-1cc8e60a` 四项产物先经 SHA-256 核对；`docker load` 成功加载 12 个镜像。直接用空挂载目录执行 `compose up --wait` **失败**：sandbox 的空 `/conf` 挂载缺少 `config.yaml`。因此不能宣称离线包自身支持无需初始化的空卷启动；sandbox 运行配置是该演练的明确前置条件。 |
+| 配置补齐与基础冒烟 | 仅在隔离项目把仓库跟踪的 `docker/volumes/sandbox/conf/config.yaml.example` 用作开发示例配置，并将其 key 与隔离 `.env.example` 对账；未使用原有运行栈配置。随后隔离 sandbox、API、数据库、Redis 等达到健康状态；Web `/install` 和 API `/console/api/setup` 均为 HTTP 200。首页 307 跳转到 `/install`，符合空数据环境。未安装应用、登录或迁移历史数据。 |
+| 合成 JavaScript | 示例配置的 `allowed_syscalls` 为 `[1, 2, 3]` 时，两次相同的 `console.log(6 * 7)` 请求均由 sandbox 日志报 `signal: bad system call`，HTTP 200 不能代表执行成功。将**仅隔离项目**的该列表备份后置空、仅重启其 sandbox，单次同任务返回 `42\n`、错误字段为空，sandbox 保持健康。该对照指向示例列表限制；具体被阻断的 syscall 未识别，不得据此推定所有代码任务或生产配置均通过。首次 Node 压缩包缺失提示来自解压后重启，不是这次 `bad system call` 的直接证据。 |
+| 未完成项与证据 | 本机忽略目录 `output/offline/rehearsal-1cc8e60a/loadboot/RESULTS.md` 保存顺序、脱敏结果和隔离配置备份路径。完整应用/浏览器/历史数据升级验证、真正无外网主机的 load + boot、受保护发布审计、生产/灰度部署均**未由本次验证完成**。是否修改仓库示例或发布指导仍待单独决策；本次只记录事实，不改代码、镜像或离线产物。 |
+| 本轮门禁 | 仅更新并本地提交本文，不 push、不运行 Docker、不修改隔离或原有服务与数据。提交后先核对新 HEAD 与 origin 差异；任何后续 push、测试、配置更改、实例清理或部署须另行授权。 |
 
 ### 2026-09-28 本机离线包覆盖（优先于下方所有历史叙述）
 
