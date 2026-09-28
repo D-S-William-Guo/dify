@@ -1,10 +1,22 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-24（Asia/Shanghai；以下最新覆盖还包含本机 API 镜像切换、两文档重索引及有窗体召回验证）
+更新时间：2026-09-28（Asia/Shanghai；以下最新覆盖包含本机真实离线重建及最小 checker）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-09-28 本机离线包覆盖（优先于下方所有历史叙述）
+
+| 项目 | 当前值 |
+| --- | --- |
+| Git 与环境 | Development / isolated rehearsal；本次 docs 提交前，候选分支与本地 `origin/codex/enterprise-candidate-1.16.0-20260718` 均为 `1cc8e60ab3c780a6808482e528a14f2083602058`，工作区干净。恢复时当前 HEAD 须包含该 checkpoint；本文不自引用后续 docs commit。 |
+| 真实重建 | 在上述精确 SHA 的本机干净隔离 clone 中，使用开发机现有 `docker/.env`，显式 `-Mode rebuild -UseHostProxy` 重建 API/Web 镜像及 `1.16.0-enterprise` 离线镜像包；Compose 依赖镜像全部复用本地，无 pull。被忽略且供运行中 nginx 挂载的 `docker/nginx/conf.d/default.conf` 未修改、未打入配置包。成功后临时 clone 已清理，旧产物未覆盖。 |
+| 新镜像与运行边界 | 新 API 镜像 ID `sha256:8d4ac68ef576d951a51dd941a51f09f91f91ed5372de241e08567e6438fc2319`；新 Web 镜像 ID `sha256:4eb9291e71ef94681c1bddd4863a93737e701273bcfc9f8698cfa87e9b0782a2`。现有 API 系列和 Web 运行容器仍使用切换前的镜像 ID，本轮未启动、停止或切换服务。 |
+| 真实最小门禁 | 新产物目录 `dist/offline/rehearsal-1cc8e60a/` 含镜像 tar、配置包、manifest、images 清单四个文件；隔离 clone 产物与最终副本逐字节一致。真实 checker 对 clone 产物及最终 tar/配置包均为 **5 PASS / 0 FAIL / 0 NOT_RUN**。最终四文件 SHA-256 于 2026-09-28 再次只读计算，与构建记录一致。忽略的本机证据为 `output/offline/rehearsal-1cc8e60a/RESULTS.md`。 |
+| 产物 SHA-256 | 镜像 tar `73c690397a52372f22298c6af7c98fb1c28c885921c66eaf7e58da22366b8380`；配置包 `5c94fba3fa93b80328e8e0c68cca41d6affee4a81fd811976a8420023d3e07c7`；manifest `31492356182f2984e08b2e772baaac57b5e45651593ae7a61613acb9a7ec8644`；images 清单 `5fe37b7903925458880230bef8e677e72dc942f78dcac9beaf283d15151256b8`。 |
+| 警告与未验证项 | API/Web 无 registry RepoDigest；checker 明示警告后以不可变 image ID 绑定 Docker-save 身份。构建日志另有 API Dockerfile `NODESOURCE_KEY_FPR` 启发式警告、Next.js 动态路由静态渲染提示，以及 Vinext SVG URL 未解析和大 chunk 提示；这些不等同于已完成新 Web 运行验证。新包在干净隔离主机上的 **load + boot 为 NOT_RUN**，受保护发布审计、生产/灰度部署均未授权。浏览器控制台错误仍未分类。 |
+| 下一门禁 | 本次仅本地提交状态文档，不 push、不调用 Docker、不改动数据库或卷。建议单独授权 push 精确 docs checkpoint；后续 load + boot 的目标环境、数据/卷范围和回退方式须另行明确并授权。 |
 
 ### 2026-09-24 本机运行验证覆盖（优先于下方同日及更早叙述）
 
