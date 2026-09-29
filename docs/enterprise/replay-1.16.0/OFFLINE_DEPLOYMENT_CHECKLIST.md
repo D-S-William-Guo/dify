@@ -1,10 +1,12 @@
 # 离线生产环境部署检查清单
 
-更新时间：2026-08-14（Asia/Shanghai）
+更新时间：2026-09-29（Asia/Shanghai）
 
 ## 目的
 
-确认离线生产主机是否满足 Dify Enterprise 1.16.0 离线部署条件，以及轮换 secret 后“只改 `.env` 就能起”的假设是否成立。
+确认 Dify Enterprise 1.16.0 离线滚动升级的前置条件。本清单是指导，不构成连接目标主机或执行部署的授权；开发机演练结果也不能替代生产/灰度核验。
+
+本次升级沿用现有有效连接配置；默认密码更换保留为独立加固事项，不再自行作为本次重放的阻塞条件。旧的 [Plan B runbook](PRODUCTION_PLAN_B_RUNBOOK.md) 记录的是另一种并行部署方案，不能当作当前滚动升级指令。
 
 ## 当前已检查（本机）
 
@@ -43,17 +45,15 @@ curl -m 5 -sI https://registry-1.docker.io 2>&1 | head -3 || echo NETWORK_BLOCKE
 
 ## 满足条件后部署顺序
 
-1. 轮换生产/离线 `.env` 全部默认 secret 为随机值（另见轮换 runbook）。
-2. 把新 `.env` 放到离线主机 `docker/.env`（权限 600，不进仓库/不打进离线包）。
-3. 拷贝离线 tar + config 包到主机。
-4. `docker load < dify-enterprise-offline-1.16.0-enterprise.tar`
-5. `docker compose -f docker/docker-compose.yaml -f docker/docker-compose.enterprise.yaml config -q`
-6. `docker compose ... up -d --pull never`
-7. 验证 nginx/api/web smoke + 真实 secret 复扫。
+1. 单独确认目标环境的现有 Compose 项目、实际 bind mount 来源、冷备与回退依据；不要仅凭仓库相对路径推断运行中的挂载位置。取得升级窗口及目标环境的单独授权后，再按已确认的历史挂载复制到新的部署目录。
+2. 离线配置包只含白名单模板，**不含**真实 `.env`、`docker/volumes/**` 或 sandbox `config.yaml`。沿用该环境现有有效 `.env` 和连接信息，单独放入新部署目录的 `docker/.env`，限制权限；不得将其打进离线包或提交仓库。默认密码轮换另行规划，不与本次镜像升级合并。
+3. 从已核验的该环境历史备份/实际挂载中，单独迁移 sandbox 的配置到新部署目录 `docker/volumes/sandbox/conf/config.yaml`，保留所需目录内容与权限，并在不打印配置值的前提下核对其 `app.key` 与该部署环境的 `SANDBOX_API_KEY` 一致。**文件缺失、来源或 key 无法确认时停止，不启动 Compose。** `docker compose config -q` 不能替代这项文件检查；空目录挂载到 `/conf` 会遮蔽镜像内配置。
+4. 不要把仓库的 `config.yaml.example` 直接当作可用生产配置：其 `allowed_syscalls: [1, 2, 3]` 在本机隔离演练的合成 JavaScript 任务中触发 `bad system call`；演练中置空列表只证明该单项任务通过，不是生产修改建议。
+5. 在前置条件和产物身份均核对后，按另行批准的操作窗口加载镜像、检查 Compose 展开配置、启动新部署并验证服务健康、历史数据及应用功能；失败时按已确认的回退方案处理，不自动改动旧部署。
 
 ## 需要你提供
 
 - 离线主机 IP/SSH 别名，或
 - 上述必查项输出
 
-拿到后我继续：生成轮换 runbook → 重打离线包 → 指导/执行部署验证。
+目标信息只能用于另行授权的发布准备；本清单不授权连接、轮换 secret、执行部署或修改现有数据。
