@@ -57,6 +57,13 @@ class HitTestingService:
 
     @classmethod
     def _dump_retrieval_records(cls, session: Session, records: list[RetrievalSegments]) -> list[dict[str, Any]]:
+        def dump_record(retrieval_record: RetrievalSegments) -> dict[str, Any]:
+            record = retrieval_record.model_dump()
+            if retrieval_record.segment and isinstance(record.get("segment"), dict):
+                # Sign presentation content only for emitted records; keep stored content unchanged.
+                record["segment"]["sign_content"] = retrieval_record.segment.get_sign_content()
+            return record
+
         document_ids = {
             document_id
             for record in records
@@ -65,7 +72,7 @@ class HitTestingService:
             if isinstance(document_id, str) and document_id
         }
         if not document_ids:
-            return [record.model_dump() for record in records]
+            return [dump_record(record) for record in records]
 
         documents = {
             document.id: cls._dump_dataset_document(document)
@@ -77,7 +84,7 @@ class HitTestingService:
         for retrieval_record in records:
             segment = retrieval_record.segment
             if not segment or not isinstance(segment.document_id, str) or not segment.document_id:
-                records_with_documents.append(retrieval_record.model_dump())
+                records_with_documents.append(dump_record(retrieval_record))
                 continue
 
             document_id = segment.document_id
@@ -86,7 +93,7 @@ class HitTestingService:
                 missing_document_ids.add(document_id)
                 continue
 
-            record = retrieval_record.model_dump()
+            record = dump_record(retrieval_record)
             segment_dict = record["segment"]
             segment_dict["created_at"] = segment.created_at
             segment_dict["document"] = document

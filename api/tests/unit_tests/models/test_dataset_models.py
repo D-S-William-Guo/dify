@@ -9,8 +9,12 @@ This test suite covers:
 - Embedding storage validation
 """
 
+import base64
+import hashlib
+import hmac
 import json
 import pickle
+import re
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
@@ -1444,3 +1448,107 @@ class TestModelIntegration:
             assert result["indexing_status"] == IndexingStatus.COMPLETED
             assert result["segment_count"] == 5
             assert result["hit_count"] == 10
+
+
+class TestDocumentSegmentSigning:
+    @pytest.fixture
+    def segment(self, monkeypatch: pytest.MonkeyPatch) -> DocumentSegment:
+        monkeypatch.setattr("models.dataset.dify_config", SimpleNamespace(SECRET_KEY="ippr-unit-key"))
+        monkeypatch.setattr("models.dataset.time.time", lambda: 1_700_000_000)
+        monkeypatch.setattr("models.dataset.os.urandom", lambda _: b"\x01" * 16)
+        return DocumentSegment(
+            tenant_id="00000000-0000-0000-0000-000000000001",
+            dataset_id="00000000-0000-0000-0000-000000000002",
+            document_id="00000000-0000-0000-0000-000000000003",
+            position=1,
+            content="",
+            word_count=1,
+            tokens=2,
+            created_by="00000000-0000-0000-0000-000000000005",
+        )
+
+    @staticmethod
+    def assert_signed_url(url: str, path: str) -> None:
+        parsed = urlparse(url)
+        assert parsed.path == path
+        assert url.count("?") == 1
+        query = parse_qs(parsed.query)
+        assert set(query) == {"timestamp", "nonce", "sign"}
+        assert all(len(value) == 1 for value in query.values())
+        assert query["timestamp"] == ["1700000000"]
+        assert query["nonce"] == ["01" * 16]
+        kind = "image" if path.endswith("image-preview") else "file"
+        file_id = path.split("/")[-2] if "/tools/" not in path else path.split("/")[-1].split(".")[0]
+        payload = f"{kind}-preview|{file_id}|1700000000|{'01' * 16}"
+        expected = base64.urlsafe_b64encode(hmac.new(b"ippr-unit-key", payload.encode(), hashlib.sha256).digest())
+        assert query["sign"] == [expected.decode()]
+
+    @pytest.mark.parametrize("kind", ["image", "file"])
+    @pytest.mark.parametrize("prefix", ["", "https://docs.example.test"])
+    @pytest.mark.parametrize("suffix", ["", "?timestamp=1&nonce=stale&sign=stale"])
+    def test_unsigned_and_stale_preview_queries_are_replaced(self, segment, kind, prefix, suffix):
+        path = f"/files/00000000-0000-0000-0000-000000000004/{kind}-preview"
+        segment.content = f"before ![label]({prefix}{path}{suffix}) after"
+        original = segment.content
+
+        result = segment.get_sign_content()
+
+        destination = re.findall(r"!\[label\]\(([^)]+)\)", result)
+        assert len(destination) == 1
+        self.assert_signed_url(destination[0], path)
+        assert urlparse(destination[0]).netloc == urlparse(prefix).netloc
+        assert result == f"before ![label]({destination[0]}) after"
+        assert segment.content == original
+        segment.content = result
+        assert segment.get_sign_content() == result
+
+    @pytest.mark.parametrize(
+        "families",
+        [
+            ("image", "image"),
+            ("file", "file"),
+            ("file", "image"),
+            ("image", "file"),
+            ("tools", "image"),
+            ("image", "tools"),
+            ("tools", "file"),
+            ("file", "tools"),
+            ("tools",),
+        ],
+    )
+    @pytest.mark.parametrize("separator", ["", " text "])
+    @pytest.mark.parametrize("suffix", ["", "?timestamp=1&nonce=stale&sign=stale"], ids=["unsigned", "stale"])
+    def test_mixed_repeated_adjacent_and_tools_urls_keep_source_order(self, segment, families, separator, suffix):
+        file_id = "00000000-0000-0000-0000-000000000004"
+        paths = [
+            f"/files/tools/{file_id}.png" if kind == "tools" else f"/files/{file_id}/{kind}-preview"
+            for kind in families
+        ]
+        links = [f"![label-{index}]({path}{suffix})" for index, path in enumerate(paths)]
+        segment.content = "before " + separator.join(links) + " after"
+        original = segment.content
+
+        result = segment.get_sign_content()
+
+        destinations = re.findall(r"!\[label-\d+\]\(([^)]+)\)", result)
+        assert len(destinations) == len(paths)
+        for destination, path in zip(destinations, paths, strict=True):
+            self.assert_signed_url(destination, path)
+        expected_links = [f"![label-{index}]({url})" for index, url in enumerate(destinations)]
+        assert result == "before " + separator.join(expected_links) + " after"
+        assert segment.content == original
+
+    @pytest.mark.parametrize("boundary", [" ", "\n", ")", '"', "'"])
+    @pytest.mark.parametrize("kind", ["image", "file"])
+    def test_query_consumption_stops_at_existing_url_boundaries(self, segment, boundary, kind):
+        path = f"/files/00000000-0000-0000-0000-000000000004/{kind}-preview"
+        segment.content = f"{path}?timestamp=1&nonce=stale&sign=stale{boundary}tail"
+        result = segment.get_sign_content()
+        destination, tail = result.split(boundary, 1)
+        self.assert_signed_url(destination, path)
+        assert tail == "tail"
+
+    @pytest.mark.parametrize("content", ["", "plain text", "https://docs.example.test/unrelated?query=keep"])
+    def test_unrelated_content_is_unchanged(self, segment, content):
+        segment.content = content
+        assert segment.get_sign_content() == content
