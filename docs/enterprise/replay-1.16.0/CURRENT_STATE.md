@@ -1,10 +1,22 @@
 # Dify Enterprise 1.16.0 当前状态与新窗口交接
 
-更新时间：2026-09-28（Asia/Shanghai；以下最新覆盖包含本机隔离 load + boot 与合成 JavaScript 验证）
+更新时间：2026-10-07（Asia/Shanghai；最新覆盖为图片预览代码修复与独立 Code Review，运行验证尚未执行）
 
 本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
 
 如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+
+### 2026-10-07 图片预览代码闭环覆盖（优先于下方旧状态叙述）
+
+| 项目 | 当前结果 |
+| --- | --- |
+| 本地 checkpoint | 候选分支 `codex/enterprise-candidate-1.16.0-20260718` 在本次 docs 提交前为 `83a8d93aa2c96ab365fbeba4bea51834851f6c6f`，工作区干净。本文记录该前置 checkpoint，不自引用随后产生的 docs commit；恢复时应核验实际 HEAD 包含它。 |
+| 已集成修复 | Builder `53f2ba6f335ca842cd4c2a9856615725841d7f6d` 与 Code Review `83a8d93aa2c96ab365fbeba4bea51834851f6c6f` 已快进集成。共享召回转换为发出的 segment 补齐 `sign_content`，保留原始 content；签名方法修正旧 query 消费边界及混合 URL 的替换顺序。仅两份生产代码与三份既定测试文件改变，无前端、鉴权、DTO 或历史数据修改。 |
+| 独立审查 | 已接受 `P0_IMAGE_PREVIEW_CODE_REVIEW_2026-10-07.md` 的 **PASS**；无 P0/P1/P2 必须修复项。IPPR-01/02 的签名验证、拒绝前无 SQL/storage、租户/权限拒绝及不可达召回/签名断言已落实。IPPR-03 仍为可选建议。 |
+| 合成回归 | Builder 与独立 Code Reviewer 分别在各自 worktree、纯合成配置和隔离临时存储下验证：聚焦 **220/220**、相关 **219/219**，各自合计 **439/439 PASS**；54 个安全用例包含在聚焦总数中，不重复计数。Ruff lint/format 与空白检查通过。协调窗口另独立复跑三份修改测试文件 **205/205 PASS**，是独立复核而非新增用例总数。具体命令及已披露的准备/重试记录见 Code Review 报告。 |
+| 运行与产物边界 | **本次修复的 API 镜像重建/切换、有窗体历史图片预览验证、离线包重建/checker 均为 NOT_RUN**。下方历史文字召回、应用回归和旧包验证仍是各自原 checkpoint 的证据，不能替代本次图片修复的运行验收。图片预览发布前要求仍未关闭；不需要由本次代码修复推导知识库重索引。 |
+| 远端与实例 | 本轮代码、计划与报告闭环尚未 push；本轮未联网核验 origin，不能把本地 tracking ref 当作新远端确认。六个实例均保留：`replay-116-image-preview-architect-20261006`、`replay-116-image-preview-plan-reviewer-20261006`、`replay-116-image-preview-plan-fixer-20261007`、`replay-116-image-preview-plan-rereviewer-20261007`、`replay-116-image-preview-builder-20261007`、`replay-116-image-preview-code-reviewer-20261007`。未获删除授权。 |
+| 下一步与授权边界 | 本轮仅更新并本地提交本文。建议随后单独授权精确 checkpoint push；本机 API 镜像重建/有限容器切换和有窗体图片回归需明确范围、配置沿用与回退依据后另行授权。不得自行运行 Docker/浏览器、修改数据、部署、连接生产/灰度或清理实例。现有有效连接配置继续沿用，默认密码轮换仍为独立延期加固项。 |
 
 ### 2026-10-04 本机历史应用回归覆盖（优先于下方旧运行叙述）
 
