@@ -1,5 +1,9 @@
 # P0 embedded-image preview: Architect plan — 2026-10-06
 
+**Plan Fixer revision — 2026-10-07 (Asia/Shanghai):** branch `ctyun/replay-116-image-preview-plan-fixer-20261007`, start/final HEAD `4c2a48e192bc5e05b846e76a913f80e3fd786073`, clean start. Accepted scope is **IPPR-01 and IPPR-02 only** from `P0_IMAGE_PREVIEW_PLAN_REVIEW_2026-10-06.md`. Sections 6–8 now assign their future synthetic cases; section 11 records this revision's actual verification. No implementation or test execution occurred; image preview remains open. **IPPR-03 is optional and not an accepted mandatory finding or additional release gate.** The prepared synthetic environment remains the existing prerequisite.
+
+Sections 1–5, 9 and 10 retain the original Architect investigation, recommendations and historical evidence. Their branch/SHA, intent-to-add observation, commands and PASS counts describe that earlier stage, **not this revision's Git state**. In particular, the unattributed historical index entry is not attributed retroactively; this revision starts with an ordinary tracked report. The next recommended role after this revision is independent **Plan Rereviewer**, limited to the two accepted findings; no Builder or follow-on instance is authorized here.
+
 ## 1. Scope, immutable start, and investigation plan
 
 **Result: source investigation and proposed implementation/validation only. Image preview remains release-blocking; no behavior was implemented or runtime result newly accepted.**
@@ -112,9 +116,9 @@ These method-only corrections support required refreshed and multiple/adjacent h
 | `api/models/dataset.py` | Only `DocumentSegment.get_sign_content` query-boundary and replacement-order corrections; leave HMAC/domain/config and model definitions intact. |
 | `api/tests/unit_tests/services/test_hit_testing_service.py` | Add synthetic real-segment/real-RetrievalSegments conversion and preservation cases; mock session document lookup, no real data. |
 | `api/tests/unit_tests/models/test_dataset_models.py` | Add small parameterized signer behavior regressions for both preview routes and replacement boundaries/order. |
-| `api/tests/unit_tests/controllers/console/datasets/test_hit_testing_base.py` | Exercise signed conversion through real shared normalization and `HitTestingResponse`, not a hardcoded signed return fixture. |
+| `api/tests/unit_tests/controllers/console/datasets/test_hit_testing_base.py` | Exercise real signed conversion/normalization/DTO; own all new IPPR-01 preview and IPPR-02 token/permission boundary cases specified in section 7. No additional test path. |
 
-Existing Console and Service API controller suites are read-only related checks; no controller edit is proposed. Test shared conversion/DTO preservation in the allowlisted base suite, then run both existing caller suites. If an existing controller suite needs a necessary new behavioral assertion beyond this arrangement, obtain an enumerated allowlist amendment first. Any later Builder evidence report path must be separately named in its contract; this Architect report is not automatically writable by Builder.
+Existing Console and Service API controller suites are read-only related checks; no controller edit is proposed. Test shared conversion/DTO preservation and the newly assigned security cases in the allowlisted base suite, then run both existing caller suites. Their unwrapped handlers are caller/response checks, not token or permission proof. The accepted findings are feasible in the existing five paths; no allowlist amendment is requested. Any later Builder evidence report path must be separately named in its contract; this Architect report is not automatically writable by Builder.
 
 Explicit denylist: every other path; all frontend, DTO/contract/generated files, controllers/auth/RBAC/preview verification, model definitions outside the named method, extractors/indexing/vector code, provider configuration, migrations, identifiers, historical stored content, tests outside the allowlist, existing docs, Skills, configuration/env/secrets/proxy/pattern files, generated artifacts. No new dependency, reindexing, runtime operations, container/build/deploy, external access, Git staging/commit/amend/integration/push/PR, or lifecycle operation is granted by this report.
 
@@ -143,16 +147,76 @@ All proposed tests use synthetic UUIDs, `https://docs.example.test` or relative 
 | Empty records and missing IDs/documents | Empty input returns []; absent/empty document-ID fallback still preserves dump/signing behavior; missing document records retain existing skip/warning semantics; lookup remains batched and not per image. Nullable segment fallback uses a narrow test double if needed: the real entity's segment type is not optional, so do not relax it to manufacture that fixture. |
 | Collection normalization and DTO | Existing keywords/child_chunks/files null → []; score, tsne/summary defaults, timestamps and document fields preserved; valid signed string survives normalization, and caller input dictionaries are not mutated. Invalid record container/member still fails as before. |
 | Shared Console / Service API callers | Exercise real shared service dump/base/DTO chain, then existing Console and Service API handler suites. Verify both use the same result contract and the Service controller registers both hit-testing/retrieve route aliases (read-only source/route check; do not mistake direct undecorated handler tests for token/RBAC validation). |
-| Authorization and signature boundaries | Existing permission-denied/cross-tenant/disabled-API cases stay denied before retrieval/signing. Both query models still reject missing fields. Existing FileService rejects invalid signatures before storage; no unsigned-success path. Existing auth/preview suites are related evidence, not proof of historical runtime acceptance. |
+| Authorization and signature boundaries | New named cases in sections 7.1–7.2 carry the proof. Existing preview tests always provide signature fields; FileService tests mock verifier booleans. Existing base/handler permission denials mock permission decisions, dataset-token success omits dataset ID, and the existing disabled-API test concerns app tokens. These suites do not establish the required upload-preview or dataset authorization boundaries. |
 | Related shared-signer compatibility | Tool-format references remain intact, including a mixed tools/preview ordering case because the replacement loop is shared. Existing dataset-retrieval/tool/signature suites remain green. |
 
 Optional cases, outside the minimum release fix: uppercase/noncanonical IDs, arbitrary external-host policy, arbitrary query option preservation, fragments, exotic escaped/angle-bracket Markdown and nested-parenthesis destinations, proactive expiry refresh, child-chunk/summary/Q&A inline-image signing. Do not silently expand into these behaviors. A tools-only link is a required compatibility control when the shared replacement loop changes, not a new feature. If any optional format occurs in the later accepted historical chunk and prevents acceptance, return to the coordinator with evidence and a bounded scope proposal.
+
+### 7.1 IPPR-01 — real upload-preview validation and verifier cases
+
+**Owner:** future Builder, `api/tests/unit_tests/controllers/console/datasets/test_hit_testing_base.py`, new `TestUploadPreviewSecurity` class. The same Builder owns signer regressions in `test_dataset_models.py` and conversion/preservation in `test_hit_testing_service.py`; these remain the only three writable test files. Reviewer independently assesses the following assertions. All cases below are **planned / NOT_RUN**.
+
+Use imports `controllers.files.image_preview` (its `FileSignatureQuery`, `FilePreviewQuery`, `ImagePreviewApi`, `FilePreviewApi`), `core.app.workflow.file_runtime.DifyWorkflowFileRuntime`, `core.app.file_access.DatabaseFileAccessController`, `services.file_service.FileService`, `models.dataset.DocumentSegment`, and `sqlalchemy.orm.sessionmaker`. The repository verifier is `DifyWorkflowFileRuntime.verify_preview_signature` (`file_runtime.py:116–129`); `FileService` imports helpers via `graphon.file` (`file_service.py:25`). Its constructor requires an Engine or sessionmaker: use `MagicMock(spec=sessionmaker)`, as the existing FileService fixture does, rather than an unsupported plain object.
+
+Local fixture boundaries (no new conftest/helper file): fixed synthetic UUIDs; key `ippr-unit-key`; generation time `1_700_000_000`; nonce bytes `b'\x01' * 16`; timeout `60`. Replace **module references** `models.dataset.dify_config` and `core.app.workflow.file_runtime.dify_config` with a `SimpleNamespace(SECRET_KEY='ippr-unit-key', FILES_ACCESS_TIMEOUT=60)` so fixtures never read the previous key/config values. Patch `models.dataset.time.time`, `models.dataset.os.urandom`, and `core.app.workflow.file_runtime.time.time`; shared stdlib module patches can affect both clocks, so finish generation before changing verification time. Restore patches per case. Construct the runtime with `DatabaseFileAccessController()`; verification itself does not perform access-controller SQL. Leave `_secret_key`, HMAC code, and `verify_preview_signature` real.
+
+| Named case / parameters | Acceptance assertion |
+| --- | --- |
+| `test_each_missing_preview_field_stops_before_file_service` — 2 routes × missing `timestamp`, `nonce`, `sign` | In a minimal Flask `test_request_context`, call the actual bound `.get(UUID(...))` without unwrapping. Omit exactly one field from otherwise complete synthetic parameters. Assert Pydantic `ValidationError` has `type='missing'` and the omitted field location for the actual route query model; spy `controllers.files.image_preview.FileService` is never constructed or called. Replace `controllers.files.image_preview.db` with a synthetic engine holder if needed; leave request/model validation real. This proves model rejection/order, not a new HTTP integration result; documented missing-field HTTP contract remains 400. |
+| `test_generated_preview_parameters_pass_real_verifier` — `image` / `file`, relative / synthetic absolute prefix | Generate with real `DocumentSegment.get_sign_content`, parse each destination with `urlsplit`/`parse_qs`, assert exactly one timestamp/nonce/sign, and recompute `base64.urlsafe_b64encode(hmac.new(b'ippr-unit-key', f'{kind}-preview|{id}|{timestamp}|{nonce}'.encode(), hashlib.sha256).digest()).decode()` independently. Feed those generated parameters to real `runtime.verify_preview_signature(preview_kind=kind, file_id=id, ...)`; assert True when fresh and at age 60. Do not replace verifier success with a mock. |
+| `test_generated_preview_parameters_reject_wrong_id_domain_tampering_and_expiry` — both domains | From the same generated parameters: change UUID; switch `preview_kind`; change one sign character; change nonce; change numeric timestamp without recomputing sign; then keep original values and move clock to generation + 61. Each returns False from the real verifier. Wrong-domain failure and expiry must not be inferred solely from independent HMAC equality. |
+| `test_invalid_preview_verification_stops_before_sql_and_storage` — both FileService methods × the above invalid variants | Call real `get_image_preview` / `get_file_generator_by_file_id`. Patch `services.file_service.file_helpers.verify_image_signature` / `verify_file_signature` with forwarding side effects mapping `upload_file_id` to `file_id` and fixed `preview_kind='image'` / `'file'`, calling the **real runtime verifier** with every supplied field. Never hardcode True/False. Assert verifier call and `NotFound.code == 404`, `_session_maker.assert_not_called()`, session `scalar`/`execute` untouched, and `services.file_service.storage.load` untouched. Fresh parameters as a positive control reach the synthetic session lookup; a synthetic missing file may then raise 404. |
+
+The forwarding adapter isolates graphon's runtime dispatch; it proves real repository verification plus FileService's guard/order, not an independently executed dependency-dispatch integration. No runtime binding or production helper change is needed. Existing `api/tests/unit_tests/core/app/workflow/test_file_runtime.py:125–164` is read-only supporting source: it uses a handmade file-domain signature, not generated segment parameters or both upload domains. Existing tools-signature tests exercise a separate boundary. Neither is substituted for these new cases, and neither is added to the write allowlist.
+
+### 7.2 IPPR-02 — real dataset-token and permission cases
+
+**Owner:** future Builder, the same `test_hit_testing_base.py`, new `TestDatasetAuthorizationSecurity` class. Import `controllers.service_api.wraps` as the patch target, its real `validate_dataset_token`, `services.api_token_service`, `services.dataset_service.DatasetService`, `models.dataset` (`Dataset`, `DatasetPermission`, `DatasetPermissionEnum`), and `models.account` (`Account`, `Tenant`, `TenantAccountRole`). Leave `validate_dataset_token`, `validate_and_get_api_token`, `DatasetService.get_dataset`, `DatasetService.check_dataset_permission`, `resolve_account_fallback`, and the shared base methods real. Existing `TestGetAndValidateDataset` permission mocks and unwrapped controller tests are not authorization evidence.
+
+Use a minimal Flask request context with synthetic Bearer values. Decorate a small continuation `def protected(tenant_id, dataset_id): ...` with the **real** `validate_dataset_token` and always call it with a nonempty synthetic dataset UUID. The continuation calls real `get_and_validate_dataset(session, dataset_id, account, tenant_id)` then real `perform_hit_testing`. This exercises the decorator plus the same shared authorization/retrieval order; it does not claim Console login/setup/RBAC coverage. Do not unwrap the token decorator or replace permission decisions.
+
+Patch only token/I/O boundaries: `controllers.service_api.wraps.ApiTokenCache.get`, `controllers.service_api.wraps.record_token_usage`, and `controllers.service_api.wraps.db` to synthetic cache/session objects. Valid synthetic cached token has `tenant_id` and dataset scope; assert cache lookup uses the exact Bearer token and scope `'dataset'`. For invalid token use cache miss and patch `controllers.service_api.wraps.fetch_token_with_single_flight` to forward to **real** `services.api_token_service.query_token_from_db`; patch `services.api_token_service.Session`, `db`, and `ApiTokenCache.set` to an in-memory session/context and no-op cache. Return no ApiToken row; assert the real query binds token and type `'dataset'`, and real token-query code raises Unauthorized. Redis lock/usage writes stay outside this fixture. This avoids a mocked high-level permission/token decision as proof.
+
+For decorator dataset lookups, capture the actual SQLAlchemy Select received by synthetic `wraps.db.session.scalar`. Inspect expression nodes and bound values (e.g. column `.compare(Dataset.id.__clause_element__())` / `.compare(Dataset.tenant_id.__clause_element__())` and compiled parameters), asserting **both** ID and token tenant occur in the WHERE clause. The fake session filters synthetic rows using those captured predicates; it cannot simply return a canned None. Seed a row of the same dataset ID in tenant A, then request with token tenant B or None; return None only because the captured tenant predicate excludes it. None must produce the tenant `IS NULL` predicate, not an omitted predicate. Use synthetic `session.get(Dataset, id)` for the later real shared lookup and `session.scalar` for real partial-member checks. No SQL is sent to a service.
+
+For valid tenant-owner resolution, synthetic `wraps.db.session.execute(...).one_or_none()` returns `(Tenant, TenantAccountJoin-shaped row)` and `session.get(Account, account_id)` returns the synthetic owner. Patch the account's `set_current_tenant_with_session` only to set its synthetic `_current_tenant`/role, minimal app `login_manager._update_request_context_with_user`, and `controllers.service_api.wraps.user_logged_in.send`; these are session/signal boundaries, not permission verdicts. Owner missing/account missing controls return None at their respective database boundaries. Explicit actors for shared permission cases use real Account objects, `_current_tenant`, role, and Dataset with explicit maintainer and permission.
+
+Install spies on `HitTestingService.retrieve`, `_dump_retrieval_records` and `DocumentSegment.get_sign_content` for the whole continuation. Retrieval's synthetic side effect calls **real** `_dump_retrieval_records` with a real image-bearing segment/RetrievalSegments and synthetic document lookup; dump/sign spies delegate to the originals. This is a provider/vector isolation boundary, not a canned signed response. Restore/reset spies per case. On denial, assert continuation (for token failures), retrieval, dump, and signer call counts all zero. For shared permission denial inside the continuation, assert retrieval/dump/signer zero. Authorized owner positive controls must reach these spies and emit a signed value through real normalization/DTO; this checks that the denial spies are wired to a reachable success path.
+
+| Named case / parameters | Acceptance assertion |
+| --- | --- |
+| `test_dataset_token_binds_dataset_and_token_tenant` — matching, mismatched, None token tenant, absent dataset | Inspect both real query predicates for every variant. Matching row proceeds with token tenant injected; wrong/missing token tenant or missing dataset raises `NotFound.code == 404` before owner lookup/retrieval/signing. Dataset ID must never be omitted to manufacture a success. |
+| `test_api_disabled_dataset_stops_before_retrieval_and_signing` | Matching dataset with `enable_api=False` raises `Forbidden.code == 403`; owner lookup and continuation untouched. This tests the dataset-token decorator, not app-token API disabling. |
+| `test_missing_or_invalid_dataset_token_stops_before_retrieval_and_signing` — no header, malformed header, non-Bearer scheme, invalid Bearer | Real token validation raises `Unauthorized.code == 401`; dataset/owner lookup, continuation and all retrieval/signing spies untouched. Invalid Bearer uses the real no-token-row query described above. |
+| `test_missing_tenant_owner_or_account_retains_unauthorized` — missing owner join, missing Account | After matching enabled dataset, missing tenant/owner resolution returns 401 and never enters continuation. This later missing-tenant-row case differs from missing/mismatched **token tenant in dataset lookup**, which returns 404. |
+| `test_real_dataset_permissions_deny_before_retrieval_and_signing` — cross-tenant (including OWNER), same-tenant ONLY_ME nonmaintainer/nonowner, PARTIAL_TEAM nonmaintainer/nonowner without membership | Run real shared get/validate then perform continuation. Real `NoPermissionError` is translated to `Forbidden.code == 403`; zero retrieval/dump/signer calls. Partial case inspects actual `DatasetPermission.dataset_id` and `.account_id` predicates and returns no membership. Cross-tenant denial precedes any membership lookup and cannot be bypassed by owner role. |
+| `test_missing_dataset_stops_before_retrieval_and_signing` | Real `DatasetService.get_dataset` receives a synthetic session whose `get` returns None; shared boundary raises 404 with zero retrieval/dump/signer calls. |
+| `test_authorized_owner_reaches_real_signed_conversion` — ONLY_ME / PARTIAL_TEAM | Same-tenant real owner succeeds even with another maintainer/no explicit membership. Real permission check runs; partial-membership lookup is not required for owner. Retrieval boundary, real dump/sign and normalization/`HitTestingResponse` execute; raw content remains intact. Also exercise the matching dataset-token continuation positive control. |
+
+**Route registration versus shared behavior:** read `controllers/service_api/dataset/hit_testing.py:17` for both aliases and `HitTestingApi(DatasetApiResource, DatasetsHitTestingBase)` plus `DatasetApiResource.method_decorators = [validate_dataset_token]` (`wraps.py:389–392`). That is registration/inheritance evidence for `/v1/datasets/<id>/hit-testing` and `/retrieve`; the above real decorator/continuation tests prove their shared token/permission boundary. The read-only existing handler suites prove caller/response compatibility only. Do not label them full authenticated HTTP tests or count alias source inspection as runtime auth proof.
+
+Acceptance mapping: **IPPR-01** maps to all four `TestUploadPreviewSecurity` cases, independent HMAC checks and the preserved real conversion/signer matrix. **IPPR-02** maps to all seven `TestDatasetAuthorizationSecurity` cases, two-predicate dataset/partial-member checks, zero-call denial spies and owner positive controls. These specify future evidence to review; neither finding is claimed closed by a test PASS in this plan revision.
 
 ## 8. Exact future focused commands — NOT_RUN here
 
 Run from repository root in an independently authorized Builder checkout, using its prepared synthetic unit environment; never load rehearsal/production connection values to make unit checks run. TDD: run the smallest new failing cases first, implement, then run these full focused files. Root pytest hooks only start middleware/vector stacks when explicit flags are passed (`api/conftest.py:64–82`); do not use those flags. Existing unit fixtures mock Redis and use disposable in-memory SQLite; they do not authorize historical DB operations.
 
-Required focused unit command:
+First run only the new accepted-finding classes (red/green in the separately authorized Builder environment), then the full focused and related commands below. Boundary security cases may pass on the existing code; conversion/query-refresh/order cases supply the implementation red → green proof. Do not force a failing security test by weakening existing production checks.
+
+```bash
+uv run --project api --dev pytest -o addopts='' -p no:cacheprovider -p no:benchmark \
+  api/tests/unit_tests/controllers/console/datasets/test_hit_testing_base.py::TestUploadPreviewSecurity \
+  api/tests/unit_tests/controllers/console/datasets/test_hit_testing_base.py::TestDatasetAuthorizationSecurity
+```
+
+Separate read-only alias registration check (source evidence, not an auth test):
+
+```bash
+rg -n 'service_api_ns.route|class HitTestingApi' api/controllers/service_api/dataset/hit_testing.py
+rg -n 'class DatasetApiResource|method_decorators = \[validate_dataset_token\]' api/controllers/service_api/wraps.py
+```
+
+Required full focused unit command:
 
 ```bash
 uv run --project api --dev pytest -o addopts='' -p no:cacheprovider -p no:benchmark \
@@ -296,3 +360,78 @@ The empty-blob object ID plus intent-to-add flags explain the empty cached diff 
 ### Observed state versus action history
 
 The visible agent command history contains no `git add -N`, other `git add`, or reset command; that is an action-history observation, not proof that intent-to-add is absent or evidence of the entry's origin. During this correction the index was preserved byte-for-byte and no index-mutating command ran. No commit, amend, push, code/test change, Docker/browser/data/network/deployment/instance/controller operation or production/gray access ran during the correction. No commit/amend/push appears in the original agent action history either. HEAD remains the exact starting SHA. Only this report was edited; the substantive plan remains unchanged. Independent Plan Review remains the next recommended gate; image preview is not closed.
+
+## 11. Plan Fixer evidence — 2026-10-07 (current revision)
+
+Role: **Plan Fixer**, instance `replay-116-image-preview-plan-fixer-20261007`, profile `codex-sol`. Verified start/final branch `ctyun/replay-116-image-preview-plan-fixer-20261007` and HEAD `4c2a48e192bc5e05b846e76a913f80e3fd786073`. The three contract preflight commands ran before reads/edits and matched; clean start. Environment remains **Development / historical-data rehearsal**. No real env/secret/config values, service, stored content or external system was accessed.
+
+Planned versus actual: the initial commentary plan was preflight → required skills/references/AGENTS → source/test feasibility → revise this document only → read-only path/Git/whitespace checks. Actual work matches. Read root/API/Web AGENTS, `orchestrate-claude-squad` with task-contract/worktree references, and `replay-dify-enterprise` with official-first/replay-gate references. Explicit written planning was used in Default mode; no runtime Plan-mode switch is available. No implementation skill or follow-on agent was needed. The only modified file is this Architect document; production/test files and the five-file future Builder allowlist are unchanged.
+
+**Plan changes, not implemented behavior:** IPPR-01 now assigns both query models' missing-field order, generated parameters through real repository verification, independent HMAC, wrong ID/domain/tamper/expiry, and zero SQL/storage on rejection. IPPR-02 now assigns the real dataset-token decorator with a dataset ID, checked dataset/token-tenant predicates, 401/403/404 cases, real cross-tenant/private/partial-member permissions, denial spies and owner controls. Route registration evidence is separated from shared auth behavior. Existing false coverage claims were corrected in section 7. All other plan scope and earlier historical evidence remain intact. IPPR-03 stays optional; no additional release gate, file, runtime authorization or password-rotation requirement was introduced.
+
+### Executed read-only evidence
+
+**14 PASS / 0 FAIL final evidence gates**, counting distinct checks below rather than every source read or repetition. These are document/Git evidence, **not security tests**. Git rechecks use `GIT_OPTIONAL_LOCKS=0`; stdlib Python reads paths/text/index bytes and invokes read-only Git only. The final checks and audit were repeated after appending this evidence.
+
+| Count | Exact command/check | Actual result |
+| --- | --- | --- |
+| 3 | `git branch --show-current`; `git rev-parse HEAD`; `git status --short --branch` (initial contract preflight) | Exit 0 each; expected branch/SHA; status only the branch header. |
+| 1 | `GIT_OPTIONAL_LOCKS=0 git ls-files --stage --debug -- docs/enterprise/replay-1.16.0/P0_IMAGE_PREVIEW_ARCHITECT_2026-10-06.md` (before edit) | Exit 0; tracked mode 100644, stage 0, blob `28543a9e2328a207ce9cde875bcc66665eed7450`, flags 0. Ordinary tracked file, no current intent-to-add observation. |
+| 1 | Index snapshot command below (before edit) | Exit 0; SHA-256 `7c9dcaf2ddd8cf5669a44d2f4cd3eec94832c638234e15c9635ccc98782010cb`. |
+| 1 | Source/path/document audit command below | Exit 0; five future Builder paths exactly match HEAD; all 13 cited test paths exist (12 future pytest command paths plus read-only runtime reference); historical section 10 preserved; both assignments present. No collection/import. |
+| 1 | `GIT_OPTIONAL_LOCKS=0 git branch --show-current` | Exit 0; exact branch above. |
+| 1 | `GIT_OPTIONAL_LOCKS=0 git rev-parse HEAD` | Exit 0; exact start SHA above. |
+| 1 | `GIT_OPTIONAL_LOCKS=0 git diff --check` | Exit 0; no output or whitespace diagnostics. |
+| 1 | `GIT_OPTIONAL_LOCKS=0 git diff --name-only` | Exit 0; only this Architect document. |
+| 1 | `GIT_OPTIONAL_LOCKS=0 git diff --cached --name-only` | Exit 0; no output, no staged changes. |
+| 1 | `GIT_OPTIONAL_LOCKS=0 git ls-files --stage --debug -- docs/enterprise/replay-1.16.0/P0_IMAGE_PREVIEW_ARCHITECT_2026-10-06.md` (final) | Exit 0; same tracked blob/stage/flags as before edit. |
+| 1 | `GIT_OPTIONAL_LOCKS=0 git status --short --branch` | Exit 0; exact output below. |
+| 1 | Index snapshot command below (final) | Exit 0; identical SHA-256, index preserved across the before/after snapshots. |
+
+Exact index snapshot command, executed before editing and at completion:
+
+```bash
+GIT_OPTIONAL_LOCKS=0 python3 - <<'PY'
+import hashlib
+import subprocess
+from pathlib import Path
+path = subprocess.check_output(['git', 'rev-parse', '--git-path', 'index'], text=True).strip()
+print('index_sha256=' + hashlib.sha256(Path(path).read_bytes()).hexdigest())
+PY
+```
+
+Exact read-only source/path/document audit command:
+
+```bash
+GIT_OPTIONAL_LOCKS=0 python3 - <<'PY'
+import re
+import subprocess
+from pathlib import Path
+p = Path('docs/enterprise/replay-1.16.0/P0_IMAGE_PREVIEW_ARCHITECT_2026-10-06.md')
+old = subprocess.check_output(['git', 'show', 'HEAD:' + str(p)], text=True)
+new = p.read_text()
+def allowlist(text):
+    section = text.split('### Proposed exact write allowlist (future authorization only)', 1)[1].split('Existing Console and Service API controller suites', 1)[0]
+    return re.findall(r'^\| `(api/[^`]+)`', section, re.MULTILINE)
+assert allowlist(new) == allowlist(old) and len(allowlist(new)) == 5
+paths = sorted(set(re.findall(r'api/tests/unit_tests/[\w/]+\.py', new)))
+assert len(paths) == 13 and all(Path(path).is_file() for path in paths)
+history = new.split('## 10. Planned versus actual work and verification', 1)[1].split('## 11.', 1)[0]
+assert old.split('## 10. Planned versus actual work and verification', 1)[1].rstrip() == history.rstrip()
+assert all(marker in new for marker in ['### 7.1 IPPR-01', '### 7.2 IPPR-02', 'TestUploadPreviewSecurity', 'TestDatasetAuthorizationSecurity'])
+print('PASS: five Builder paths unchanged; 13 cited test files exist (12 command files plus runtime reference); historical section 10 intact; accepted-finding assignments present')
+PY
+```
+
+Two recovered diagnostic command failures are separate from final evidence gates: one read-only discovery command exited 1 after guessed nonexistent `api/services/dataset_permission_service.py` / `api/libs/graphon/graphon/file` paths; repository imports and file listings established the actual permission/verifier locations. The first path audit exited 1 because it expected 13 fully qualified references while the supporting runtime-test citation was abbreviated; qualifying that existing path and rerunning the audit resolved it. These are source/document discovery errors, not test failures. No application import, pytest collection or runtime operation was used to resolve them.
+
+**Functional validation: 0 PASS / 0 FAIL / 9 NOT_RUN categories**, not pytest case counts: focused synthetic tests (including the 11 newly named functions and their parameter variants); related units; Ruff check/format; Docker/service/gateway; separately authorized headed browser; historical DB; vector/reindex; image/offline build/checker; deployment/production/gray/protected audit. Exact future commands are in section 8 and remain NOT_RUN. Source inspection establishes feasibility; it does not prove image rendering or close the accepted findings with executable results.
+
+Final `git status --short --branch` (report line begins with a space):
+
+```text
+## ctyun/replay-116-image-preview-plan-fixer-20261007
+ M docs/enterprise/replay-1.16.0/P0_IMAGE_PREVIEW_ARCHITECT_2026-10-06.md
+```
+
+No `git add` (including `-N`), index mutation, commit, amend, push, merge, rebase, reset, checkout, cherry-pick, PR, instance/controller or follow-on-agent action occurred. Historical unattributed intent-to-add evidence remains historical; no such entry is observed for this revision. Stop after this document/evidence. Coordinator inspection and independent Plan Rereview remain the next gates; future Builder/runtime/browser actions require their own authorization. Default-password rotation remains independent deferred hardening. **Image preview is not fixed or accepted by this revision.**
