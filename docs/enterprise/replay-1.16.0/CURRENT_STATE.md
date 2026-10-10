@@ -1,780 +1,102 @@
-# Dify Enterprise 1.16.0 当前状态与新窗口交接
+# Dify Enterprise 1.16.0 协调窗口当前状态
 
-更新时间：2026-10-07（Asia/Shanghai；最新覆盖为图片预览代码修复与独立 Code Review，运行验证尚未执行）
+更新时间：2026-10-07（Asia/Shanghai）
 
-本文是新旧 Codex 窗口之间的首要交接入口。它记录当前可信 Git 状态、已通过的门禁、尚未完成的运行验证、下一步顺序，以及 Claude Squad/worktree 的协作规则。
+## 一分钟看懂
 
-如本文与聊天记录冲突，以 Git、最终复审报告和实际命令输出为准；不要依赖聊天记忆猜测状态。
+- 已完成：图片预览修复已进入候选源码，独立代码审查与合成回归通过。
+- 尚未完成：运行中的 API 还是旧镜像，尚未验证修复后的历史图片预览；旧离线包也不包含本次修复。
+- 当前正在做：用户已确认文档职责、冲突协调和换 harness 恢复约定；继续完善、核验文档草稿，不提交或 push，不执行运行环境操作。
+- 后续顺序：文档确认后，再衔接本机 API 镜像切换和有窗体图片验证；冷备、回退依据和授权边界仍须先核对。不是生产发布。
+- 按身份查文档见 [索引快速入口](DOCUMENT_INDEX.md#从这里开始按身份或问题选入口)。下面的精确 SHA、镜像与历史结果用于核验，不要求人类先读完才能了解进度。
 
-### 2026-10-07 图片预览代码闭环覆盖（优先于下方旧状态叙述）
+## 定位与读取规则
 
-| 项目 | 当前结果 |
+本文件最初用于 GPT 额度不足、切换到 Codex＋DeepSeek 策略指挥窗口时交接现场；现在仍是**协调窗口换模型或换会话的恢复首页**，不是所有智能体的全量共享上下文。
+
+- 通用调度规则从两个 Skill 读取，项目约束从根目录 ENTERPRISE_REPLAY_PLAN.md、AGENTS 与相关领域指南读取；缺失 Skill 不得静默跳过。完整职责和恢复路线见 DOCUMENT_INDEX，不在本文复制 SOP。
+- 单个智能体以精确 SHA 阶段契约和任务相关计划/审查报告为依据；只按需读取本页。
+- 本页只维护当前摘要、证据入口、未完成项、实例与授权边界。历史记录不再以“覆盖旧段落”无限追加。
+- Git、实际命令与最终审查证据优先；计划、历史 PASS 和聊天均不能代替当前运行验证。
+- 文档分类与读取路由见 [DOCUMENT_INDEX.md](DOCUMENT_INDEX.md)。
+- 整理前 780 行原文完整保留在 [CURRENT_STATE_HISTORY_2026-10-07.md](CURRENT_STATE_HISTORY_2026-10-07.md)，其中旧“下一步”、实例数及授权均不是当前指令。
+
+## 当前 Git 与代码状态
+
+| 项目 | 当前可信记录 |
 | --- | --- |
-| 本地 checkpoint | 候选分支 `codex/enterprise-candidate-1.16.0-20260718` 在本次 docs 提交前为 `83a8d93aa2c96ab365fbeba4bea51834851f6c6f`，工作区干净。本文记录该前置 checkpoint，不自引用随后产生的 docs commit；恢复时应核验实际 HEAD 包含它。 |
-| 已集成修复 | Builder `53f2ba6f335ca842cd4c2a9856615725841d7f6d` 与 Code Review `83a8d93aa2c96ab365fbeba4bea51834851f6c6f` 已快进集成。共享召回转换为发出的 segment 补齐 `sign_content`，保留原始 content；签名方法修正旧 query 消费边界及混合 URL 的替换顺序。仅两份生产代码与三份既定测试文件改变，无前端、鉴权、DTO 或历史数据修改。 |
-| 独立审查 | 已接受 `P0_IMAGE_PREVIEW_CODE_REVIEW_2026-10-07.md` 的 **PASS**；无 P0/P1/P2 必须修复项。IPPR-01/02 的签名验证、拒绝前无 SQL/storage、租户/权限拒绝及不可达召回/签名断言已落实。IPPR-03 仍为可选建议。 |
-| 合成回归 | Builder 与独立 Code Reviewer 分别在各自 worktree、纯合成配置和隔离临时存储下验证：聚焦 **220/220**、相关 **219/219**，各自合计 **439/439 PASS**；54 个安全用例包含在聚焦总数中，不重复计数。Ruff lint/format 与空白检查通过。协调窗口另独立复跑三份修改测试文件 **205/205 PASS**，是独立复核而非新增用例总数。具体命令及已披露的准备/重试记录见 Code Review 报告。 |
-| 运行与产物边界 | **本次修复的 API 镜像重建/切换、有窗体历史图片预览验证、离线包重建/checker 均为 NOT_RUN**。下方历史文字召回、应用回归和旧包验证仍是各自原 checkpoint 的证据，不能替代本次图片修复的运行验收。图片预览发布前要求仍未关闭；不需要由本次代码修复推导知识库重索引。 |
-| 远端与实例 | 本轮代码、计划与报告闭环尚未 push；本轮未联网核验 origin，不能把本地 tracking ref 当作新远端确认。六个实例均保留：`replay-116-image-preview-architect-20261006`、`replay-116-image-preview-plan-reviewer-20261006`、`replay-116-image-preview-plan-fixer-20261007`、`replay-116-image-preview-plan-rereviewer-20261007`、`replay-116-image-preview-builder-20261007`、`replay-116-image-preview-code-reviewer-20261007`。未获删除授权。 |
-| 下一步与授权边界 | 本轮仅更新并本地提交本文。建议随后单独授权精确 checkpoint push；本机 API 镜像重建/有限容器切换和有窗体图片回归需明确范围、配置沿用与回退依据后另行授权。不得自行运行 Docker/浏览器、修改数据、部署、连接生产/灰度或清理实例。现有有效连接配置继续沿用，默认密码轮换仍为独立延期加固项。 |
-
-### 2026-10-04 本机历史应用回归覆盖（优先于下方旧运行叙述）
-
-环境仍为 **Development / historical-data rehearsal**，非生产或灰度。候选分支与本地 origin 在本轮操作前均为 `18a3658e65fd2678c19d35a44d5c2c2c6403285d`；本轮未改产品代码、镜像或容器，也未 push。运行中的 API/Web 已在 2026-09-30 切换为离线包 `rehearsal-1cc8e60a` 所含镜像；本轮使用有窗体 Playwright，证据留在本机忽略目录 `output/playwright/replay-116-regression-20260930.md` 和 `.playwright-cli/`。
-
-| 项目 | 当前结果 |
-| --- | --- |
-| 旧模型绑定迁移 | 按用户决定，仅本机三个历史应用显式迁移：Agent 和文本生成从 `qwen3.7-plus` 改为 `qwen3.8-flash` 并发布更新；文件工作流草稿已有 `qwen3.8-flash`，核对节点后发布，使其运行版本不再停留在旧 `qwen3.7-plus`。未修改默认模型、其他应用或生产/灰度配置。 |
-| 逐项真实回归 | Agent 新会话 `请只回复OK` → `OK`；文本生成合成水果查询 → `SELECT name FROM fruits WHERE color = '红色';`；文件工作流用 19 字节合成 txt 上传，运行成功，文档提取器、LLM、输出节点可见，最终结果 `水果是苹果。`。三项均 **PASS**。 |
-| 本次发布前必须修复 | 知识库召回命中结果内嵌图片的 `/files/<id>/file-preview` 请求缺少签名参数而返回 HTTP 400，尽管文字召回和 DOCX 原件下载正常。该错误在 2026-09-24 的旧浏览器日志也存在，并非 9/30 镜像切换新引入。代码路径：`DocumentSegment.sign_content` 可生成带签名链接，但 hit-testing 记录转换后 `sign_content` 为 `None`，前端回退渲染未签名 `content`。**列为 1.16.0 发布前必须修复项；目前尚未修代码、测试或重建镜像，不得标为 PASS。** |
-| 尚未完成 | 图片预览根因修复及独立复审、聚焦测试、本机新镜像和浏览器复测、离线包重建/checker、发布前其他未运行功能与受保护审计仍待对应门禁。不得用本轮三个应用 PASS 推断整个 1.16.0 发布已可进行。 |
-
-
-### 2026-09-28 本机隔离 load + boot 覆盖（优先于下方历史叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 基准与环境 | Development / isolated rehearsal；本次 docs 提交前，候选分支与本地 `origin/codex/enterprise-candidate-1.16.0-20260718` 均为 `9b59e333a9288d79170feac971e6b23e5611a709`，工作区干净。离线包产物来源提交为 `1cc8e60ab3c780a6808482e528a14f2083602058`；本文不自引用后续 docs commit。 |
-| 隔离范围 | 新 Compose 项目 `replay116lb9b59`，独立空挂载目录位于 `/home/ctyun/BigData/.system-data/tmp/replay116-loadboot-9b59e333`，仅 `127.0.0.1:39301` 发布 nginx。预检无既有项目容器、卷、网络或端口冲突；未复制历史数据、现有开发 `.env` 或运行配置，未修改原有开发服务与数据。隔离项目当前保留运行，未获清理授权。 |
-| load 与首次 boot | `dist/offline/rehearsal-1cc8e60a` 四项产物先经 SHA-256 核对；`docker load` 成功加载 12 个镜像。直接用空挂载目录执行 `compose up --wait` **失败**：sandbox 的空 `/conf` 挂载缺少 `config.yaml`。因此不能宣称离线包自身支持无需初始化的空卷启动；sandbox 运行配置是该演练的明确前置条件。 |
-| 配置补齐与基础冒烟 | 仅在隔离项目把仓库跟踪的 `docker/volumes/sandbox/conf/config.yaml.example` 用作开发示例配置，并将其 key 与隔离 `.env.example` 对账；未使用原有运行栈配置。随后隔离 sandbox、API、数据库、Redis 等达到健康状态；Web `/install` 和 API `/console/api/setup` 均为 HTTP 200。首页 307 跳转到 `/install`，符合空数据环境。未安装应用、登录或迁移历史数据。 |
-| 合成 JavaScript | 示例配置的 `allowed_syscalls` 为 `[1, 2, 3]` 时，两次相同的 `console.log(6 * 7)` 请求均由 sandbox 日志报 `signal: bad system call`，HTTP 200 不能代表执行成功。将**仅隔离项目**的该列表备份后置空、仅重启其 sandbox，单次同任务返回 `42\n`、错误字段为空，sandbox 保持健康。该对照指向示例列表限制；具体被阻断的 syscall 未识别，不得据此推定所有代码任务或生产配置均通过。首次 Node 压缩包缺失提示来自解压后重启，不是这次 `bad system call` 的直接证据。 |
-| 未完成项与证据 | 本机忽略目录 `output/offline/rehearsal-1cc8e60a/loadboot/RESULTS.md` 保存顺序、脱敏结果和隔离配置备份路径。完整应用/浏览器/历史数据升级验证、真正无外网主机的 load + boot、受保护发布审计、生产/灰度部署均**未由本次验证完成**。是否修改仓库示例或发布指导仍待单独决策；本次只记录事实，不改代码、镜像或离线产物。 |
-| 本轮门禁 | 仅更新并本地提交本文，不 push、不运行 Docker、不修改隔离或原有服务与数据。提交后先核对新 HEAD 与 origin 差异；任何后续 push、测试、配置更改、实例清理或部署须另行授权。 |
-
-### 2026-09-28 本机离线包覆盖（优先于下方所有历史叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| Git 与环境 | Development / isolated rehearsal；本次 docs 提交前，候选分支与本地 `origin/codex/enterprise-candidate-1.16.0-20260718` 均为 `1cc8e60ab3c780a6808482e528a14f2083602058`，工作区干净。恢复时当前 HEAD 须包含该 checkpoint；本文不自引用后续 docs commit。 |
-| 真实重建 | 在上述精确 SHA 的本机干净隔离 clone 中，使用开发机现有 `docker/.env`，显式 `-Mode rebuild -UseHostProxy` 重建 API/Web 镜像及 `1.16.0-enterprise` 离线镜像包；Compose 依赖镜像全部复用本地，无 pull。被忽略且供运行中 nginx 挂载的 `docker/nginx/conf.d/default.conf` 未修改、未打入配置包。成功后临时 clone 已清理，旧产物未覆盖。 |
-| 新镜像与运行边界 | 新 API 镜像 ID `sha256:8d4ac68ef576d951a51dd941a51f09f91f91ed5372de241e08567e6438fc2319`；新 Web 镜像 ID `sha256:4eb9291e71ef94681c1bddd4863a93737e701273bcfc9f8698cfa87e9b0782a2`。现有 API 系列和 Web 运行容器仍使用切换前的镜像 ID，本轮未启动、停止或切换服务。 |
-| 真实最小门禁 | 新产物目录 `dist/offline/rehearsal-1cc8e60a/` 含镜像 tar、配置包、manifest、images 清单四个文件；隔离 clone 产物与最终副本逐字节一致。真实 checker 对 clone 产物及最终 tar/配置包均为 **5 PASS / 0 FAIL / 0 NOT_RUN**。最终四文件 SHA-256 于 2026-09-28 再次只读计算，与构建记录一致。忽略的本机证据为 `output/offline/rehearsal-1cc8e60a/RESULTS.md`。 |
-| 产物 SHA-256 | 镜像 tar `73c690397a52372f22298c6af7c98fb1c28c885921c66eaf7e58da22366b8380`；配置包 `5c94fba3fa93b80328e8e0c68cca41d6affee4a81fd811976a8420023d3e07c7`；manifest `31492356182f2984e08b2e772baaac57b5e45651593ae7a61613acb9a7ec8644`；images 清单 `5fe37b7903925458880230bef8e677e72dc942f78dcac9beaf283d15151256b8`。 |
-| 警告与未验证项 | API/Web 无 registry RepoDigest；checker 明示警告后以不可变 image ID 绑定 Docker-save 身份。构建日志另有 API Dockerfile `NODESOURCE_KEY_FPR` 启发式警告、Next.js 动态路由静态渲染提示，以及 Vinext SVG URL 未解析和大 chunk 提示；这些不等同于已完成新 Web 运行验证。新包在干净隔离主机上的 **load + boot 为 NOT_RUN**，受保护发布审计、生产/灰度部署均未授权。浏览器控制台错误仍未分类。 |
-| 下一门禁 | 本次仅本地提交状态文档，不 push、不调用 Docker、不改动数据库或卷。建议单独授权 push 精确 docs checkpoint；后续 load + boot 的目标环境、数据/卷范围和回退方式须另行明确并授权。 |
-
-### 2026-09-24 本机运行验证覆盖（优先于下方同日及更早叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| Git 基准 | `codex/enterprise-candidate-1.16.0-20260718` 与本地 `origin/codex/enterprise-candidate-1.16.0-20260718` 在本次 docs 提交前均为 `92b07e5de2020a6fa0859c13e6891f0bc79001b6`，工作区干净；恢复时当前 HEAD 须包含该 checkpoint。本文不自引用即将产生的 docs commit。 |
-| 本机 API 切换 | Development / isolated rehearsal 的 API、worker、worker_beat、api_websocket 四个运行容器已切换到从该 checkpoint 重建的 API 镜像 `sha256:7bd8bf778739f5b7902c6632066a77523927d4ca8e92abf7b4ecb33ed931848d`，其中已核对 Weaviate document-ID 修复。切换沿用现有配置与挂载，以临时 Compose 覆盖设 `MIGRATION_ENABLED=false`；未执行数据库迁移。API 健康检查通过，`/console/api/setup` 经容器及本机 nginx 均返回 200。Web、PostgreSQL、Weaviate 容器未切换。 |
-| 本机回退依据 | 切换前 API 镜像保留为 `dify-api-enterprise:rollback-pre-weaviate-20260924`，ID `sha256:0d7ff7335b7b855a2361c8676975efb791bf41e33062b2714ce03a2740951195`；既有本机冷备未改动。该冷备早于后续知识库索引变更，整库恢复会丢失这些本机变更，不可当作无损回退。 |
-| 历史知识库重索引 | 仅针对知识库 `947ef84b-81e2-44db-a45a-92ae9458417d` 的两份历史文档（2 + 61 个 segment），在独占 collection 归属复核后删除该单一 collection，并通过 Dify 一次任务重新索引成功；未手写向量或重试。PostgreSQL 当前 segment ID **63/63** 与 Weaviate `doc_id`/对象 UUID 严格对应：缺失 0、多余 0、`doc_id` 与对象 UUID 不符 0、越界对象 0。两份文档均保持 completed、enabled、未归档。 |
-| 有窗体召回 | 有窗体 Playwright 在本机页面进入“知识库 → 召回测试”，两份文档显示可用。`智能体平台` 返回 7 条（0.81–0.53）；`AI` 返回 3 条（0.55–0.50）；`河北电信AI算力` 返回 1 条（0.72）。三次浏览器 `hit-testing` 请求均为 HTTP 200，页面均显示对应结果；此前同三条查询为 0 条。详见本机忽略目录 `output/playwright/replay-116-weaviate-20260924/RESULTS.md`，浏览器快照不提交。 |
-| 已知未关闭项 | 本次 Playwright 会话存在**未分类浏览器控制台错误**；目前仅能确认三条召回请求与可见结果通过，不能据此宣称控制台无错误或完整应用回归通过。 |
-| 离线包与发布边界 | `dist/offline/rehearsal-acee5da4` 仍是早于此 Weaviate 修复的旧产物，**尚未按 `92b07e5…` 重建**；其既有 checker 结果不能代表当前 API 镜像的最终发布包。最终离线重建/checker、干净离线主机 load + boot、受保护发布审计及生产/灰度部署均未完成或未授权。 |
-| 下一门禁 | 本次只在本地提交此状态文档，不 push、不运行 Docker、不再重索引或改动数据。建议先单独授权 push 精确 docs checkpoint；之后再单独授权当前代码的最终离线包重建与验证，不能把本机召回通过等同于可发布。 |
-
-### 2026-09-24 覆盖（优先于下方所有历史叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 候选与远端 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 与 `origin/codex/enterprise-candidate-1.16.0-20260718` 已精确核验为 `0cc33fb5e787a9c0d158558d3a0e8df8dfc39112`，工作区干净。本文档不自引用其后产生的 docs commit。 |
-| Weaviate 实例清理 | `replay-116-weaviate-doc-id-builder-20260918`、`replay-116-weaviate-doc-id-code-reviewer-20260920`、`replay-116-weaviate-doc-id-fixer-20260921`、`replay-116-weaviate-doc-id-rereviewer-20260922` 及各自 Agent 会话、隔离 worktree 和实例分支均已按授权清理。 |
-| 孤立 Reviewer 恢复 | Code Reviewer 的历史 `repo_path` 指向已删除的 Builder worktree，首次删除被安全停止。按单独授权临时创建仅指向主仓库的符号链接，通过唯一 controller 完成 Claude Squad 治理删除；controller 正常退出后该链接已删除，路径核验无残留，未编辑 `state.json`。 |
-| 旧 P0 Plan Fixer | 人工确认旧全层 secret 扫描计划已被最小离线门禁取代。删除前核验其唯一未提交修改为 `P0_SECRET_SCAN_ARCHITECT_2026-08-28.md`、无候选分支之外的提交；该 diff 已按授权永久丢弃，实例、Agent 会话、dirty worktree 和实例分支均已清理。 |
-| Claude Squad 最终状态 | 持久实例数 0；额外 worktree 0；`ctyun/replay-116-*` 实例分支 0；`claudesquad_replay-116-*` Agent 会话 0；`controller_count=0`，门禁 PASS。 |
-| 运行验证边界 | Development / isolated rehearsal 的真实 Weaviate 验证、现有历史文档重索引及有窗体 Playwright 召回仍为 **NOT_RUN**。本轮未运行 Docker、未修改 PostgreSQL/Weaviate、未重索引、未部署、未连接生产/灰度。 |
-| 下一授权门禁 | 单独授权 push 本次状态 docs commit，并核验新的远端精确 SHA。随后再单独授权 Development API 镜像重建、有限重索引与有窗体 Playwright 召回验证；不得由本次 docs 提交推定任何运行或部署权限。 |
-
-### 2026-09-22 覆盖（优先于下方所有历史叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 本地候选 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 在本次状态文档提交前精确为 `fc99e9a591bb25c2ed738c5c21f2399653d225ed`，工作区干净；恢复时当前 HEAD 必须包含该 SHA。本文档不自引用其后产生的 docs commit。 |
-| 远端状态 | `origin/codex/enterprise-candidate-1.16.0-20260718` 仍为 `a3e581167af99a8747da4febf248f010629609ac`；本地候选领先 4 个 Weaviate document-ID 闭环提交。本次状态 docs commit 仅获准本地创建，尚未授权 push。 |
-| Weaviate document-ID 修复 | 回放官方修复提交 `216180c7fd373c73109614e12149efc6debfc557` 后，Builder `69191b80cebb20336b764d3ca22ae19e29c1c79e`、Code Review `6caf525f9b3d35c3f00b929a4e4a100c904c6b15`、Fixer `595b5912577139d8735226bdfdb3180c8474c2b9` 与最终 Rereview `fc99e9a591bb25c2ed738c5c21f2399653d225ed` 已以 `git merge --ff-only` 集成。最终报告 `P0_WEAVIATE_DOC_ID_REREVIEW_2026-09-22.md` 为 **PASS**，已接受 P1 全部关闭，无新 P0/P1/P2 finding。 |
-| 回归证据 | 聚焦 `test_doc_id_cleanup_41714.py` 回归 **11/11 PASS**；Weaviate provider 全套单元回归 **51/51 PASS**；Ruff check 与 format-check 均通过。覆盖 `add_texts` 实际 UUID 传递、混合/重复/空 ID，以及 `delete_many` 非 404 异常传播。 |
-| 运行验证边界 | 本轮仅完成代码与单元回归。Development / isolated rehearsal 的真实 Weaviate 验证、现有历史文档重索引及有窗体 Playwright 召回均为 **NOT_RUN**；不得以单元测试替代这些运行门禁。 |
-| 实例状态 | 当前保留 5 个 Claude Squad 实例：4 个 Weaviate Builder/Code Reviewer/Fixer/Rereviewer 已完成、干净且提交已合入本地候选；旧 `replay-116-p0-secret-plan-fixer-20260830` 仍为 dirty，必须保留。精确清单见第 11 节。 |
-| 清理门禁 | 当前为 `CHECKPOINT_PUSH_REQUIRED`：远端尚未包含 `fc99e9a591bb25c2ed738c5c21f2399653d225ed`，不得删除 4 个已完成 Weaviate 实例；dirty 的 P0 Plan Fixer 无论如何不得删除或修改。 |
-| 本轮操作边界 | 未运行 Docker、未修改 PostgreSQL/Weaviate、未重索引、未部署、未连接生产/灰度，也未删除或修改任何实例。 |
-| 下一授权门禁 | 单独授权 push 本次状态 docs commit，并核验新的远端精确 SHA。远端 checkpoint 核验后再审计并单独授权清理 4 个已完成 Weaviate 实例；Development API 镜像重建、有限重索引与有窗体召回验证须另立授权。 |
-
-### 2026-09-16 覆盖（优先于下方所有历史叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 本地候选 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 在本次清理状态文档提交前精确为 `b1b327e1e95adb38d0480c434efe77f0f3d4d4af`，工作区干净；恢复时当前 HEAD 必须包含该 SHA。本文档不自引用其后产生的 docs commit。 |
-| 远端状态 | 已通过 `git ls-remote` 核验 `origin/codex/enterprise-candidate-1.16.0-20260718` 精确为 `b1b327e1e95adb38d0480c434efe77f0f3d4d4af`，与本次文档更新前的本地候选一致。本次清理状态 docs commit 仅获准本地提交，未授权 push。 |
-| Docker-save order 修复 | Fixer `8a042ce262ad849feb13b04f77ba3b7812907dd4` 与最终 Rereview `1699b04a3c3873f287dcaaa5ee49f362dab83c16` 已以 `git merge --ff-only` 集成。Rereview 结论为 **PASS**，合成回归 **65/65 PASS**，无 P0/P1/P2 finding；合法 Docker-save `manifest.json` 记录重排不再被误拒，缺失、重复或额外标签仍 fail-closed。最终报告为 `P0_DOCKER_SAVE_ORDER_REREVIEW_2026-09-11.md`。 |
-| 真实最小 checker | Development / isolated rehearsal 产物来源 checkpoint 为 `acee5da413d573f09074ed238158021e90114058`。使用当前修复后 checker，并将 `OFFLINE_GATE_REPO_ROOT` 显式指向该 checkpoint 的只读 clean clone `/tmp/replay-116-config-acee5da4`，对 `dist/offline/rehearsal-acee5da4` 真实镜像 tar/配置包/manifest/images 执行门禁：**5 PASS / 0 FAIL / 0 NOT_RUN**。本步未调用 Docker daemon。 |
-| 身份警告 | 本地构建的 `dify-api-enterprise:1.16.0-enterprise` 与 `dify-web-enterprise:1.16.0-enterprise` 无 registry RepoDigest；checker 明确警告后使用 manifest 中不可变 image ID 与 Docker-save Config digest 绑定 bundle 身份。这是已接受的本地第一方镜像 provenance 边界，不是 checker 失败。 |
-| 产物 SHA-256 | 镜像 tar `7d630ad5d2a771e2b90ddfcda0860d65d27fce0097e26f96cb49a00a6519cbf7`；配置包 `4099fe19938278843fb7669d1a1dd779dd7f5ce66ce415cf039aa432f95e04d5`；manifest `25f4498da5c7345faf171b477151c53bfeaa8b60066865f2b59b39611859a51e`；images `5fe37b7903925458880230bef8e677e72dc942f78dcac9beaf283d15151256b8`。哈希计算前后四个 rehearsal 文件的大小与 mtime 不变。 |
-| 实例清理 | 已按授权删除完成、干净且已合并至上述远端 checkpoint 的 `replay-116-docker-save-order-fixer-20260910` 与 `replay-116-docker-save-order-rereviewer-20260911`，包括各自 Agent tmux 会话、隔离 worktree 和实例分支；持久化实例清单、tmux、Git worktree 与分支列表均已核验无目标残留。提交仍保存在候选分支及 origin。 |
-| 唯一保留实例 | 仅保留 dirty 的 `replay-116-p0-secret-plan-fixer-20260830`，其 Agent 会话、worktree、分支与未提交的 `P0_SECRET_SCAN_ARCHITECT_2026-08-28.md` 修改均保留。被取代的旧全层扫描计划不得提交或合入；剩余实例不得删除或修改。 |
-| Controller 状态 | 清理前核验 `controller_count=0`，启动唯一 controller 后核验 `exactly-one`；完成两项清理后正常 `q` 退出，最终 `controller_count=0`、门禁 PASS。后续启动 viewer 前须再次检查，不得并存多个 controller。 |
-| 本轮操作边界 | 仅执行已授权实例清理与本地交接文档提交；未运行 Docker、未修改离线产物或 `/tmp/replay-116-config-acee5da4` clone、未部署、未连接生产/灰度、未处理 secret/pattern。清理后四个离线产物大小与 mtime 均与清理前一致。 |
-| 剩余发布边界 | 真离线 Docker host 的 load + boot、Protected release audit、镜像签名/审计、独立环境部署演练与生产/灰度操作仍为 `NOT_RUN` 或未授权。本次验证未读取或处理任何生产/灰度 secret/pattern。 |
-| 下一授权门禁 | 单独授权 push 本次清理状态 docs commit，并核验新的远端精确 SHA；不再重复清理两个已删除实例。后续真实离线 load + boot 等验证需另立具体范围与授权，不得由本次 docs 提交推定 Docker、部署或生产/灰度操作权限。不得删除 dirty 的 P0 Plan Fixer。 |
-
-### 2026-09-08 覆盖（优先于下方所有历史叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 候选与远端 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 与 `origin/codex/enterprise-candidate-1.16.0-20260718` 已精确核验为 `204267c59db4cd7e98cc30ae71f78253559aff7f`；本状态文档不自引用其后产生的 docs commit。 |
-| host-proxy 实例清理 | `replay-116-host-proxy-builder-20260903`、`replay-116-host-proxy-code-reviewer-20260903`、`replay-116-host-proxy-fixer-20260904`、`replay-116-host-proxy-rereviewer-20260904` 及各自 worktree、实例分支和 Agent 会话均已按授权清理。 |
-| 唯一保留实例 | 仅保留 dirty 的 `replay-116-p0-secret-plan-fixer-20260830`；其未提交旧全层扫描计划 diff、worktree、分支和 Agent 会话均未触碰，不得提交、合入、删除或继续修改。 |
-| 当前边界 | 未运行 Docker，未部署，未连接生产/灰度，未处理真实 secret、pattern 或代理值。显式 host-proxy 的真实 Development / isolated-rehearsal Docker 验证仍为 `NOT_RUN`。 |
-| 下一授权门禁 | 先单独授权 push 本次状态 docs commit 并核验新的远端精确 SHA；该 push 不授权删除剩余 dirty 实例、运行 Docker、部署、连接生产/灰度或处理任何真实 secret/代理值。 |
-
-### 2026-09-05 覆盖（优先于下方所有历史叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 本地候选 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 在本次状态提交前为 `19ca6b88a64c931cb18a8053498549426a8b7c7c`，工作区干净；恢复时当前 HEAD 必须包含该 SHA。本状态文档不自引用其后产生的 docs commit。 |
-| 显式 host-proxy 闭环 | Builder `8909ad41ce3f7d58f9469573ff14a93a9d0b24b3`、Code Review `72ae1451880e3ca86e3dc1a485a2e36458db72ed`、Fixer `393a229f62bb1cd1505c2d590d2f242a59d7ba7f` 与最终 Rereview `19ca6b88a64c931cb18a8053498549426a8b7c7c` 均已以 `git merge --ff-only` 集成。最终门禁为 **PASS**，P1-1 已关闭，剩余 P0/P1/P2 为 `0/0/0`。 |
-| 行为与证据 | `-UseHostProxy` 默认关闭；显式启用时 API/Web 构建使用 host network，并只按名称传递当前设置的标准代理 build args。主代理变量全部未设置或为空时在构建前失败。独立 fake-Docker 合成回归 **61/61 PASS**，六个主代理名称逐一为空的矩阵 **6/6 PASS**。 |
-| 真实运行边界 | 本阶段未调用真实 Docker daemon；真实 API/Web rebuild、依赖镜像补齐、离线镜像包/配置包生成、checker 与 SHA-256 仍为 `NOT_RUN`。后续只能在 Development / isolated rehearsal 范围内另行授权，并显式使用 `-UseHostProxy`；不得由此连接生产/灰度或处理其 secret/pattern。 |
-| 远端状态 | `origin/codex/enterprise-candidate-1.16.0-20260718` 仍精确为 `b10c34fd6afe1821857715a6830e5218855d9570`；本地候选在本次状态提交前领先四个 host-proxy 闭环提交。本状态 docs commit 尚未获准 push。 |
-| Skill checkpoint | `codex-personal-skills` 本地提交 `0c41cfdc469b1e7464a6e67a3dae8720dbcc38df` 已将宿主机 loopback proxy、Docker daemon proxy 与 BuildKit `RUN` proxy 的边界、redacted 诊断和禁止静默启用 host network 的规则固化到 `replay-dify-enterprise`；未 push。 |
-| 实例状态 | 当前保留五个 Claude Squad 实例：host-proxy Builder、Code Reviewer、Fixer、Rereviewer 均已完成、干净且提交已包含于本地候选；旧 `replay-116-p0-secret-plan-fixer-20260830` 仍为 dirty，必须保留。完整状态见第 11 节。 |
-| 下一授权门禁 | 先 push 本次状态 docs commit 并核验远端精确 SHA；随后对四个完成且干净的 host-proxy 实例进行 checkpoint cleanup 审计并单独授权删除。真实 Docker 离线构建必须在此后另立授权，且不得自动部署、连接生产/灰度或处理真实 secret/代理值。 |
-
-### 2026-09-02 覆盖（优先于下方所有历史叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 本地候选 checkpoint | `codex/enterprise-candidate-1.16.0-20260718` 在本次状态提交前为 `40aa12df3888146c7b031937f231cac299fd10e5`，工作区干净；恢复时当前 HEAD 必须包含该 SHA。本状态文档不自引用其后产生的 docs commit。 |
-| 最小离线门禁 | Architect、Plan Reviewer、Plan Fixer、Plan Rereviewer、Builder 与独立 Code Reviewer 已闭环；Builder `60bd4df96c46c6a218eb7f5758fd53469dd812ed` 及 Code Review `a18208f7b99da2e141b4a24caf5c3365940670a1` 已以 `git merge --ff-only` 集成。Code Review 为 **PASS**，无 P0/P1/P2 finding，因此未创建 Fixer/Rereviewer。 |
-| 验证证据 | 五个变更脚本 `bash -n` 通过；`bash scripts/ci/check-enterprise-offline-tests.sh` 在候选分支通过 **51/51**，退出码 0。测试仅使用 synthetic canary 与 fake Docker；真实 Docker、真实离线 artifact、PowerShell、Protected release audit、离线主机及目标运行验证保持 `NOT_RUN`。 |
-| 门禁边界 | 常规开发机门禁按构造保证：配置包精确 allowlist、第一方构建上下文约束、manifest/image identity 与 synthetic canary；不恢复旧全层/全第三方镜像 secret 扫描。不得在开发机读取或处理生产/灰度 secret/pattern。 |
-| 远端状态 | `origin/codex/enterprise-candidate-1.16.0-20260718` 已精确核验为 `40aa12df3888146c7b031937f231cac299fd10e5`，与本次状态提交前的本地候选一致。当前文档更新产生的新 docs commit 尚未获准 push。 |
-| 实例状态 | 已删除 8 个完成、干净且已合并的 `replay-116-*` Claude Squad 实例及其 worktree、Agent 会话和实例分支。仅保留 dirty 的 `replay-116-p0-secret-plan-fixer-20260830`；其被最小门禁决策取代的未提交全层扫描计划 diff、worktree、分支和会话均未触碰。完整状态见第 11 节。 |
-| 下一授权门禁 | 先单独授权 push 本次状态 docs commit 并核验远端精确 SHA。该 push 不授权删除剩余 dirty 实例、Docker、真实 artifact 构建、Protected audit、部署、生产/灰度连接或 secret 处理。后续本机真实 Docker 重建与离线包验证必须另立 Development / isolated-rehearsal 阶段授权。 |
-
-### 2026-08-30 覆盖（优先于下方所有旧 P0 / 实例叙述）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 候选基准 | `codex/enterprise-candidate-1.16.0-20260718` 在本次状态提交前为 `e30d4bdaf61d7a7db72144d5d4503c9d647f7ac3`，干净；该 SHA 包含已合入的 P0 Architect 与 Plan Review 文档。恢复时当前 HEAD 必须包含此 SHA。 |
-| 远端跟踪基准 | 本地 `origin/codex/enterprise-candidate-1.16.0-20260718` 为 `198ee103deac60d1d5be008aeb671c90c93eca62`；候选在本次状态提交前领先两个本地 docs 提交。未授权 push。 |
-| P0 旧计划 | `P0_SECRET_SCAN_ARCHITECT_2026-08-28.md` 的全 Docker-save/全第三方镜像层扫描方向已被人类决策取代；Plan Fixer 的未提交 diff **不得提交或合入**。 |
-| 新门禁决策 | 常规开发机采用“按构造保证”的最小门禁：配置包 allowlist/拒绝真实 `.env`、运行卷与密钥；第一方 API/Web 构建上下文可审计；镜像清单/manifest 核验第一方镜像与依赖身份；第三方镜像只核验 immutable identity，不做常规全层 secret 扫描。测试仅用 synthetic canary。 |
-| 受保护审计边界 | 旧受保护审计的 redacted hit 仍未分类；不得在开发机读取、处理或用生产/灰度 pattern 复扫。只有另行授权的 Protected release audit 可处理指定发布 artifact，且不连接目标环境。 |
-| Skill checkpoint | `codex-personal-skills` 已本地提交 `bd2ad25c09b132b74ca93213441572a0e463beb3`，将上述最小门禁和环境边界固化到 `replay-dify-enterprise`；未 push。 |
-| 下一门禁 | 先从本次状态提交后的精确 SHA 创建新的最小门禁 Architect；不得创建 Builder，直到新的 Architect 与独立 Plan Reviewer 都被接受。 |
-
-## 1. 当前可信快照
-
-### 2026-08-27 覆盖（优先于下方 2026-08-14 历史快照）
-
-| 项目 | 当前值 |
-| --- | --- |
-| 本地代码验证 checkpoint | `62bd85f5fc0a2bed4f43faf18427458dc15ab293`（远端候选的祖先） |
-| 已验证远端 checkpoint | 已包含 P2 代码闭环、Review、Rereview 与后续交接；恢复时必须执行 `git rev-parse origin/codex/enterprise-candidate-1.16.0-20260718` 获取精确 SHA |
-| 本地提交链 | `c65e3a9445` → `261ba37959`（历史升级验收记录）→ `82b48543c0`（代码/验收修复）→ `4466f43901`（状态）→ `066de76391`（P2 Review）→ `62bd85f5fc`（P2 测试闭环）→ `3ca0ef2a85`（Rereview/交接）→ `c716a6c622`（前序 push checkpoint） |
-| 本轮真实运行验证 | 本机 API/Web image 重建成功；E04 提交→审核→发布→复制→打开通过；E05 “智慧广场 → 我的提交”与平台管理员“审核应用”可见入口通过。详见 `UPGRADE_REHEARSAL_VALIDATION_2026-08-18.md` |
-| P2 最终复审 | `MARKETPLACE_REPLAY_REVIEW_2026-08-26.md` 的 P2-A/P2-B 已由 `MARKETPLACE_REPLAY_REREVIEW_2026-08-27.md` 独立复审为 **PASS**；无新 finding |
-| 定向测试 | 运行时控制器 `69 passed, 7 deselected`；主导航完整套件 `53 passed`；P2-B 单测 `1 passed, 52 skipped`；7 个 OpenAPI 契约用例仅缺少未生成的 `packages/contracts/openapi/console-openapi.json`，保持 NOT_RUN，不作为代码失败 |
-| 工作树约定 | Claude Squad 实例已清理（`state.json` 为 0，worktree 与实例分支无残留）；`.playwright-cli/` 与 `output/` 是未跟踪的本机浏览器证据，不纳入 Git |
-| 发布约束 | 不得以旧 `83e1bd5418` 或 origin `c65e3a9445` 直接发布；每次发布前须重新读取 origin 的精确 SHA，并获得单独的部署授权 |
-
-下表保留为 2026-08-14 的历史闭环记录，不得再将其中的 `83e1bd5418` 视为当前 HEAD。
-
-| 项目 | 当前值 |
-| --- | --- |
-| 本地仓库 | `/home/ctyun/BigData/GitHub/dify-enterprise-1.16.0` |
 | 候选分支 | `codex/enterprise-candidate-1.16.0-20260718` |
-| 候选 HEAD | `83e1bd5418d645bc72929cb3b517c1fda5cd01fc`（B0–B8 + Phase D/F/G/H 全闭环） |
-| 候选 HEAD 历史 checkpoint | B4 `9c4c0356f3f2374c22b383ba96331e1dd92505fd`、B5 Final `e7d487538fb1431a3b769a8d3fe9d8354487ceea`、B8 Review `b0f84651099ab25208b7a177d505505bf7c57324`、Phase H Rerun evidence `83e1bd5418`（全部为 HEAD 祖先） |
-| 交接文档 commit | 使用 `git log -1 --format=%H -- docs/enterprise/replay-1.16.0/CURRENT_STATE.md` 获取，避免文件自引用 commit |
-| 远端跟踪 | `origin/codex/enterprise-candidate-1.16.0-20260718` |
-| origin | `https://github.com/D-S-William-Guo/dify.git` |
-| upstream | `https://github.com/langgenius/dify.git` |
-| 官方基线 tag | `1.16.0` |
-| 官方基线 commit | `5c6372d2f76d240265b92fd27c16bc772ffcb107` |
-| Alembic 最终 head | `e7c0a9d2b8f3`（parent `b416e5c4e702`） |
-| Skill 源仓库 | `/home/ctyun/BigData/GitHub/codex-personal-skills` |
-| Skill 源 commit | `33928a0`（含单控制器、事件驱动清理、下一步 ownership、human-signaled completion、长提示词 human-submit、`cs create` 非交互路径与大契约 temp-file 投递） |
-| Claude Squad 定制 commit | `a1e35dc7436454cb53a584b8730166e23055ad4b`（`fix/n-overlay-small-terminal`，含 governed workflow safeguards 与小终端 overlay 修复） |
-| 工作区 | 候选在 `e7d487538fb1431a3b769a8d3fe9d8354487ceea` 集成核验时干净；本文件更新期间仅允许本文件 dirty |
-| 本地与 origin | 一致：本地候选 HEAD `83e1bd5418` == `origin/codex/enterprise-candidate-1.16.0-20260718` |
-| 当前产品里程碑 | B0–B8 全链已闭环；Phase D/F/G/H 运行验证全部 PASS（含 Phase H rerun）；剩余为已接受已知限制（见第 5 节）与生产发布前置动作（见第 2 节） |
-
-禁止向 `upstream/langgenius/dify` 推送企业候选或创建企业 PR。企业分支只推送到用户 fork `origin`。
-
-恢复时先运行：
-
-```bash
-cd /home/ctyun/BigData/GitHub/dify-enterprise-1.16.0
-git status --short --branch
-git rev-parse HEAD
-git rev-parse origin/codex/enterprise-candidate-1.16.0-20260718
-git merge-base --is-ancestor 62bd85f5fc0a2bed4f43faf18427458dc15ab293 HEAD
-git merge-base 1.16.0 HEAD
-```
-
-预期（恢复时）：
-
-- 本地 HEAD 包含 B5 Final checkpoint `e7d487538fb1431a3b769a8d3fe9d8354487ceea`、`261ba37959`、`82b48543c0` 与 `62bd85f5fc`；本地与 origin 的精确 SHA 必须以恢复命令实测为准；
-- B4 checkpoint `9c4c0356f3f2374c22b383ba96331e1dd92505fd` 是当前 HEAD 的祖先；
-- merge-base 为官方 1.16.0 commit；
-- 除本机未跟踪浏览器证据目录外，工作区无 tracked 修改。
-
-任何一项不符时，不得直接启动新 Builder。先诊断分支、worktree 和未提交修改。
-
-## 2. 当前工作顺序
-
-本地 1.16.0 真实滚动升级演练已完成 P2 测试闭环：历史数据可用性、镜像构建/启动、E04/E05 可见 UI 与 RBAC 路径以及 P2-A/P2-B 独立复审均有本机证据。候选 checkpoint 已 push 并核验，Claude Squad 相关实例已清理；不启动新的重放 Builder、不访问生产/灰度，下一步仅在获得授权后进行发布前置验证。
-
-B0–B8 全链与 Phase D/F/G/H 运行验证均已闭环（最终总结见 `FINAL_VALIDATION_SUMMARY.md`）。其中 `83e1bd5418` 与 origin 一致的叙述是 2026-08-14 历史快照；当前候选与 origin 的关系以第 1 节 2026-08-27 覆盖为准。本轮不再启动新的重放 Builder。
-
-协作基础设施当前状态：
-
-1. 通用 Claude Squad/worktree 协作 Skill：已升级到安全半自动化版并安装；
-2. Dify 官方版本企业功能重放 Skill：已创建并安装；
-3. 两个 Skill 已通过结构校验；Git 起点核验脚本已通过正向/负向测试；
-4. Claude Squad 源 checkpoint 为 `a1e35dc7436454cb53a584b8730166e23055ad4b`，并启用 `"governed_mode": true`；
-5. dirty worktree 下 `c`/`p`/`D` 会拒绝危险操作；`D` 会明确提示是否删除本地分支；
-6. B5 Plan/Contract 及 B5-A 起至 Final Reviewer 的已完成实例已按审计清理；B6–B8 各阶段实例（Phase D/F/G/H、reuse gate 等 11 个）也已完成历史批量清理；当前唯一保留实例见第 11 节；
-7. B0–B8 全链已关闭；重放 Builder 不再启动。
-
-Skill 路径：
-
-```text
-源：
-/home/ctyun/BigData/GitHub/codex-personal-skills/orchestrate-claude-squad
-/home/ctyun/BigData/GitHub/codex-personal-skills/replay-dify-enterprise
-
-Codex 自动发现链接：
-/home/ctyun/.codex/skills/orchestrate-claude-squad
-/home/ctyun/.codex/skills/replay-dify-enterprise
-```
-
-Skill 源仓库当前只有本地 Git commit，尚未配置远端；这不影响本机使用，但未来需要异机同步时应单独配置备份/远端。
-
-产品流水线已全部完成：
-
-```text
-B0 企业重放护栏 → B1 mode 归一化 → B2 migration/inventory → B3 平台管理员后端
-→ B4 智慧广场后端/契约 → B5 企业前端全链 → B6 Compose overlay
-→ B7 离线 artifact chain（含 reuse gate 加固）→ B8 vector checker/发布验证准备
-→ Phase D 真库升级矩阵 → Phase E Compose 静态 → Phase F 镜像构建/身份
-→ Phase G 运行验收 → Phase H 离线链（rerun PASS）
-```
-
-B9“企业会话管理”保持 `DEFER`，本发布不包含。
-
-### 下一授权动作（生产发布前置）
-
-本轮重放闭环，但生产发布仍须走正式发布流程（见 `FINAL_VALIDATION_SUMMARY.md` 第 5/6 节）：
-
-1. G1 已完成：候选 checkpoint 已 push origin 并核验；恢复时须重新读取精确远端 SHA；
-2. G2 已完成：历史 11 个重放实例与本轮三个 Reviewer/Fixer/Rereviewer 实例均已清理；
-3. 受保护 secret 扫描（真实受保护 pattern）；
-4. 真离线 Docker host（无外网）load + boot 验证；
-5. 正式镜像签名/审计；
-6. 独立环境部署演练（非当前 daemon）。
-
-以上 3–6 属生产发布流程，不在本重放仓库内执行。
-
-## 3. 已完成阶段
-
-### Design Gate
-
-已完成官方 release/tag 分析、旧企业补丁决策矩阵、实施拆分、文件所有权和验证计划。
-
-关键原则：
-
-- 官方 1.16 是实现真相；
-- 官方已经覆盖或修复的旧企业实现必须舍弃；
-- 不把旧候选整体 cherry-pick 到 1.16；
-- 旧代码只作为需求和风险证据；
-- 每个阶段使用精确 SHA、allowlist、独立 Review 和人工门禁。
-
-主要入口：
-
-- `ARCHITECT_HANDOFF.md`
-- `DESIGN_GATE.md`
-- `PATCH_DECISION_MATRIX.md`
-- `VALIDATION_PLAN.md`
-- `OFFICIAL_RELEASE_ANALYSIS.md`
-
-### B0：企业重放护栏
-
-最终 checkpoint：`0c2e573633`
-
-完成：
-
-- 官方基线与 diff scope 检查；
-- controller/SQLAlchemy/session 等越界检测；
-- 跨 hunk 和 fallback 绕过修复；
-- 生成链与禁止路径护栏。
-
-最终报告：`B0_REREVIEW_2.md`。
-
-### B1：Generator model mode 归一化
-
-最终 checkpoint：`bfc122e98e`
-
-完成 automatic/code generator model mode 的归一化、缺失 mode 处理和 focused tests。
-
-最终报告：`B1_REREVIEW.md`。
-
-### B2：只读 inventory 与 migration graph
-
-最终 checkpoint：`578e9c2754`
-
-完成：
-
-- 旧 1.15 运行环境只读 inventory；
-- 恢复企业历史 revisions：
-  - `c8f3d9d4a1be`
-  - `f1a14e1e9b41`
-  - `e2f0a9b7c6d5`
-- 增加 1.16 空 merge：`a71e16c0de01`；
-- 保证 migration graph 可审计。
-
-重要：B2 只恢复历史链，没有执行真实数据库 upgrade/stamp。
-
-主要报告：
-
-- `B2_INVENTORY.md`
-- `B2_INVENTORY_REVIEW.md`
-- `B2_REVIEW.md`
-
-### B3：平台管理员后端
-
-最终 checkpoint：`925b01e9d2`
-
-完成：
-
-- 平台管理员身份；
-- workspace list/detail/rename；
-- member list/invite/non-owner role update；
-- 精确 7 条 Console route；
-- session-injected service；
-- RBAC mutation fail-closed；
-- contracts 由 B4 统一生成。
-
-明确不包含：
-
-- member DELETE/removal；
-- workspace create/delete/archive；
-- owner mutation；
-- password reset；
-- break-glass；
-- 新 audit model。
-
-最终报告：`B3_REVIEW.md`。
-
-### B4：智慧广场后端
-
-最终 checkpoint：`9c4c0356f3f2374c22b383ba96331e1dd92505fd`
-
-最终结论：
-
-```text
-PASS
-P0/P1/P2 open findings = 0/0/0
-B4_FINAL_ACCEPTED
-CHECKPOINT_PUSH_GATE_RECOMMENDED
-398 collected / 398 passed / 0 NOT_RUN
-contracts generation deterministic twice
-Alembic unique head = b416e5c4e702
-```
-
-完成：
-
-- B4-A：最终 marketplace schema/model/migration；
-- B4-B：状态机、不可变 snapshot、sanitizer、dependency、copy、backfill CLI；
-- B4-C：8 条 marketplace route、权限、DTO、真实 401/domain error contracts；
-- 同时生成 B3 7 条和 B4 8 条 Console contracts；
-- 修复 first-submit 非空 `expected_row_version` 误创建资产；
-- 修复 `approved/unlisted` 与 `approved/unpublished` 无法 resubmit；
-- 真实下架、legacy backfill、stale version 路径均有行为测试。
-
-主要报告：
-
-- `B4_IMPLEMENTATION_PLAN.md`
-- `B4_A_REREVIEW.md`
-- `B4_B_REREVIEW.md`
-- `B4_FINAL_REVIEW.md`
-- `B4_FINAL_REREVIEW.md`
-
-### B5：企业重放前端全链（B5-E/A/B/C/D + 回归 + Final Review）
-
-当前已接受 B5 Final checkpoint：`e7d487538fb1431a3b769a8d3fe9d8354487ceea`
-
-已完成：
-
-- Architect：`d5b365093ef7272b3cbb36a4ac16ba595f96f2ca`；
-- Plan Reviewer：`dfa98c711aee15226e3eabd3b2320d3557aa8e2c`；
-- Plan Fixer：`325fb52608890dcfafab72f2dbb3f40069f02f80`；
-- Plan Rereviewer：`c0c398f423135dcd118b2dce8be4d6c91562c1a7`，结论 `PASS`、`PLAN_ACCEPTED=yes`。
-- Contract Fixer：`7237af7c759f433fac9e2e2c1a1b63d816134a24`；
-- Contract Reviewer：`ccc96aef5c38e4605ef927d67f500eb3543e3c8f`，发现并接受 `B5CR-02` targeted Ruff finding；
-- Contract Ruff Fixer：`6b6305f2cdeb436c4736978a02240e99ae6c8e5f`；
-- Contract Rereviewer：`8cd884538bf1d58e92af711e49b72f2cdf061672`，结论 `PASS`、`CONTRACT_FIX_ACCEPTED=yes`、open findings `0/0/0`。
-- B5-E i18n Builder：`f5cf5bee66d924e1bd75b66d01ad635b225a0857`，只修改 23 个 approved locale `common.json`；
-- B5-E independent Reviewer：`e319481a7bc1e39ca91200f1b67a6541710c1aa4`，结论 `PASS`、`B5_E_ACCEPTED=yes`、open findings `0/0/0`。
-- B5-A Builder：`683f98c8e2d8ca8b207709088fe15299ec499bb0`；Reviewer `11bae180bb8c2786dd89a45f6c062a784b63510a`，结论 `PASS`、`B5_A_ACCEPTED=yes`。
-- B5-B Builder：`f912864a1a963a9f89fac46612dc7d85c472e088`；Reviewer `0bc4a1e3101ff8109a84a907421b8fa0e3c03c94`，结论 `PASS`、`B5_B_ACCEPTED=yes`。
-- B5-C Builder：`a5c1e2a336c95ed71c6dea0961c985f0f7fdc40b`；Reviewer `80253fcc942121aa662c605b93dc54d340dd00f2` 报 `CHANGES_REQUIRED`（B5CR-01/02）；Fixer `1be688b81ee0f2f0029b84c17b3ca65ca8028d78`；Rereviewer `1385ef5dbfce490ef8d224bb2f3a7838646b9046`，结论 `PASS`。
-- B5-D Builder：`06279393ed992f8f2c5d518110b1e595bf6fe43f`；Reviewer `f0d72492f809392c598deb7220e4d87a21cb14f9` 报 `CHANGES_REQUIRED`（B5DR-01/02）；Fixer `35468cd742299d96506e280babd36f068e565fd4`；Rereviewer `68822f521507b890ad663ef5a5affb9c2ef91b56`，结论 `PASS`。
-- Full regression：`f1941fc6a5dd312340b96f52bcaab95a9db0e711`，结论 `PASS`；完整 Vitest 295/295、type-check、i18n check PASS；browser/E2E 如实 `NOT_RUN`。
-- Final Reviewer：`e7d487538fb1431a3b769a8d3fe9d8354487ceea`，结论 `PASS`、open findings `0/0/0`。
-
-已关闭的计划 findings：
-
-- `B5PR-01`：采用 `MOVE_B5_E_BEFORE_B5_A`，先落盘并独立审查全部 23 locale；
-- `B5PR-02`：采用 `B5_C_OWNS_DEDICATED_RESUBMIT_DIALOG`，消除 B5-C 对 B5-D 的前向依赖。
-
-已记录的产品/实施决定：
-
-- `CONTRACT_FIX_REQUIRED`；
-- `I18N_OPTION_B_APPROVED`；
-- B5-E 是 23 个 locale `common.json` 的唯一 writer；
-- 实际串行顺序为 contract 修复门禁 → B5-E → B5-A → B5-B → B5-C → B5-D。
-
-Contract Rereview 已关闭 B5 的 contract 前置阻断；两次官方 generation 均得到与 HEAD
-一致的生成内容，已接受的 179 项对称 `DA` 是 generator/index tracking 流程偏差，不是
-contracts 内容差异。B5 产品范围与所有阶段门禁均已接受；完整 Vitest 295/295、
-type-check、23-locale `i18n:check` 均 PASS；`pnpm check` 仅重现已接受的 5 个 B1
-formatting baseline（ESLint `NOT_RUN`）。browser/E2E 因本地环境只有 1.15.0 enterprise
-容器、无 B5 生产 artifact 且 integration tests 仅 CI 运行，如实 `NOT_RUN`。
-下一阶段是 B6 enterprise overlay / 企业镜像，尚未授权。
-
-主要报告：
-
-- `B5_IMPLEMENTATION_PLAN.md`
-- `B5_IMPLEMENTATION_PLAN_REVIEW.md`
-- `B5_IMPLEMENTATION_PLAN_REREVIEW.md`
-- `B5_CONTRACT_FIX_REVIEW.md`
-- `B5_CONTRACT_FIX_REREVIEW.md`
-- `B5_E_I18N_REVIEW.md`
-- `B5_A_REVIEW.md`
-- `B5_B_REVIEW.md`
-- `B5_C_REVIEW.md`
-- `B5_C_REREVIEW.md`
-- `B5_D_REVIEW.md`
-- `B5_D_REREVIEW.md`
-- `B5_FULL_REGRESSION_REPORT.md`
-- `B5_FINAL_REVIEW.md`
-
-### B6：Enterprise Compose overlay
-
-已闭环（`B6_REVIEW.md`、`evidence/phase-e/**`）：
-
-- overlay 74 行，覆盖 api/worker/beat/websocket/web 五 runtime；官方 compose 不动；
-- Phase E 静态断言 S-1..S-9 PASS；`CAN_REPLACE_LOGO` 普通 false / overlay true；Agent key 相等；Redis DB 不冲突；
-- 镜像身份由 Phase F 真库验证（5 容器 image ID）。
-
-### B7：离线 artifact chain + reuse gate 加固
-
-已闭环（`B7_REVIEW.md`、`B8_REUSE_GATE_REVIEW.md`）：
-
-- 21/21 fixture PASS；打包模式发布只允许 reuse；`-CheckOnly` 禁止 build/pull/save；
-- Phase H 根因修复后加固 reuse gate：`verify_enterprise_image_content`（docker run 只读）核对 API 镜像 migration 文件集 == 仓库 HEAD 文件集，且 `request_builder.py` 含 `_align_snapshot_to_composition`；.sh 与 .ps1 镜像相同门禁（.ps1 运行时 NOT_RUN）；
-- Phase F Rebuild（2026-08-14）后 gate 接受新 API image `sha256:566bdf4c88cf...`。
-
-### B8：Vector checker + 发布验证准备
-
-已闭环（`B8_REVIEW.md`、`evidence/vector-checker/**`）：
-
-- 47/47 checker fixture PASS；backend focused 158 passed；migration graph 61 passed；
-- B8R-01/02/03 已接受 P3；completeness 两脚本未授权（人工兜底）。
-
-### Phase D：真库升级矩阵（隔离副本）
-
-已闭环（`evidence/phase-d/**`）：
-
-- 6/6 PASS：企业 1.15→1.16、官方 1.15→1.16、PG18 空库、PG18 应用升级、官方 1.16→1.16、备份/恢复回滚演练；
-- fresh PG15 迁移 head 唯一 `e7c0a9d2b8f3`；PG18 uuidv7 版本 7。
-
-### Phase F：镜像构建 + 容器身份
-
-已闭环（`evidence/phase-f/**`、`evidence/phase-f-rebuild/**`）：
-
-- 2026-08-11 首轮 PASS；Phase H 发现镜像缺 Phase G 修复后，2026-08-14 从候选 HEAD 重建 PASS；
-- 新镜像 ID：API `sha256:566bdf4c88cf...`、Web `sha256:b76919e99830...`；镜像 migration 文件集 == 仓库 HEAD（206 文件）。
-
-### Phase G：运行验收
-
-已闭环（`evidence/phase-g/**`）：
-
-- install/login/platform-admin/marketplace/Workflow/WebSocket/plugin-dataset-vector/secret/浏览器/E2E/Agent 12 场景均 PASS；
-- 2 个 release-blocking bug 已修复：GPH-01 marketplace schema 类型不匹配（新 migration `e7c0a9d2b8f3` 列改 uuid）、GPH-02 agent 绑定 knowledge 后对话失败（request_builder 快照对齐）；Rereview PASS。
-
-### Phase H：离线链
-
-已闭环（`evidence/phase-h/**`、`evidence/phase-h-rerun/**`）：
-
-- 首轮 FAIL（离线镜像缺 Phase G 修复）；重建镜像 + 加固 reuse gate 后 rerun **PASS**（2026-08-14）；
-- fresh PG15 `alembic_version = e7c0a9d2b8f3`；marketplace ID/FK 12 列全 uuid；smoke 全 200；`--pull never` 无 pull；teardown 无残留。
-
-最终总结见 `FINAL_VALIDATION_SUMMARY.md`。
-
-## 4. B4 最终契约摘要
-
-### B3 route
-
-精确 7 条：
-
-```text
-GET   /console/api/account/platform-admin-status
-GET   /console/api/platform-admin/workspaces
-GET   /console/api/platform-admin/workspaces/<workspace_id>
-PATCH /console/api/platform-admin/workspaces/<workspace_id>
-GET   /console/api/platform-admin/workspaces/<workspace_id>/members
-POST  /console/api/platform-admin/workspaces/<workspace_id>/members/invitations
-PATCH /console/api/platform-admin/workspaces/<workspace_id>/members/<member_id>/role
-```
-
-### B4 route
-
-精确 8 条：
-
-```text
-POST /console/api/apps/<app_id>/enterprise-marketplace/submissions
-GET  /console/api/enterprise-marketplace/submissions
-GET  /console/api/enterprise-marketplace/assets
-GET  /console/api/enterprise-marketplace/assets/<asset_id>
-POST /console/api/enterprise-marketplace/assets/<asset_id>/copies
-GET  /console/api/platform-admin/enterprise-marketplace/assets
-POST /console/api/platform-admin/enterprise-marketplace/assets/<asset_id>/reviews
-POST /console/api/platform-admin/enterprise-marketplace/assets/<asset_id>/unlist
-```
-
-没有 marketplace DELETE、platform-admin member DELETE、workspace create/delete/archive、owner/password/break-glass route。
-
-### Contracts
-
-- 401：`UnauthorizedResponse {code, message}`；
-- domain errors：`MarketplaceErrorResponse {code, message, status}`；
-- B5 只消费 `packages/contracts/generated/api/console/**`；
-- B5 不得重新生成或手写 Console response types。
-
-### B5 已关闭的后置 contract completeness findings
-
-以下 findings 不推翻 B3/B4 已接受的后端行为，且已在 B5 消费 contracts 前修复：
-
-1. B3 platform-admin/status generated contracts 缺少与真实可达错误响应对应的 typed
-   error unions；`PlatformAdminErrorResponse` 未完整进入 generated contracts。
-2. B4 marketplace review 路由实际可达 `422` domain errors，但 OpenAPI 路由声明和
-   `PostPlatformAdminEnterpriseMarketplaceAssetsByAssetIdReviewsErrors` 均缺少 `422`。
-
-已接受 checkpoint `8cd884538bf1d58e92af711e49b72f2cdf061672` 包含官方 generator
-链修正、行为/契约测试、generated contracts、targeted Ruff 修复和独立 Rereview 报告。
-验证结果包括 focused `97 passed`、B3/B4 九文件 `403 passed`、contracts `4 passed`、
-type-check PASS、targeted Ruff/format PASS，以及两次 deterministic generation 内容与 HEAD
-一致。禁止前端 direct fetch、手写 response/error types 或 legacy loader workaround 的
-约束继续有效；B5 只消费已生成 contracts，不得重新生成。
-
-## 5. 仍未完成的运行验证（剩余 NOT_RUN）
-
-Phase D/F/G/H 已闭环，以下为本轮明确未运行（NOT_RUN）、已在 `FINAL_VALIDATION_SUMMARY.md` 第 5 节作为已知限制接受，生产发布声明必须写明：
-
-- 真离线 Docker host（无外网）load + boot 未验证（同一 daemon 模拟）；
-- 镜像 bundle 层内 secret 扫描 NOT_RUN（Docker 29 OCI blob 布局，B7 门禁未覆盖）；
-- 真实受保护 secret pattern 未提供；只用 synthetic pattern；
-- `.ps1` 运行时 NOT_RUN（无 pwsh）；B7R-05 BOM 风险保持；
-- agent_backend 停止时返回 400 含 raw transport message（非 503）；无 crash，恢复正常；
-- inline agent（workflow agent-composer 节点）仅 API 未跑通（需 UI 路径）；
-- 迁移 dataset 的向量 class 对齐未验证（生产 Weaviate 数据在禁止路径）；新 dataset hit-testing PASS；
-- plugin remote-debug（5003）NOT_RUN；
-- completeness 两脚本未授权，人工审计兜底。
-
-另：B9 企业会话管理保持 `DEFER`；B7R-03..06、B8R-01/02/03、B8RGR-01/02 已接受 P3。
-
-真实演练要求不变：不得在开发工作树或当前运行 volume 上直接执行 migration/repair；生产发布前置（受保护 secret 扫描、真离线机、镜像签名/审计、独立部署演练）不在本仓库内执行。
-
-## 6. 已知限制与风险
-
-### B4 accepted known limitations
-
-以下两项已被明确接受，但不是“已经解决”：
-
-1. 官方 `AppDslService.import_app()` 内部 commit 造成 copy 无法承诺完全原子回滚；
-2. DSL 将来新增未知字段时，当前显式 sanitizer 规则可能需要同步扩展。
-
-边界要求：
-
-- 所有企业自有校验必须在 import 前完成；
-- 不得声称 import 后仍能完整 rollback；
-- B8 必须覆盖失败 reconciliation 和信息泄漏。
-
-### 非阻断技术债
-
-- 测试辅助代码仍有 `datetime.utcnow()` deprecation warning；
-- 当前不阻断 B4，但后续可在独立测试清理任务中处理。
-
-### B2/B8 运行风险
-
-只读 inventory 发现：
-
-- 核心 Dify 实际运行版本为 Enterprise 1.15.0；
-- Weaviate/Sandbox 的创建和挂载 provenance 来自 1.14.2；
-- SSRF Proxy 仍使用 1.14.2 配置，缺少 1.15 private destination 默认拒绝和 allowlist；
-- Weaviate class 对应关系已核对（B2 inventory：缺失 0、额外 0）；B8 vector checker 已闭环（47/47 fixture PASS）；Phase G 新 dataset 对齐 + hit-testing PASS；迁移 dataset 的向量 class 对齐仍 NOT_RUN（生产数据禁止路径）；
-- volume provenance 必须按实际挂载路径验证，不能只相信 Compose 文件。
-
-这些风险不得因为 B0–B8 PASS 而被删除或降级。
-
-## 7. B5 当前门禁与下一任务
-
-B5 全链已完成独立门禁并接受：
-
-```text
-B5 Plan Rereview: c0c398f423135dcd118b2dce8be4d6c91562c1a7
-B5 Contract Rereview: 8cd884538bf1d58e92af711e49b72f2cdf061672
-B5-E Review: e319481a7bc1e39ca91200f1b67a6541710c1aa4
-B5-A Review: 11bae180bb8c2786dd89a45f6c062a784b63510a
-B5-B Review: 0bc4a1e3101ff8109a84a907421b8fa0e3c03c94
-B5-C Rereview: 1385ef5dbfce490ef8d224bb2f3a7838646b9046
-B5-D Rereview: 68822f521507b890ad663ef5a5affb9c2ef91b56
-Full regression: f1941fc6a5dd312340b96f52bcaab95a9db0e711
-Final Review: e7d487538fb1431a3b769a8d3fe9d8354487ceea
-```
-
-上述 checkpoint 均包含 B4 产品 checkpoint
-`9c4c0356f3f2374c22b383ba96331e1dd92505fd`。交接文档不能自引用其未来 commit；
-恢复时以 `git rev-parse HEAD` 取得当前候选精确 SHA，并要求它包含上述 B5 Final
-checkpoint。状态文档 checkpoint 推送完成后，还要求本地与 origin 精确一致。
-
-### 已关闭门禁摘要
-
-- B5-E：23 个 locale `common.json` 全量落盘，139 个 approved keys；`i18n:check`、type-check PASS。
-- B5-A：8 个 exact files，main-nav 权限 fail-closed、typed error mapping、shared invalidation 唯一 writer；Review PASS。
-- B5-B：15 个 exact files，platform-admin workspace/member UI；Review PASS。
-- B5-C：23 个 exact files，marketplace browse/detail/submissions/admin review + 专用 resubmit dialog；Review 发现 B5CR-01/02，Fixer 关闭，Rereview PASS。
-- B5-D：4 个 exact files，app-card first-submit entry + first-submit dialog；Review 发现 B5DR-01/02，Fixer 关闭，Rereview PASS。
-- Full regression：完整 Vitest 295/295、web/e2e type-check、23-locale i18n check PASS；`pnpm check` 仅 5 个 B1 baseline，ESLint `NOT_RUN`；browser/E2E `NOT_RUN`（环境 blocker 已记录）。
-- Final Review：全 B5 范围、门禁链、证据均核验；`PASS`、open findings `0/0/0`。
-
-### 下一阶段：B0–B8 与 Phase D/F/G/H 已全部闭环
-
-B6–B8 与 Phase D/F/G/H 均已闭环并纳入候选 HEAD `83e1bd5418`。恢复时以创建时重新读取的候选完整 40 位 HEAD 为起点；不得重新生成 contracts、不得修改任何 locale/i18n 文件、不得恢复旧 enterprise context/loader。本轮重放不再启动新 Builder；生产发布前置动作见第 2 节。
-
-## 8. Claude Squad / worktree 协作 SOP
-
-### 角色和生命周期
-
-每个实例只承担一个明确角色：
-
-- Architect：分析和任务拆分；
-- Builder：实现；
-- Reviewer：独立挑战；
-- Fixer：只修已确认 finding；
-- Rereviewer：关闭 finding 和最终门禁。
-
-一个实例是阶段性 worktree，不是永久 AI 员工。分支已 fast-forward 合并且候选分支已 push 后，该实例即可删除。
-
-### 创建任务
-
-每个 `N` 任务单必须包含：
-
-1. instance name；
-2. 角色；
-3. 候选 base branch；
-4. 完整 40 位精确起点 SHA；
-5. 起点 branch/HEAD/clean 三项核验；
-6. allowlist；
-7. denylist；
-8. 必须运行的测试；
-9. NOT_RUN 规则；
-10. commit/amend/push 权限；
-11. 最终报告格式。
-
-禁止使用“从最新 HEAD 开始”等可漂移表述。
-
-### worktree 与候选分支的关系
-
-```text
-候选主目录/候选分支
-        │
-        ├── Claude Squad worktree A / branch A / commit A
-        ├── Claude Squad worktree B / branch B / commit B
-        └── Claude Squad worktree C / branch C / commit C
-```
-
-Agent 在自己的 worktree 内修改并提交。
-
-协调者在候选主目录执行：
-
-```bash
-git merge --ff-only ctyun/<instance-branch>
-```
-
-这不是重复工作：
-
-- worktree commit 生成独立 Git 对象；
-- 候选目录的 `--ff-only` 只是把候选分支指针推进到已审 commit；
-- 最终只从候选分支 push；
-- instance branch 通常不 push。
-
-### 门禁
-
-- Builder dirty diff 先检查，再授权 commit；
-- commit hook 留下新修改时不得忽略，重新测试后 amend；
-- Review 报告也先合并，再从“报告合并后的精确 SHA”创建 Fixer；
-- Reviewer 不能默认相信 Builder 报告；
-- 测试通过不能代替源码/契约审查；
-- `CHANGES_REQUIRED` 不允许直接进入下一 Builder；
-- generated files 必须有唯一 owner；
-- 主目录只做集成、检查和 push，不在那里并行写同一任务实现。
-
-## 9. 新窗口恢复提示词
-
-新窗口可直接使用：
-
-```text
-请使用：
-
-- $replay-dify-enterprise
-- $orchestrate-claude-squad
-
-先读取：
-
-/home/ctyun/BigData/GitHub/dify-enterprise-1.16.0/docs/enterprise/replay-1.16.0/CURRENT_STATE.md
-
-然后只读恢复并核验：
-
-1. 仓库、分支、HEAD、origin 是否与文档一致；
-2. 工作区是否干净；
-3. B4_FINAL_REREVIEW.md 是否为 PASS；
-4. B5_IMPLEMENTATION_PLAN_REREVIEW.md 是否为 PASS、PLAN_ACCEPTED=yes；
-5. B5_CONTRACT_FIX_REREVIEW.md 是否为 PASS、CONTRACT_FIX_ACCEPTED=yes、open findings 0/0/0；
-6. B5_E_I18N_REVIEW.md 是否为 PASS、B5_E_ACCEPTED=yes、open findings 0/0/0；
-7. B5_A_REVIEW.md、B5_B_REVIEW.md 是否为 PASS；
-8. B5_C_REREVIEW.md、B5_D_REREVIEW.md 是否为 PASS；
-9. B5_FULL_REGRESSION_REPORT.md、B5_FINAL_REVIEW.md 是否为 PASS；
-10. Skill 源 commit 是否包含 33928a0（`cs create` 非交互路径与大契约 temp-file 投递），
-   Claude Squad 源 commit 是否包含 a1e35dc7436454cb53a584b8730166e23055ad4b；
-11. 只恢复协调状态，不修改业务代码，不创建实例。
-
-核验通过后：
-
-1. 依据 CURRENT_STATE.md 第 2/3 节确认 B0–B8 与 Phase D/F/G/H 全部闭环；
-2. 下一授权动作是生产发布前置（受保护 secret 扫描、真离线机验证、镜像签名/审计、独立部署演练），
-   不得由此自动启动部署；
-3. 不再创建新的重放 Builder 实例；
-4. 只读恢复，不修改业务代码，不创建实例；
-5. B0–B8 不得重启，不得重新生成 contracts 或修改任何 locale/i18n 文件。
-
-任何事实与文档不符时，先报告差异，不得自动 reset、merge、rebase、migration、Docker 或 volume。
-```
-
-## 10. 新窗口建议阅读顺序
-
-不要重新阅读整段旧聊天。按以下顺序：
-
-1. `CURRENT_STATE.md`
-2. `FINAL_VALIDATION_SUMMARY.md`
-3. `DECISION_RISK_LEDGER.md`
-4. `B4_FINAL_REREVIEW.md`
-5. `ARCHITECT_HANDOFF.md`
-6. `PATCH_DECISION_MATRIX.md`
-7. `VALIDATION_PLAN.md`
-8. 下一任务相关的实施计划和最终 Review
-
-只有发现矛盾或需要追溯设计理由时，才继续读取较早的 Review/Fixer 文档。
-
-## 11. 当前实例状态
-
-已按授权清理此前全部 replay 实例，包括最小离线门禁、host-proxy、Docker-save order、Weaviate document-ID 角色链以及被最小离线门禁取代的旧 P0 Plan Fixer。2026-09-24 当前不存在任何 Claude Squad 实例、额外 worktree、实例分支或 Agent 会话。
-
-恢复时只读核验 Claude Squad 持久状态、`git worktree list`、`git branch --list 'ctyun/replay-116-*'`、`tmux` Agent 会话、候选 Git 状态、origin 精确 SHA 和 controller 数量。预期实例数、额外 worktree、实例分支、Agent 会话与 controller 均为 0；不得以“latest HEAD”创建实例。
+| 本轮整理前 HEAD | `3638589aa4b43da5948ca175b91a87d979e94af3`，整理前工作区干净。本文不自引用未来 docs commit。 |
+| 文档整理现场 | 本页与索引/历史快照为未提交整理；另协调总纲、验证计划、决策台账及旧指导的范围说明。实际 dirty 路径须用 git status/diff 核对，不要求新窗口误判为 clean，不自动丢弃或提交。 |
+| 远端 checkpoint | 上一授权 push 后通过 git ls-remote 核验为同一精确 SHA；本轮整理不 push。 |
+| 图片预览修复 | Builder `53f2ba6f335ca842cd4c2a9856615725841d7f6d` 和 Code Review `83a8d93aa2c96ab365fbeba4bea51834851f6c6f` 已集成并包含于上述远端 checkpoint。 |
+| 代码验收 | Code Review PASS，无必须修复 finding；补齐共享召回签名、旧 query 消费和混合 URL 替换顺序。仅两份生产代码与三份既定测试改变。 |
+| 单元证据 | Builder 与独立 Reviewer 各自聚焦 220、相关 219，合计各自 439/439；54 个安全用例为子集。协调窗口独立复跑三份修改测试 205/205。Ruff/空白检查通过。 |
+| 关键报告 | [Architect](P0_IMAGE_PREVIEW_ARCHITECT_2026-10-06.md)、[Plan Review](P0_IMAGE_PREVIEW_PLAN_REVIEW_2026-10-06.md)、[Plan Rereview](P0_IMAGE_PREVIEW_PLAN_REREVIEW_2026-10-07.md)、[Code Review](P0_IMAGE_PREVIEW_CODE_REVIEW_2026-10-07.md)。 |
+
+## 本机验证：已通过与尚未完成
+
+本机是 Development / historical-data rehearsal。实际升级演练沿用上一版本的配置与历史挂载数据；空数据隔离项目只提供额外打包冒烟，不能取代历史数据升级验证。生产与灰度是另外的离线部署环境。
+
+| 范围 | 证据与边界 |
+| --- | --- |
+| 历史数据召回 | 2026-09-24 两文档重索引后 PostgreSQL/Weaviate 63/63 严格对应；有窗体三条召回通过。是历史时点结果，不宣称今天重新对账。 |
+| 历史应用 | 2026-10-04 三个应用运行版本显式使用 qwen3.8-flash，Agent、文本生成和文件工作流回归 PASS；文字召回与 DOCX 原件下载正常。 |
+| 当前 API 镜像预检 | 2026-10-07 只读 docker inspect：四个 docker 项目 API 系列容器仍使用 `sha256:8d4ac68ef576d951a51dd941a51f09f91f91ed5372de241e08567e6438fc2319`，沿用原 app/storage 挂载。未切换。 |
+| 图片修复运行验收 | 新 API 镜像重建/切换、有窗体历史召回卡片/详情图片预览 **NOT_RUN**；图片发布前要求仍未关闭。不需要仅为签名修复重新索引。 |
+| 离线包 | `dist/offline/rehearsal-1cc8e60a` 是旧源码产物，曾真实 checker 5/0/0；不包含本次图片修复。新包重建/checker **NOT_RUN**。 |
+| 空数据 load + boot | replay116lb9b59 曾基础入口和合成 JavaScript PASS；sandbox 配置必须初始化，示例 syscall 限制曾失败。非历史应用升级验收，非真正无外网主机验收。 |
+| 尚存缺口 | 最新镜像/有窗体图片回归、新离线产物、完整发布功能矩阵与控制台错误分类、真正离线目标机和受保护发布审计未形成当前整体发布 PASS。不能用历史“FINAL”标题推断已可部署。 |
+
+本机详细证据在忽略目录 output/playwright、output/offline 和 .playwright-cli；不提交原始页面、文档摘录、配置或凭据。入口见文档索引。
+
+## 实例与运行现场
+
+六个 Claude Squad 实例保留，不删除：
+
+- replay-116-image-preview-architect-20261006
+- replay-116-image-preview-plan-reviewer-20261006
+- replay-116-image-preview-plan-fixer-20261007
+- replay-116-image-preview-plan-rereviewer-20261007
+- replay-116-image-preview-builder-20261007
+- replay-116-image-preview-code-reviewer-20261007
+
+最近创建核验 controller_count=0；这是当时观测，恢复时重新核对。Code Reviewer 的 repo_path 指向 Builder worktree，清理时必须按依赖顺序治理，不能先删来源 worktree。实例数量不等于所有角色都需并行执行。
+
+本机 docker 历史数据项目与 replay116lb9b59 空数据项目均存在；本轮整理没有启停任何容器。其他开发服务不在范围内。
+
+## 已接受决定与下一步
+
+- 沿用现有有效连接配置；默认密码轮换保留为独立延期加固事项，不作为本次重放阻塞。
+- 旧全层 secret 扫描计划已被最小离线门禁取代；旧 Plan B runbook 不是当前滚动升级指令。
+- 新 API 切换后须检查 nginx 旧 upstream 解析问题，按 Skill 排查；不能凭经验自动重启未授权的 nginx。
+- 用户已授权本机 API 重建/四个实际 API 系列容器切换：先确认冷备和旧镜像回退依据，显式 host-proxy，临时覆盖 MIGRATION_ENABLED=false，沿用配置/数据，验证健康和有窗体历史图片。失败即停，不自动回退。
+- **随后用户要求优先重新分类整理文档，本机运行步骤暂停在预检阶段**。冷备与回退完整核验尚未完成；未构建、未切换、未运行浏览器。整理完先汇报差异与记录缺口，再衔接原授权，不把文档改动误当新增运行权限。
+- 用户已确认本轮职责划分、冲突协调和换 harness 恢复约定；当前仅继续完善和核验草稿。后续新增实质性规则或范围变化须再次说明并确认，不能把认可整理方案等同于提交或运行授权。
+- 不授权生产/灰度访问或部署、secret 轮换、历史数据改写/重索引、Web 更新、离线包重建、实例清理或本轮提交/push。
+
+## 开放事项总表
+
+开放事项先按下表定位。历史矩阵中的未完成项不自动成为今天的阻塞；关闭一项须补对应日期、来源 SHA/运行镜像、验收范围和证据，并回填来源矩阵。修改支持范围或接受延期由用户决定，不以新的 PASS 摘要隐式关闭。
+
+| 开放项 | 分类 | 证据入口与关闭条件 |
+| --- | --- | --- |
+| 图片预览新镜像/有窗体验证、新离线包 | 发布前待验证 | 本页运行表均 NOT_RUN；分别以新镜像浏览器证据、新包 checker及来源身份核验关闭 |
+| 冷备与回退依据 | 本机切换前置 | 尚未完整核验；须确认备份范围/时间、旧镜像与挂载身份及回退方式，不能仅核对备用 tag |
+| E01、E16、E18 | 历史 NOT_RUN 待映射 | [E01–E18 矩阵](UPGRADE_REHEARSAL_VALIDATION_2026-08-18.md)：默认加入工作区、OAuth 兼容、旧 session；尚未找到当前关闭证据，逐项按范围授权验证或由用户接受限制 |
+| E02、E03、E07、E11、E14 | 历史 PARTIAL 待映射 | 同矩阵：注册/建工作区策略、管理员允许操作/邀请、登录安全回跳、离线插件、协作重连；已有局部通过不代替剩余场景 |
+| E10 | 历史离线 PARTIAL 已有后续变化 | 旧全层扫描要求被最小门禁取代；旧包曾 checker PASS，但最新图片修复包尚未生成，不恢复旧扫描为阻塞 |
+| E04/E05/E08/E09/E12/E13/E15/E17 | 历史 PASS，需来源对应 | 同矩阵的功能结果保留；后续 63/63 对账和应用回归见本页。最新代码、模型、镜像改变后只补受影响验收，不声称今天全项重跑 |
+| 真正无外网目标机、registry/签名、部署及生产回退验证 | 外部条件/交付范围待定 | [旧 preflight](PRODUCTION_RELEASE_PREFLIGHT.md) 项目不是自动指令；最终交付方式、必须验证项和授权由用户确认，开发机模拟不代替真实目标 |
+| 默认密码轮换、B9 会话管理 | 已接受延期 | [后续决定](DECISION_RISK_LEDGER.md)、[Design Gate](DESIGN_GATE.md)；独立加固/需求澄清，不作为本次自动阻塞 |
+| B7/B8 已接受 P3、.ps1、旧 OCI 内容扫描、受保护 pattern | 已接受限制或独立范围待定 | [历史限制清单](FINAL_VALIDATION_SUMMARY.md) 与后续最小门禁决定合读；不全归为必须加固，不用开发证据把受保护审计改写为 PASS |
+| 六实例清理、Skill 安装一致性、文档交付 | 治理事项 | README/AGENTS 短入口已按授权完成并通过链接核验；本轮精确 11 份文档获准本地提交，本文记录提交前现场，不自引用未来提交 SHA。push、系统同步和实例清理未授权（CLEANUP_NOT_AUTHORIZED）；清理前须资格审计并处理 Code Reviewer 对 Builder 的依赖 |
+| 1.16.1 候选线归属 | 用户待决 | Claude 2026-10-07 审计报告称远端 `codex/enterprise-candidate-1.16.1-20260728` 存在（SHA 前缀 `67e505d049bb`），这是外部复核记录，不是本轮 Codex 独立结论。本地 refs/对象未找到；2026-10-09 独立执行 `git ls-remote --exit-code origin refs/heads/codex/enterprise-candidate-1.16.1-20260728` 因无法连接服务器退出 128，远端存在性未重新核实。内容/维护归属仍待决，不得纳入、合并、删除或宣称替代本轮 |
+
+## 新窗口最小恢复步骤
+
+1. 按 DOCUMENT_INDEX 的换 harness 路线读取两个 Skill、本文、项目总纲、AGENTS 与当前任务证据；核对实际分支、HEAD/status及是否包含上述 checkpoint。远端读取须有相应网络权限；未查就标明未查。草稿来源不明或 Git 不符时停下核对，不自行修复。
+2. 只读核对持久实例、worktree/分支、Agent 会话、controller 数量；多个 controller 即暂停治理操作。
+3. 图片修复继续时读取最新 Architect 与 Code Review，不重读全部 B0–B8 或旧聊天。
+4. 区分源代码、运行 image ID、数据状态、离线包来源 SHA；分别报告 PASS/FAIL/NOT_RUN。
+5. 给出当前情况、下一步建议、仍有效授权和需要用户决策的边界；不得自动修复 Git 差异或连接生产。

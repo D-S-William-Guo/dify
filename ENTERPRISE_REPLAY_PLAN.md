@@ -1,13 +1,17 @@
 # Dify Enterprise 1.16.0 Replay Plan
 
-状态：`DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`
+> 本文件是本轮企业重放的项目总纲。下文阶段状态和启动授权保留初始设计时点，不代表今天的执行权限。当前现场见 [CURRENT_STATE](docs/enterprise/replay-1.16.0/CURRENT_STATE.md)，文档职责和阅读顺序见 [DOCUMENT_INDEX](docs/enterprise/replay-1.16.0/DOCUMENT_INDEX.md)，后续已接受调整见 [决策台账](docs/enterprise/replay-1.16.0/DECISION_RISK_LEDGER.md)。历史数据演练的后续单独授权不改变“数据、配置和 secret 不进入源码或离线包”的边界。
+
+人类查进度、新协调窗口接手、Architect/Builder/Reviewer 执行任务，请从 [按身份选择的快速入口](docs/enterprise/replay-1.16.0/DOCUMENT_INDEX.md#从这里开始按身份或问题选入口) 开始；不要求每个 Agent 加载全目录。编码时仍须读取 AGENTS 与路径适用的领域规范。
+
+状态（2026-07-21 初始设计时点）：`DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`。后续 B0–B8 阶段结果见 [历史验证总结](docs/enterprise/replay-1.16.0/FINAL_VALIDATION_SUMMARY.md)，实际现场与新增修复缺口见 [CURRENT_STATE](docs/enterprise/replay-1.16.0/CURRENT_STATE.md)。
 
 ## 1. 唯一基线
 
 - 官方稳定标签：`1.16.0`
 - 官方提交：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
 - 候选来源名：`codex/enterprise-candidate-1.16.0-20260718`
-- Design Gate 记录分支：`ctyun/replay-116-gate-recorder`
+- 初始 Design Gate 记录分支：`ctyun/replay-116-gate-recorder`（历史身份，不要求该临时分支仍存在）。
 - 重放实现基线：`5c6372d2f76d240265b92fd27c16bc772ffcb107`
 
 本地候选分支 `codex/enterprise-candidate-1.16.0-20260718` 已确认从官方 `1.16.0` / `5c6372d2f76d240265b92fd27c16bc772ffcb107` 开始。Design Gate 记录通过 Gate Reviewer 后，候选分支只推送到用户 fork `D-S-William-Guo/dify`；禁止向 `langgenius/dify` 创建企业 PR。
@@ -77,7 +81,7 @@
 ### B4 智慧广场后端
 
 - 按已批准的“审核通过/正式发布时生成不可变快照”决定定义 1.16 最终 schema 和独立回填流程。
-- 在 B2 的空 merge 后追加 schema migration `b416e5c4e702`（文件 `2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`，`down_revision = "a71e16c0de01"`）；它才是最终企业 head，并独占新增列、索引、约束和数据迁移。严禁把这些 DDL 塞入 merge revision。
+- 在 B2 的空 merge 后追加 schema migration `b416e5c4e702`（文件 `2026_07_21_1400-b416e5c4e702_finalize_enterprise_marketplace_schema.py`，`down_revision = "a71e16c0de01"`）；它是 B4 阶段最终 head，并独占新增列、索引、约束和数据迁移。严禁把这些 DDL 塞入 merge revision。Phase G 修复后的全项目唯一 head 为 `e7c0a9d2b8f3`，见 [验证计划的 migration 图](docs/enterprise/replay-1.16.0/VALIDATION_PLAN.md#phase-dmigration-图与数据库升级)。
 - 实现 marketplace service/controller、提交/审核/列表/复制状态机、owner scope、官方 SSRF 防护路径、无 secret DSL copy，以及最终 Console OpenAPI contract generation。
 
 ### B5 平台管理员与智慧广场前端
@@ -117,7 +121,7 @@ B0 ─┬─> B1
 B9（澄清）必须在 B6 开始前截止；若产生实现任务，追加为 B10，经独立安全/架构评审并在 B8 发布门禁前完成。
 ```
 
-当前阶段只授权 B0 和 B1。B2～B9 均不得启动；其中 B2 还受上述只读 inventory 前置门禁约束。
+2026-07-21 初始设计时点只授权 B0 和 B1，B2～B9 当时不得启动；B2 另受上述只读 inventory 前置门禁约束。该阶段授权已被后续逐项授权与执行取代，完成结果见 [历史验证总结](docs/enterprise/replay-1.16.0/FINAL_VALIDATION_SUMMARY.md)，现场及权限边界见 CURRENT_STATE；本段不重新授权任何任务。
 
 推荐合并：`B0 → B1 → B2 → B3 → B4 → B5 → B6 → B7 → B8`。同步点强制为 B3 合并后 B4 才开始，B4 完成最终 contract generation 并合并后 B5 才开始；B3、B4 不并行，B5 不自行重新生成 contract。
 

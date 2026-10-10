@@ -62,6 +62,10 @@
 
 Dify is an open-source LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features (including [Opik](https://www.comet.com/docs/opik/integrations/dify), [Langfuse](https://docs.langfuse.com), and [Arize Phoenix](https://docs.arize.com/phoenix)) and more, letting you quickly go from prototype to production. Here's a list of the core features:
 
+## Enterprise replay / 企业重放入口（本仓库）
+
+For this fork's enterprise replay, start with the [project plan / 项目总纲](ENTERPRISE_REPLAY_PLAN.md), [current status / 当前进度](docs/enterprise/replay-1.16.0/CURRENT_STATE.md), and [document index / 文档导航与交接](docs/enterprise/replay-1.16.0/DOCUMENT_INDEX.md). The upstream quick start below is not the historical-data upgrade procedure; follow the indexed guidance and authorization boundaries.
+
 ## Quick start
 
 > Before installing Dify, make sure your machine meets the following minimum system requirements:

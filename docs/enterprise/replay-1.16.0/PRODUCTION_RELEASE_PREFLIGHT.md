@@ -1,9 +1,13 @@
 # Dify Enterprise 1.16.0 生产发布前置状态
 
+> 历史受保护发布审计快照，不是当前升级操作指令。下文“必须先轮换”已被用户后续决定替代：本次升级沿用有效连接配置，密码轮换作为独立加固事项延期；不能重新设为本次重放阻塞。旧扫描 FAIL 保留为历史结果，未被开发机验证改写为 PASS。当前指导见 [离线升级清单](OFFLINE_DEPLOYMENT_CHECKLIST.md)，决定及证据边界见 [决策台账](DECISION_RISK_LEDGER.md)。registry、签名和主机访问等旧占位步骤均不自行产生授权。
+
 更新时间：2026-08-14（Asia/Shanghai）
 候选 HEAD：`a53db8122688eb5ba00f9b8dbdb05cc22f31dc67`（origin 一致）
 
 ## 已就绪
+
+以下为截至 2026-08-14 的证据与镜像身份，不保证今天仍保留在本机 Docker store。Claude 2026-10-07 只读审计报告称 Web 镜像 `b76919e998` 已不在本机；本轮 Codex 未重新查询 Docker，不能据本节推断现有镜像或整体发布状态。
 
 | 项 | 状态 | 证据 |
 | --- | --- | --- |
@@ -30,6 +34,8 @@
 - 离线 Docker host：无 SSH config、无 `OFFLINE_HOST` 环境变量，无法自动连接。
 - 真实 secret pattern：环境无受保护 pattern 文件；此前 synthetic 扫描已 PASS。
 - 本地可复用镜像：API `566bdf4c88cf`、Web `b76919e998` 存在。
+
+上句仅描述 2026-08-14 当时的本机状态；后续存在性必须重新核验，不能作为当前复用或回退依据。
 
 ## 第 1 步真实 secret 扫描结果（2026-08-14）
 

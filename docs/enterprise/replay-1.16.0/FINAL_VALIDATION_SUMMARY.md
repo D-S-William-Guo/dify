@@ -1,5 +1,7 @@
 # Dify Enterprise 1.16.0 重放最终验证总结
 
+> 历史阶段总结：仅证明下述日期、checkpoint 和镜像的 B0–B8 / Phase D–H 结果。“最终”不是后续所有修复的整体发布结论；当前缺口见 [CURRENT_STATE](CURRENT_STATE.md)。保留原结果，不以新镜像或新代码替换其来源身份。
+
 更新时间：2026-08-14（Asia/Shanghai）
 
 本文件是 B0–B8 重放与 Phase D/F/G/H 运行验证的最终总结，对应发布门禁决策单 G3/G4/G6 的落地输出。数据来源：`DECISION_RISK_LEDGER.md` 与 `/tmp/replay-116-final-gate-decision-sheet.md`。

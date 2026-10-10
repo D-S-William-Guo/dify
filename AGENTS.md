@@ -1,5 +1,9 @@
 # AGENTS.md
 
+## Enterprise Replay Entry Point
+
+For enterprise replay tasks in this fork, read the [project plan](ENTERPRISE_REPLAY_PLAN.md), [current coordination state](docs/enterprise/replay-1.16.0/CURRENT_STATE.md), and [role-based document index](docs/enterprise/replay-1.16.0/DOCUMENT_INDEX.md) before acting. The index routes you to applicable skills, task evidence, and handoff rules; historical reports do not grant execution permission. Continue to follow the coding and path-specific guidance below.
+
 ## Project Overview
 
 Dify is an open-source platform for developing LLM applications with an intuitive interface combining agentic AI workflows, RAG pipelines, agent capabilities, and model management.

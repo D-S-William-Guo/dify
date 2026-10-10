@@ -1,5 +1,23 @@
 # Dify Enterprise 1.16.0 重放 B0–B8 决策/风险台账（详细版）
 
+## 后续已接受调整（2026-10-07 整理）
+
+本节协调后续决定与原 B0–B8 快照，不追溯修改旧测试结论，也不新增执行权限。下文八月“当前快照”仅属于当时；实际现场以 [CURRENT_STATE](CURRENT_STATE.md) 和 Git 核验为准。
+
+| 已接受决定 | 对旧记录的影响 | 依据与边界 |
+| --- | --- | --- |
+| 开发机沿用上一版本配置和历史挂载数据演练；生产/灰度是另外的离线环境 | 空数据 load + boot 只补充打包冒烟，不替代历史数据升级验证 | 用户明确的环境与滚动升级要求；历史运行证据入口见 CURRENT_STATE。任何数据复制、写入和服务切换仍需范围授权 |
+| 本次升级沿用现有有效连接配置；默认密码轮换独立延期 | PRODUCTION_RELEASE_PREFLIGHT 的旧“先轮换才能继续”不是当前重放阻塞；Plan B 不是当前滚动升级指令 | 已固化于 [OFFLINE_DEPLOYMENT_CHECKLIST](OFFLINE_DEPLOYMENT_CHECKLIST.md) 和 [PRODUCTION_PLAN_B_RUNBOOK](PRODUCTION_PLAN_B_RUNBOOK.md)。不声称默认密码无风险或旧审计已通过 |
+| 旧全层 secret 扫描计划不合并，采用最小离线门禁 | 不再默认扫描全部第三方镜像内容或使用生产/灰度真实 pattern；旧审计 FAIL 仍保留 | [最小计划](P0_MINIMUM_OFFLINE_GATE_ARCHITECT_2026-08-30.md)、[计划复审](P0_MINIMUM_OFFLINE_GATE_PLAN_REREVIEW_2026-08-30.md)、[代码审查](P0_MINIMUM_OFFLINE_GATE_CODE_REVIEW_2026-09-02.md)。真实配置/secret 不入包的要求不变 |
+| 后续代码修复须验证新的运行镜像与产物 | 八月 FINAL、旧运行 PASS 和旧离线包均不能证明图片修复运行成功 | [图片代码审查](P0_IMAGE_PREVIEW_CODE_REVIEW_2026-10-07.md) 仅代码/合成测试 PASS；新镜像、浏览器及新包状态分别见 CURRENT_STATE |
+
+## 文档维护与交接责任
+
+- 协调窗口维护 CURRENT_STATE 的现场、授权边界与下一步；重大人工调整在本台账记录原因、影响和证据链接，涉及设计范围变化继续遵守 DESIGN_GATE 的变更流程。
+- 任务计划和 Review 保留原日期、来源 SHA、执行结果；后续决定通过链接说明替代关系，不覆盖历史证据。升级指导须同步说明已失效步骤。
+- 文档角色、换 harness 阅读路线与启动提示词统一在 DOCUMENT_INDEX；编码规范留在 AGENTS/领域指南，通用调度规则留在两个 Skill，不重复扩写 SOP。
+- 完成阶段后、换窗口前核对 Git 与文档；未提交草稿、临时证据、暂停动作和未授权事项必须交接。无法核验的记录标为未核验，不据此执行。
+
 更新时间：2026-08-14（Asia/Shanghai，Phase H Rerun Validator 回填）
 
 本文件是人工判断的对照物，不是 AI 的结论。每项都尽量给出：决策点、选项、选择、影响范围、优缺点、数据证据、验证状态、待判断问题。
@@ -277,7 +295,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 
 - ✅ Phase F build/recreate/image ID 已运行验证：`replay-116-b8-phase-f-validator`（2026-08-11），
   5 runtime 容器 image ID 断言 PASS，`evidence/phase-f/**`。
-- ⚠️ Phase G 运行 NOT_RUN。
+- ⚠️ 当时 Phase G 运行 NOT_RUN。后续该阶段已执行，两个 release-blocking finding 修复并复审通过，见 [Phase G Rereview](B8_PHASE_G_REREVIEW.md) 与 [历史总结](FINAL_VALIDATION_SUMMARY.md)；其中已接受 NOT_RUN/偏差仍保留，不表示全部场景成功。
 
 ### 待判断
 
@@ -309,7 +327,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 
 ### 已知限制
 
-- ⚠️ Phase F/G/H NOT_RUN；`.ps1` 运行时 NOT_RUN。
+- ⚠️ 当时 Phase F/G/H NOT_RUN；`.ps1` 运行时 NOT_RUN。后续 F/G/H 阶段已执行，见 [F 重建](evidence/phase-f-rebuild/README.md)、[G](evidence/phase-g/README.md)、[H 复跑](evidence/phase-h-rerun/README.md)；各阶段已接受限制仍保留，`.ps1` 运行时仍 NOT_RUN。
 - P3：B7R-03（WARNING 同文件非相邻）、B7R-04（硬编码版本）、B7R-05（ps1 BOM）、B7R-06（裸 volumes 不拦）。
 
 ### 待判断
@@ -358,7 +376,7 @@ platform-admin 页面、marketplace 浏览/提交/审核/复制、main nav、23 
 
 1. ~~Phase D：隔离副本真库升级矩阵（PG 15.17 企业 1.15→1.16、官方 1.15→1.16、PG18 空库/应用升级、回滚）~~ ✅ 已完成（`replay-116-b8-phase-d-validator`，6/6 PASS，`evidence/phase-d/**`）。
 2. ~~Phase F：build + 五容器 image ID 断言~~ ✅ 已完成（`replay-116-b8-phase-f-validator`，PASS，`evidence/phase-f/**`）。
-3. Phase G：完整运行验收（platform-admin/marketplace/Agent 12 场景/Workflow/HITL/WebSocket/browser/E2E/secret）。
+3. ~~Phase G：运行验收（platform-admin/marketplace/Agent 12 场景/Workflow/HITL/WebSocket/browser/E2E/secret）~~ ✅ 该阶段已执行（2026-08-12，`replay-116-b8-phase-g-validator`）；两个 release-blocking finding 已修复并 [复审 PASS](B8_PHASE_G_REREVIEW.md)。[阶段证据](evidence/phase-g/README.md) 中的 NOT_RUN 与偏差不因本项回填而关闭。
 4. ~~Phase H：离线 `docker load` + `up --pull never` + smoke + 重复 secret 扫描~~ ✅ 两轮完成：第一轮（`replay-116-b8-phase-h-validator`，2026-08-12，`evidence/phase-h/**`）FAIL——链机制全 PASS 但离线镜像缺 Phase G 修复；重建镜像 + 加固 reuse gate 后，第二轮（`replay-116-b8-phase-h-rerun`，2026-08-14，`evidence/phase-h-rerun/**`）**PASS**——gate 接受新 API image、fresh PG15 head `e7c0a9d2b8f3`、marketplace 12 列 uuid、smoke 全 200、无 pull、teardown 无残留。
 
 ---
@@ -409,6 +427,8 @@ Workflow/WebSocket/plugin-dataset-vector/secret/浏览器/E2E 均 PASS；Agent 1
 
 两个 release-blocking finding 已修复（`replay-116-b8-phase-g-fixer`，分支
 `ctyun/replay-116-b8-phase-g-fixer`）：
+
+该分支名为历史身份；2026-10-07 本地 refs 核验未发现该临时分支。修复依据由 Git 提交和下述报告保留，不要求旧分支仍存在。
 
 ### GPH-01：Marketplace schema 类型不匹配 → 新 migration
 

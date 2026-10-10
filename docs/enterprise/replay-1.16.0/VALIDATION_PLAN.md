@@ -1,8 +1,10 @@
 # Dify Enterprise 1.16.0 验证计划
 
+> 本文件定义验收范围，不是当前执行授权或结果清单。下文初始阶段授权及旧 secret/离线步骤须结合 [后续决策](DECISION_RISK_LEDGER.md) 阅读；当前进度见 [CURRENT_STATE](CURRENT_STATE.md)。源码、迁移、运行镜像、离线产物四层证据仍须分别核验，历史 PASS 不自动覆盖后续修复。
+
 ## 1. 目标与硬门禁
 
-本计划用于后续 Builder 和 Reviewer。当前状态为 `DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`；Gate Reviewer 通过前不启动 Builder，通过后也仅授权 B0/B1，B2～B9 暂不授权。本文所有测试均为计划项，不代表已经运行通过。当前任务不修改代码、不启动 Docker、不访问或复制 `docker/volumes`。
+本计划用于 Builder 和 Reviewer，初版提交于 2026-07-18；本节所述状态为 2026-07-21 设计门时点。当时状态为 `DESIGN_GATE_APPROVED_PENDING_RECORD_REVIEW`：Gate Reviewer 通过前不启动 Builder，通过后也仅授权 B0/B1，B2～B9 当时暂不授权。本文所有测试均为计划项，不代表已经运行通过。初始设计任务不修改代码、不启动 Docker、不访问或复制 `docker/volumes`；后续范围授权及结果须另查 CURRENT_STATE 与对应证据。
 
 发布必须同时证明四件事：源码正确、迁移可升级、运行容器确实包含本轮源码、离线包复用同一批已验证镜像。任一层通过都不能替代下一层。
 
