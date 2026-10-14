@@ -4,6 +4,8 @@
 
 For enterprise replay tasks in this fork, read the [project plan](ENTERPRISE_REPLAY_PLAN.md), [current coordination state](docs/enterprise/replay-1.16.0/CURRENT_STATE.md), and [role-based document index](docs/enterprise/replay-1.16.0/DOCUMENT_INDEX.md) before acting. The index routes you to applicable skills, task evidence, and handoff rules; historical reports do not grant execution permission. Continue to follow the coding and path-specific guidance below.
 
+**Required skills (all harnesses).** Before acting on enterprise replay tasks, load and follow `orchestrate-claude-squad` and `replay-dify-enterprise`. Use the active harness's own skill mechanism (an OpenCode `skill` call, a Claude Code skill invocation, a Codex skill read), or read each skill's `SKILL.md` from its installed location under the harness's global skills directory. If a harness cannot load a skill, read the trusted source and report the gap instead of skipping silently. Every task contract must restate this requirement.
+
 ## Project Overview
 
 Dify is an open-source platform for developing LLM applications with an intuitive interface combining agentic AI workflows, RAG pipelines, agent capabilities, and model management.
